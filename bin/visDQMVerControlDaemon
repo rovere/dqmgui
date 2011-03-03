@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+import os, time, re, sys
+from traceback import print_exc
+from datetime import datetime
+from glob import glob
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]        # Directory where we receive input ("drop box").
+FILEREPO = sys.argv[2]       # Final file repository of original DQM files.
+WAITTIME = 30                # Daemon cycle time.
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# --------------------------------------------------------------------
+# Process files forever.
+while True:
+  try:
+    # Find new ROOT files.
+    new = glob("%s/*.root.dqminfo" % DROPBOX)
+
+    # If we found new files, print a little diagnostic.
+    if len(new):
+      logme('found %d new files.', len(new))
+
+    for path in new:
+      # Read in the file info.
+      try:
+        info = eval(file(path).read())
+      except:
+        continue
+
+      # Find all versions of the root file and only leave in the local
+      # hard drive the newest one. Only files that have been archived
+      # will be removed. To determine that the file has been archived
+      # it looks if the key "zippath" exist in the info file; no
+      # further test are carried out.
+      verpat = re.sub("_V[0-9]{4}_", "_V[0-9][0-9][0-9][0-9]_", info['path'])
+      flist = sorted(glob("%s/%s" % (FILEREPO, verpat)), reverse=True)
+      hversion = int(re.search("_V([0-9]{4})_", flist[0]).group(1))
+      for rfile in flist[1:]:
+        # Read in the file info.
+        finfo = "%s.dqminfo" % rfile
+        try:
+          dqminfo = eval(file(finfo).read())
+        except:
+          continue
+
+        if "zippath" in dqminfo:
+          logme("%s: removing file, version %d is newer", rfile, hversion)
+          os.remove(rfile)
+        else:
+          logme("%s: not removing file, it is not archived yet.", rfile)
+
+      # Clear out drop box
+      os.remove(path)
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

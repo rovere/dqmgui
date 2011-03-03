@@ -1,0 +1,159 @@
+#!/usr/bin/env python
+
+import os, time, re, sys
+from traceback import print_exc
+from datetime import datetime
+from glob import glob
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+# --------------------------------------------------------------------
+# Command line parameters
+DROPBOX = sys.argv[1]		# Directory where we receive input ("drop box").
+IMPORTDROPBOX = sys.argv[2]	# Dropbox for visDQMImportDaemon.
+FILEREPO = sys.argv[3]		# Final file repository of original DQM files.
+QUOTASFILE = sys.argv[4]	# File that contains QUOTAS information
+
+# Global Constants
+WAITTIME = 30			# Daemon cycle time.
+REFRESHINTERVAL = 2 * 24 * 3600	# Time between full cache refreshing.
+LOWERBOUNDARY = 0.95		# Percentage of QUOTAS to reach when deleting files
+FIFORX = re.compile("^DQM_V(\d+)_.*root$")
+
+
+# Global Variables
+FIFOQUEUES = {}
+QUEUESIZES = {}
+QUOTAS = {}
+
+# Control Variables
+refreshQueues = True
+lastRefresh = time.time()
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# --------------------------------------------------------------------
+# The RootFileQuotaControl agent takes quotas assigned to the DQM file
+# classes and enforces them on the ROOT file repository. The quotas are
+# provided in a python file which contains a dictionary with the
+# amount of disk space to allocate to each data class e.g.
+# {"online_data": 5 * 1024 ** 3, "offline_data": 5 * 1024 ** 3}
+#
+# The FIFO queues work as follow: when a new file arrives and makes
+# the QUOTAS allocated for its class exceed the desired value,
+# the oldest files in the queue get deleted until the size of the
+# queue on disk reaches LOWERBOUNDARY % of the acceptable levels.
+
+# Import QUOTAS
+try:
+  QUOTAS = eval(file(QUOTASFILE).read())
+except:
+  logme("ERROR: Invalid quotas file")
+  print_exc()
+  sys.exit(2)
+
+# Process files forever.
+while True:
+  try:
+    if refreshQueues:
+      FIFOQUEUES = {}
+      QUEUESIZES = {}
+      filesNotInIndex = glob("%s/*.dqminfo" % IMPORTDROPBOX)
+      for d,sd,fs in os.walk(FILEREPO):
+        for f in fs:
+          rootFile = FIFORX.match(f)
+          if rootFile:
+            # Read in the file info.
+            path = "%s/%s" % (d,f)
+            try:
+              info = eval(file("%s.dqminfo" % path).read())
+            except:
+              continue
+
+            fSize = info['size']
+            fMtime = info['time']
+            fClass = info['class']
+            if "%s/%s.dqminfo" % (IMPORTDROPBOX, f) in filesNotInIndex:
+              continue
+
+            qEntry = FIFOQUEUES.setdefault(fClass, {}).setdefault(
+                      f.replace("V%s" % rootFile.group(1),"V*"),
+                      [fMtime, fSize, d])
+            QUEUESIZES.setdefault(fClass, 0)
+            QUEUESIZES[fClass] += fSize
+
+      refreshQueues = False
+
+    # Find new ROOT files in the dropbox.
+    new = glob("%s/*.root.dqminfo" % DROPBOX)
+    if len(new):
+      logme('found %d new files.', len(new))
+
+    # Append new files to queues
+    for dqminfo in new:
+      try:
+        info = eval(file(dqminfo).read())
+      except:
+        logme("ERROR: dqminfo file: `%s` , can no be read", dqminfo)
+        continue
+
+      ff = "%s/%s" % (FILEREPO,info['path'])
+      f = os.path.basename(ff)
+      d = os.path.dirname(ff)
+      rootFile = FIFORX.match(f)
+      fSize = info['size']
+      fMtime = info['time']
+      fClass = info['class']
+      qEntry = FIFOQUEUES.setdefault(fClass, {}).setdefault(
+                  f.replace("V%s" % rootFile.group(1),"V*"), [])
+      if qEntry == []:
+        qEntry.extend([fMtime, fSize, d])
+        QUEUESIZES.setdefault(fClass, 0)
+        QUEUESIZES[fClass] += fSize
+      else:
+        QUEUESIZES[fClass] -= qEntry[1]
+        QUEUESIZES[fClass] += fSize
+        qEntry[0]=fMtime
+        qEntry[1] = fSize
+
+      # Clear out drop box
+      os.remove(dqminfo)
+
+    # Enforce QUEUES quotas
+    for c in QUEUESIZES.keys():
+      if QUOTAS[c] < QUEUESIZES[c]:
+        queue = sorted(FIFOQUEUES[c].keys(),
+                       cmp=lambda x,y: cmp(FIFOQUEUES[c][x][0],
+                                           FIFOQUEUES[c][y][0]),
+                       reverse=True)
+        while QUEUESIZES[c] > LOWERBOUNDARY * QUOTAS[c]:
+          try:
+            fPat = queue.pop()
+            fList = glob("%s/%s" % (FIFOQUEUES[c][fPat][2],fPat))
+            for f in fList:
+              os.remove(f)
+              logme("INFO: Removed file %s",f)
+
+            QUEUESIZES[c] -= FIFOQUEUES[c][fPat][1]
+            del FIFOQUEUES[c][fPat]
+
+          except:
+            refreshQueues = True
+            break
+
+    if time.time() > lastRefresh + REFRESHINTERVAL:
+      refreshQueues = True
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    refreshQueues = True
+    logme('Error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+
+import os, os.path, time, sys
+from traceback import print_exc
+from datetime import datetime
+from tempfile import mkstemp
+from glob import glob
+from stat import *
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
+FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
+ZIPREPO = sys.argv[3]   # Final zip repository of merged DQM files.
+NEXT = sys.argv[4:]	# Directories for the next agents in chain.
+WAITTIME = 5		# Daemon cycle time.
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# Order input files so we process them in a sane order:
+# - ascending by run
+# - ascending by version
+# - ascending by dataset
+def orderFiles(a, b):
+  diff = a['runnr'] - b['runnr']
+  if diff: return diff
+  diff = a['version'] - b['version']
+  if diff: return diff
+  return cmp(a['dataset'], b['dataset'])
+
+# --------------------------------------------------------------------
+# Process files forever.
+while True:
+  try:
+    # Find new ROOT files.
+    new = []
+    for path in glob("%s/*.root.dqminfo" % DROPBOX):
+      # Read in the file info.
+      try:
+	info = eval(file(path).read())
+      except:
+	continue
+
+      info['infofile'] = path
+      new.append(info)
+
+    # If we found new files, print a little diagnostic.
+    if len(new):
+      logme('found %d new files.', len(new))
+
+    # Add each new ROOT file to a zip file by file category. Create
+    # zinfo dictionary for new containers. Break a file into a new zip
+    # file if there is no previous container, or a new one if it would
+    # make the zip file over 1.99GB in size. If the zinfo file exists
+    # for the container but the container has been removed from local
+    # disk, a new container is created. Determine zip file name using
+    # pattern decided by the receiver. Also keep track of how many
+    # times the container has been processed by this agent.
+    zips = {}
+    for info in sorted(new, orderFiles):
+      fname = "%s/%s" % (FILEREPO, info['path'])
+      finfo = "%s.dqminfo" % fname
+      fsize = os.lstat(fname)[ST_SIZE]
+      serial = 1
+      while True:
+        zinfo = None
+        zippath = "%s/%s" % (ZIPREPO, info['zippat'] % serial)
+        zinfopath = "%s.zinfo" % zippath
+        if os.path.exists(zinfopath):
+          try:
+            zinfo = eval(file(zinfopath).read())
+          except:
+            serial += 1
+            continue
+
+          if 'frozen' in zinfo:
+            serial += 1
+            continue
+          zinfo['zactions'] += 1
+        else:
+          zinfo = {'zactions': 1 }
+
+	if zippath not in zips:
+          if os.path.exists(zinfopath) and os.path.exists(zippath):
+            zips[zippath] = { 'size': os.lstat(zippath)[ST_SIZE], 'files': [] }
+          elif os.path.exists(zinfopath):
+            serial += 1
+            continue
+	  else:
+            zips[zippath] = { 'size': 0, 'files': [] }
+        zips[zippath]['zinfo'] = zinfo
+        zips[zippath]['zinfofile'] = zinfopath
+	zipsize = zips[zippath]['size']
+	if zipsize == 0 or zipsize + fsize <= 1.99*1024**3:
+	  zips[zippath]['size'] += fsize
+          info['zippath'] = info['zippat'] % serial
+          zips[zippath]['files'].append((fname, info['infofile'],info))
+	  break
+        serial += 1
+
+    # Now store to the zip files, adding all files designated for the
+    # single zip in a single operation to avoid excessive rewrites.
+    # Note that if the file already exists in the archive, it will be
+    # replaced, which is perfectly ok with us.
+    for zippath, info in zips.iteritems():
+      if not len(info['files']):
+	continue
+      zipfiles = " ".join((x[0] for x in info['files']))
+      zipdir = zippath.rsplit("/", 1)[0]
+      if not os.path.exists(zipdir):
+        os.makedirs(zipdir)
+
+      logme('updating %s: adding %d files' % (zippath, len(info['files'])))
+      for f in info['files']:
+	logme('  %s' % f[0])
+
+      rc = os.system("zip -0oqj %s %s" % (zippath, zipfiles))
+
+      # Barf if the zipping failed
+      if rc != 0:
+        logme('zip command failed with exit code %d', rc)
+        continue
+
+      # Save the information. Replaces the .dqminfo file with an updated
+      # one, with the actual zip file path. There is a short window where
+      # the info file does not exist, which is ok since everyone reading
+      # the files protects against disappearing info files.
+      for fname, dfinfo, dqminfo in info['files']:
+        finfo = "%s.dqminfo" % fname
+        (dname, filepart) = fname.rsplit("/", 1)
+        (fd, tmp) = mkstemp(dir=dname)
+        del dqminfo['infofile']
+        os.write(fd, "%s\n" % dqminfo)
+        os.close(fd)
+        os.chmod(tmp, 0644)
+        os.remove(finfo)
+        os.rename(tmp, finfo)
+
+      # Record time of operation and container location. Create/update
+      # the .zinfo file for reference and to propagate to next task by
+      # use of the NEXT argument.
+      info['zinfo']['zmtime'] = time.time()
+      info['zinfo']['zpath'] = zippath.replace("%s/" % ZIPREPO,"")
+      zfinfo = info['zinfofile']
+      (dname, filepart) = zippath.rsplit("/", 1)
+      (fd, tmp) = mkstemp(dir=dname)
+      os.write(fd, "%s\n" % info['zinfo'])
+      os.close(fd)
+      os.chmod(tmp, 0644)
+      if os.path.exists(zfinfo):
+        os.remove(zfinfo)
+      os.rename(tmp, zfinfo)
+
+      # Move the tasks to the next drop box.
+      for n in NEXT:
+        if not os.path.exists(n):
+          os.makedirs(n)
+        nfile = "%s/%s" % (n, zfinfo.rsplit("/", 1)[-1])
+        if not os.path.exists(nfile):
+          os.link(zfinfo, nfile)
+
+      # Clear out drop box
+	for finfo in info['files']:
+	  os.remove(finfo[1])
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

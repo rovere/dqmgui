@@ -1,0 +1,200 @@
+#!/usr/bin/env python
+
+import os, time, sys, smtplib
+from email.MIMEText import MIMEText
+from datetime import datetime
+from glob import glob
+from math import sqrt
+from tempfile import mkstemp
+from traceback import print_exc
+from socket import gethostname
+from subprocess import Popen,PIPE
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]           # Directory where we receive input ("drop box").
+
+# Email to notify, multiple addresses are accepted and should be
+# separated by commas without spaces
+EMAIL = sys.argv[2]
+ZIPREPO = sys.argv[3]           # Zip file repository.
+CASTORREPO = sys.argv[4]        # Zip file repository in CASTOR.
+
+# Time hours to wait for the files to be migrated to tape
+MIGRTIME = int(sys.argv[5]) * 3600
+NEXT = sys.argv[6:]             # Directories for next agents in chain.
+WAITTIME = 15 * 60              # Daemon cycle time.
+SENDMAIL = "/usr/sbin/sendmail" # sendmail location
+
+# Number of times that we will try to find out if the file is
+# transferred to tape before reporting it.
+RETRIES = 3
+
+# We want to have different length time intervals between retries, for
+# this purpose we calculate the actual maximum number of retries a
+# file will go trough before marking it as a bad file.
+MAXTRIES = ((RETRIES / 2) * (RETRIES + 1))
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+def runme(cmd, *args, **keys):
+  try:
+    fcmd = cmd % args
+    scall = Popen(fcmd.split(" "), stdout=PIPE,stderr=PIPE)
+    (sc_stdout, sc_stderr) = scall.communicate()
+    retcodes = "retcodes" in keys and keys["retcodes"] or (0, )
+    assert scall.returncode in retcodes
+
+  except AssertionError, e:
+    logme("ERROR: Command execution failed ('%s') with error message: %s",
+                fcmd, sc_stderr.replace('\n',"\016"))
+
+  return (scall.returncode, sc_stdout, sc_stderr)
+
+def sendmail(body="Hello from visDQMZipCastorVerifier"):
+  scall = Popen("%s -t" % SENDMAIL, shell=True, stdin=PIPE)
+  scall.stdin.write("To: %s\n" % EMAIL)
+  scall.stdin.write("Subject: Problem verifying file transfer to tape in CASTOR\n")
+  scall.stdin.write("\n") # blank line separating headers from body
+  scall.stdin.write("%s\n" % body)
+  scall.stdin.close()
+  rc = scall.wait()
+  if rc != 0:
+     logme("ERROR: Sendmail exit with status %s", rc)
+
+# --------------------------------------------------------------------
+
+# Create a persistent directory to store the file information over
+# RETRIES process loops.
+#
+# The "new" directory would be created/modified as follows:
+# 1. On every cycle we pick up the zinfo files from the dropbox.
+# 2. If we have not seen the file before, we create a new entry in the
+#    directory and record the time of the operation, otherwise we
+#    update the entry for that file by recording how many times the
+#    file has been processed.
+# 3. If the verification process succeeds, we move the zinfo file to
+#    the NEXT file folders, also, we remove the entry for that file
+#    from the directory.
+#
+# We assume that the zinfo file does not change between cycles.
+new = {}
+
+# Process files forever.
+while True:
+  try:
+    now=time.time()
+    for zf in glob("%s/*.zip.zinfo" % DROPBOX):
+      if zf in new:
+        # To get a variable length time period between retries we only
+        # enable the file to be processed every time the 'tries' field
+        # solves exactly (type(n)=int) the equation for the sequence
+        # vtries=((n/2)*(n+1)). 'vtries' gets taken in to account only
+        # when more than MIGRTIME has passed.
+        if now - MIGRTIME > new[zf]['vtime']:
+          new[zf]['vtries'] += 1
+          n = (1 + sqrt(1 + 8 * new[zf]['vtries'])) / 2
+          if n % int(n) == 0:
+            new[zf]['process'] = True
+          else:
+            new[zf]['process'] = False
+
+      else:
+        # Read zinfo file
+        try:
+          info = eval(file(zf).read())
+        except:
+          continue
+
+        new.setdefault(zf, {}).update(info)
+        new[zf]['vtries'] = 0
+        new[zf]['process'] = False
+        new[zf]['vtime'] = now
+
+    # Verify if the file has been copied to tape after MIGRTIME
+    # hours have passed. If the check fails, try to determine the file
+    # status and try again later. If there's something odd with the
+    # status mark the file as bad by appending the extension .bad to
+    # the file name.  This will prevent the agent from picking it up
+    # again, and then, the operator can solve the conflict by hand.
+    #
+    # Report back to the operator if we have checked the file RETRIES
+    # times and the status is unchanged.
+    for (f, info) in new.items():
+      if not info['process']:
+        continue
+
+      cname = "%s/%s" % (CASTORREPO, info['zpath'])
+      cdir = "%s/%s" % (CASTORREPO, info['zpath'].rsplit("/",1)[0])
+      lname = "%s/%s" % (ZIPREPO, info['zpath'])
+      try:
+        (rc, so, se) = runme("nsls -T %s", cname)
+        if rc != 0:
+          (rc1, so1, se1) = runme("rfdir %s", cname)
+          assert rc1 == 0
+          (rc1, so1, se1) = runme("nsls %s", cname)
+          assert rc1 == 0
+          (rc1, so1, se1) = runme("stager_qry -M %s", cname)
+          assert rc1 == 0
+          continue
+
+        if so == "":
+          (rc, so, se) = runme("stager_qry -M %s", cname)
+          if "CANBEMIGR" not in so and "STAGED" not in so:
+            logme("ERROR: Unexpected stager state: %s", so)
+            assert False
+          elif "CANBEMIGR" in so:
+            if info["vtries"] >= MAXTRIES:
+              logme("WARNING: %s: Is still on CANBEMIGR state please verify" % cname)
+              sendmail("%s: Is still on CANBEMIGR state please verify" % cname)
+              assert False
+            continue
+
+        # Store time of the operation. Remove the 'Process' key
+        # because it is an internal value for the agent and there is
+        # no need to save it to the zinfo file.
+        info["vtime"] = now
+        del info["process"]
+        zinfopath = "%s/%s.zinfo" % (ZIPREPO, info['zpath'])
+        (dname, filepart) = zinfopath.rsplit("/", 1)
+        (fd, tmp) = mkstemp(dir=dname)
+        os.write(fd, "%s\n" % info)
+        os.close(fd)
+        os.chmod(tmp, 0644)
+        os.rename(tmp, zinfopath)
+
+        # Print a small diagnostic
+        logme("INFO: %s successfully transferred to TAPE on %f seconds",
+              cname,info["vtime"]-info["stime"])
+
+        # Move the tasks to the next drop box.
+        for n in NEXT:
+          if not os.path.exists(n):
+            os.makedirs(n)
+          nfile = "%s/%s.zinfo" % (n, info["zpath"].rsplit("/", 1)[-1])
+          if not os.path.exists(nfile):
+            os.link(zinfopath, nfile)
+
+        # Clear out drop box and new
+        os.remove(f)
+        del new[f]
+
+      except AssertionError, e:
+        info['process'] = False
+        if info["vtries"] >= MAXTRIES:
+          os.rename(f,"%s.bad" % f)
+          del new[f]
+          continue
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('ERROR: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

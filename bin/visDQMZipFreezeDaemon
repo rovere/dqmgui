@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+
+import os, time, sys, re
+from traceback import print_exc
+from datetime import datetime
+from tempfile import mkstemp
+from glob import glob
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]          # Directory where we receive input ("drop box").
+ZIPREPO = sys.argv[2]          # Zip file repository repository.
+FREEZETIME = int(sys.argv[3])  # Time to wait before freezing a zip file, [days].
+NEXT = sys.argv[4:]            # Directories for next agents in chain.
+WAITTIME = 15 * 60             # Daemon cycle time.
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# --------------------------------------------------------------------
+# Process files forever.
+regex = re.compile(r"_S([0-9]{4})\.zip\.zinfo$")
+while True:
+  try:
+    # Find new zip files.
+    new = {}
+    now = time.time()
+    for zf in glob("%s/*.zip.zinfo" % DROPBOX):
+      m = regex.search(zf)
+      if not m:
+        logme("ERROR: %s does not match expected zip file name convention.", zf)
+        continue
+
+      key=zf[:m.start()]
+      series=int(m.group(1))
+      new.setdefault(key, []).append((zf, series))
+
+    # If the zmtime field in the zinfo file is older then FREEZETIME
+    # days, freeze the zip file by adding an additional field with
+    # the time of the operation to the zinfo file, then pass the
+    # zinfo files for the frozen zip files to the next agents in the
+    # chain. Also files that are not the latest of a given series will
+    # be frozen as well. Keep unfrozen zip files in the drop box.
+    freeze = []
+    for key in new.keys():
+      # Sort available zip files by descending series, and add the
+      # zip file name of all but the most recent one (highest series
+      # number) to freeze list. For the most recent one, check the
+      # zinfo file contents to determine if the zip is old enough to
+      # be frozen.
+      zlist=sorted(new[key], cmp=lambda x,y: cmp(x[1], y[1]), reverse=True)
+      for zf in zlist[1:]:
+        freeze.append(zf[0])
+
+      try:
+        info = eval(file(zlist[0][0]).read())
+        if info['zmtime'] <= now - (FREEZETIME * 3600 * 24):
+          freeze.append(zlist[0][0])
+      except:
+        continue
+
+    # If we found files to freeze, print a little diagnostic.
+    if len(freeze):
+      logme('found %d files.', len(freeze))
+
+    for zf in freeze:
+      # Read in the file zinfo.
+      try:
+        info = eval(file(zf).read())
+      except:
+        continue
+
+      # Save zinfo file
+      info['frozen'] = time.time()
+      zinfopath = "%s/%s.zinfo" % (ZIPREPO, info['zpath'])
+      (dname, filepart) = zinfopath.rsplit("/", 1)
+      (fd, tmp) = mkstemp(dir=dname)
+      os.write(fd, "%s\n" % info)
+      os.close(fd)
+      os.chmod(tmp, 0644)
+      os.rename(tmp, zinfopath)
+
+      # Print a little diagnostic.
+      logme('%s: has been frozen.', zf)
+
+      # Move the tasks to the next drop box.
+      for n in NEXT:
+        if not os.path.exists(n):
+          os.makedirs(n)
+        nfile = "%s/%s" % (n, zinfopath.rsplit("/", 1)[-1])
+        if not os.path.exists(nfile):
+          os.link(zinfopath, nfile)
+
+      # Clear out drop box
+      os.remove(zf)
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+  time.sleep(WAITTIME)

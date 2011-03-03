@@ -1,0 +1,238 @@
+#!/usr/bin/env python
+
+import os, time, sys, re
+from subprocess import Popen,PIPE
+from traceback import print_exc
+from datetime import datetime
+from tempfile import mkstemp
+from math import sqrt
+from glob import glob
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]          # Directory where we receive input ("drop box").
+ZIPREPO = sys.argv[2]          # Zip file repository.
+CASTORREPO = sys.argv[3]       # Zip file repository in CASTOR.
+NEXT = sys.argv[4:]            # Directories for next agents in chain.
+WAITTIME = 15 * 60             # Daemon cycle time.
+
+# Number of times that we will try to copy a file to CASTOR
+RETRIES = 5
+
+# Regular expression to retrieve the size of the file in CASTOR
+RESIZE=re.compile(r"^Size \(bytes\)\s+:\s+(\d+)$")
+
+# Regular expression to retrieve the "modify" time in CASTOR
+REMTIME=re.compile(r"Last modify\s+:\s+([0-9a-zA-Z \:]+)")
+
+# We want to have different length time intervals between retries, for
+# this purpose we calculate the actual maximum number of retries a
+# file will go trough before marking it as a bad file.
+MAXTRIES = ((RETRIES / 2) * (RETRIES + 1))
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+def runme(cmd, *args, **keys):
+  try:
+    fcmd = cmd % args
+    scall = Popen(fcmd.split(" "), stdout=PIPE,stderr=PIPE)
+    (sc_stdout, sc_stderr) = scall.communicate()
+    retcodes = "retcodes" in keys and keys["retcodes"] or (0, )
+    assert scall.returncode in retcodes
+
+  except AssertionError, e:
+    logme("ERROR: Command execution failed ('%s')"
+          " with error message: %s",
+          fcmd, sc_stderr.replace('\n',"\016"))
+
+  return (scall.returncode, sc_stdout, sc_stderr)
+
+# --------------------------------------------------------------------
+
+# Create a persistent directory to store the file information over
+# RETRIES process loops.
+#
+# The "new" directory would be created/modified as follows:
+# 1. On every cycle we pick up the zinfo files from the dropbox.
+# 2. If we have not seen the file before, we create a new entry in the
+#    directory, otherwise we update the entry for that file.
+# 3. If the stage process succeeds, we move the zinfo file to the NEXT
+#    file folders, also, we remove the entry for that file from the
+#    directory.
+#
+# We assume that the zinfo file does not change between cycles.
+new = {}
+
+# Process files forever.
+while True:
+  try:
+    for zf in glob("%s/*.zip.zinfo" % DROPBOX):
+      if zf in new:
+        # To get a variable length time period between retries we only
+        # enable the file to be processed every time the 'tries' field
+        # solves exactly (type(n)=int) the equation for the sequence
+        # tries=((n/2)*(n+1))
+        new[zf]['tries'] += 1
+        n = (1 + sqrt(1 + 8 * new[zf]['tries'])) / 2
+        if n % int(n) == 0:
+          new[zf]['process'] = True
+
+      else:
+        # Read zinfo file
+        try:
+          info = eval(file(zf).read())
+        except:
+          continue
+
+        new.setdefault(zf, {}).update(info)
+        new[zf]['tries'] = 0
+        new[zf]['process'] = True
+
+    # Find out if the files already exists in CASTOR. If it exists and
+    # the sizes are different leave in the drop box, remove from the
+    # "new" directory so that no transfer is attempted and append a
+    # ".exists" extension to the the file. This will prevent the agent
+    # from picking it up again and then the operator can solve the
+    # conflict by hand. If file sizes are the same assume the file has
+    # reappeared, remove from the drop box and "new" directory.
+    #
+    # If the file is in CASTOR but we can not determine its status,
+    # then mark it by setting the "process" field to False so that no
+    # copy is attempted for the zip file. If we have failed to check
+    # the status more than MAXTRIES, mark the file as bad by appending
+    # a '.bad' extension to the file name. This will prevent the agent
+    # from picking it up again, and then, the operator can solve the
+    # conflict by hand.
+    for (f, info) in new.items():
+      (rc, so, se) = runme("rfdir %s/%s",
+                           CASTORREPO, info['zpath'],
+                           retcodes=(0, 2))
+      if rc != 0:
+        continue
+
+      (rc1, so1, se1) = runme("rfstat %s/%s",
+                              CASTORREPO, info['zpath'])
+      if rc1 != 0:
+        info['process'] = False
+        if info["tries"] >= MAXTRIES:
+          os.rename(f,"%s.bad" % f)
+          del new[f]
+
+        continue
+
+      rfsize = 0
+      for line in so1.split('\n'):
+        m = RESIZE.match(line)
+        if m:
+          rfsize = int(m.group(1))
+
+      fname = "%s/%s" % (ZIPREPO, info['zpath'])
+      size = os.stat(fname).st_size
+      if rfsize != size:
+        logme("ERROR: File: %s already exists in CASTOR but size"
+              " does not match", info['zpath'])
+        os.rename(f, "%s.exists" % f)
+      else:
+        logme("ERROR: File: %s reappeared", f)
+        if "stime" in info:
+          os.remove(f)
+        else:
+          os.rename(f,"%s.bad" % f)
+
+      del new[f]
+
+    # Process the "new" directory and copy the files to CASTOR.
+    # 1. We verify that the file is marked for processing and attempt
+    #    to copy it to CASTOR.
+    # 2. We make sure that the copy was good by checking the status
+    #    with stager_qry on the recently copied file by looking at the
+    #    status (status = CANBEMIGR | STAGED).
+    #
+    # In case of any problems, we roll back the operation by
+    # attempting to delete the file in CASTOR and the stager entry. If
+    # we have failed to copy the files more than RETRIES times, we
+    # remove the file from the 'new' directory and mark the file as
+    # bad by appending a '.bad' extension to the file name. This will
+    # prevent the agent from picking it up again and then, the
+    # operator can solve the conflict by hand.
+    for (f, info) in new.items():
+      if not info['process']:
+        continue
+
+      cname = "%s/%s" % (CASTORREPO, info['zpath'])
+      cdir = "%s/%s" % (CASTORREPO, info['zpath'].rsplit("/",1)[0])
+      lname = "%s/%s" % (ZIPREPO, info['zpath'])
+
+      # Create directory tree ignore directory exist error
+      (rc, so, se) = runme("rfmkdir -p %s", cdir, retcodes=(0, 1))
+      if rc not in (0, 1):
+        continue
+
+      try:
+        (rc, so, se) = runme("rfcp %s %s", lname, cname)
+        assert rc == 0
+        (rc, so, se) = runme("stager_qry -M %s", cname)
+        assert rc == 0
+        if "CANBEMIGR" not in so and "STAGED" not in so:
+          logme("ERROR: Unexpected stager state: %s", so)
+          assert False
+
+        # Store time of the operation into the zinfo file. To have a
+        # consistent time sample use the mtime of the file in CASTOR.
+        # Process is an internal value for the script and there is no
+        # need to save it to the zinfo file
+        (rc, so, se) = runme("rfstat %s", cname)
+        assert rc == 0
+        ldate = time.strftime("%a %b %d %H:%M:%S %Y")
+        for line in so.split("\n"):
+          m = REMTIME.match(line)
+          if m:
+            ldate = m.group(1)
+            break
+
+        info["stime"] = int(time.mktime(time.strptime(ldate)))
+        del info["process"]
+        zinfopath = "%s/%s.zinfo" % (ZIPREPO, info['zpath'])
+        (dname, filepart) = zinfopath.rsplit("/", 1)
+        (fd, tmp) = mkstemp(dir=dname)
+        os.write(fd, "%s\n" % info)
+        os.close(fd)
+        os.chmod(tmp, 0644)
+        os.rename(tmp, zinfopath)
+
+        # Print a small diagnostic
+        logme("%s/%s successfully transferred to CASTOR %s",
+              ZIPREPO, info['zpath'], cname)
+
+        # Move the tasks to the next drop box.
+        for n in NEXT:
+          if not os.path.exists(n):
+            os.makedirs(n)
+          nfile = "%s/%s.zinfo" % (n, info["zpath"].rsplit("/", 1)[-1])
+          if not os.path.exists(nfile):
+            os.link(zinfopath, nfile)
+
+        # Clear out drop box and remove entry from new directory
+        os.remove(f)
+        del new[f]
+
+      except AssertionError, e:
+        (rc1, so1, se1) = runme("stager_rm -M %s", cname)
+        (rc1, so1, se1) = runme("rfrm %s", cname)
+        info['process'] = False
+        if info["tries"] >= MAXTRIES:
+          os.rename(f,"%s.bad" % f)
+          del new[f]
+          continue
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('ERROR: %s', e)
+    print_exc()
+  time.sleep(WAITTIME)

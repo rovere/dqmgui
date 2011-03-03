@@ -1,0 +1,117 @@
+img.button {
+  cursor: pointer;
+}
+
+div.slide {
+  float:right;
+  clear:right;
+  border:2px solid black
+}
+
+table.slide {
+  cell-padding: 0px;
+  cell-spacing: 0px;
+}
+
+.slide-tab {
+  background: #bdb76b;
+  width:50px;
+}
+
+div.slide-area {
+  background: #fafad2;
+  width: 200px;
+  display: none;
+}
+
+div.open-plot {
+  width:130px;
+  height:120px;
+  padding: 2px 2px 2px 2px;
+}
+
+img.open-plot {
+  position:absolute;
+  height:75px;
+  width:100px;
+  left:15px;
+  top:5px;
+}
+
+a.topright {
+  position:absolute;
+  top:-5px;
+  right:0px;
+}
+
+a.below-plot {
+  position:relative;
+  top:77px;
+  left:2px;
+  width:126px;
+  font-size:0.75em;
+  text-align:center;
+}
+
+div.open-plot.selected {
+  border: 2px solid red;
+}
+
+div.open-plot:hover {
+  border: 1px solid black;
+}
+
+div.saved-hidden {
+  display:none;
+}
+
+#prodmon-topbar {
+  padding: 5px 5px 0px 5px;
+}
+
+#prodmon-plotmove {
+  float:left;
+  width:120px;
+  height:40px;
+  margin-left:40px;
+}
+
+#prodmon-plotselect {
+  float:left;
+  height:40px;
+  vertical-align:center;
+}
+
+#prodmon-leftbar {
+  float:left;
+  height:100%;
+}
+
+#prodmon-open {
+  float:left;
+  clear:left;
+  background: #fff8dc;
+  padding: 5px 5px 5px 5px;
+  border: 1px solid black;
+  text-align:center;
+  overflow:auto;
+  height:100%;
+}
+
+
+#prodmon-plotselect {
+  float:left;
+}
+
+#prodmon-plot {
+  float:left;
+  padding-left: 10px;
+}
+
+#prodmon-rightbar {
+  position:absolute;
+  top:0px;
+  right:0px;
+  width:10px;
+}
+

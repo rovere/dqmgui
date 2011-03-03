@@ -1,0 +1,9 @@
+li { margin: 0px; padding: 0px; }
+.bold { font-weight: bold; }
+.indented {margin-left: 25px; list-style-type: circle; }
+div.links { float: right; margin-right: 50px; border: 1px solid; padding: 10px; }
+div.links ul { margin: 0px; padding: 0px; }
+div.links li { padding: 0px; }
+.h2 { font-size: 1.2em; }
+div.top { width: 75%; margin-bottom: 25px; }
+div.warning { background-color: #ff5555; border: 2px solid; padding: 10px; }

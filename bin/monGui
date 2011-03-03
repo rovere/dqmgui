@@ -1,0 +1,240 @@
+#!/usr/bin/env python
+
+# Fork a child and keep restarting it if it dies of a signal.
+from Monitoring.Core.GUI import Server
+from Monitoring.Core.Defs import ServerDef
+import sys, os, os.path, subprocess
+import cherrypy, logging, thread, time, socket
+from cherrypy._cplogging import LogManager
+from cherrypy.lib import profiler
+from subprocess import Popen, PIPE
+from glob import glob
+from signal import *
+
+# Re-exec if we don't have unbuffered i/o
+if 'PYTHONUNBUFFERED' not in os.environ:
+  os.environ['PYTHONUNBUFFERED'] = "1"
+  os.execvp("python", ["python"] + sys.argv)
+
+# Load the configuration.
+cfgfile = sys.argv[1]
+x = { 'server': ServerDef(),
+      '__file__': cfgfile,
+      'modules': () }
+execfile(cfgfile, globals(), x)
+cfg = x['server']
+err = cfg.validate()
+if err != None:
+  print >> sys.stderr, err
+  sys.exit(1)
+
+# Redirect all output to the logging daemon.
+devnull = file("/dev/null", "w")
+logger = Popen(["rotatelogs", cfg.logFile, "86400"],
+	       stdin=PIPE, stdout=devnull, stderr=devnull,
+	       bufsize=1, close_fds=True, shell=False)
+os.dup2(logger.stdin.fileno(), sys.stdout.fileno())
+os.dup2(logger.stdin.fileno(), sys.stderr.fileno())
+os.dup2(devnull.fileno(), sys.stdin.fileno())
+logger.stdin.close()
+devnull.close()
+
+# Fork.  The child always exits the loop and executes the code below
+# to run the server proper.  The parent monitors the child, and if
+# it exits abnormally, restarts it, otherwise exits completely with
+# the child's exit code.
+while True:
+  serverpid = os.fork()
+  if not serverpid: break
+  signal(SIGINT, SIG_IGN)
+  signal(SIGTERM, SIG_IGN)
+  signal(SIGQUIT, SIG_IGN)
+  (xpid, exitrc) = os.waitpid(serverpid, 0)
+  stopfile = "%s/stop" % cfg.serverDir
+
+  (exitcode, exitsigno, exitcore) = (exitrc >> 8, exitrc & 127, exitrc & 128)
+  retval = (exitsigno and ("signal %d" % exitsigno)) or str(exitcode)
+  retmsg = retval + ((exitcore and " (core dumped)") or "")
+  restart = (exitsigno > 0 and exitsigno not in (2, 3, 15) and not os.path.exists(stopfile))
+  cherrypy.log("WATCHDOG: Server exited with exit code %s%s"
+               % (retmsg, (restart and "... restarting") or ""))
+
+  if not restart:
+    sys.exit((exitsigno and 1) or exitcode)
+
+  for pidfile in glob("%s/*/pid" % cfg.serverDir):
+    if os.path.exists(pidfile):
+      pid = int(open(pidfile).readline())
+      os.remove(pidfile)
+      cherrypy.log("WATCHDOG: Killing slave server %d" % pid)
+      try: os.kill(pid, 9)
+      except: pass
+
+# CherryPy termination signal handling is broken, the handler does not
+# take the right number of arguments.  This is our own fixed handler
+# to terminate the web server gracefully; in theory it could be
+# removed when CherryPy is fixed, but we attach other signals here
+# and print a logging entry.
+def myterminate(signum=None, frame=None):
+  cherrypy.log("INFO: Exiting server from termination signal %d" % signum, severity=logging.INFO)
+  cherrypy.engine.exit()
+
+# SIGHUP handler to restart the server.  This just adds some logging
+# compared to the CherryPy signal handler.
+def myreload(signum=None, frame=None):
+  cherrypy.log("INFO: Restarting server from hang-up signal %d" % signum, severity=logging.INFO)
+  cherrypy.engine.restart()
+
+# SIGUSR1 handler to restart the server gracefully.  This just adds
+# some logging compared to the CherryPy signal handler.
+def mygraceful(signum=None, frame=None):
+  cherrypy.log("INFO: Restarting server gracefully from signal %d" % signum, severity=logging.INFO)
+  cherrypy.engine.graceful()
+
+# CherryPy protocol handler to run before request body handling.  This
+# uses reverse proxy headers (if any) to set the correct base URL and
+# remove IP address for the request.  This is required for the server
+# to perform correct self-redirections (e.g. for directory trailing
+# slash) behind a reverse proxy.
+def myproxy(base=None):
+  request = cherrypy.request
+  scheme = request.headers.get('X-Forwarded-Proto', request.base[:request.base.find("://")])
+  base = request.headers.get('X-Forwarded-Host', base)
+  if not base:
+    port = cherrypy.request.local.port
+    if port == 80:
+      base = 'localhost'
+    else:
+      base = 'localhost:%s' % port
+
+  base = base.split(',')[0].strip()
+  if base.find("://") == -1:
+    base = scheme + "://" + base
+  request.base = base
+
+  xff = request.headers.get('X-Forwarded-For')
+  if xff:
+    xff = xff.split(',')[0].strip()
+    request.remote.ip = xff
+
+# Utility to time stamp start of request handling.
+def mytime():
+  cherrypy.request.start_time = time.time()
+
+# Custom logger which outputs more, and more useful, information.
+class DQMLogger(LogManager):
+  def __init__(self, *args, **kwargs):
+    self.host = socket.gethostname()
+    LogManager.__init__(self, *args, **kwargs)
+  def access(self):
+    request = cherrypy.request
+    remote = request.remote
+    response = cherrypy.response
+    inheaders = request.headers
+    outheaders = response.headers
+    self.access_log.log(logging.INFO,
+      ('%(t)s %(H)s %(h)s "%(r)s" %(s)s'
+       + ' [data: - in %(b)s out %(T).0f us ]'
+       + ' [auth: %(AS)s "%(AU)s" "%(AC)s" ]'
+       + ' [ref: "%(f)s" "%(a)s" ]') %
+       { 't': self.time(),
+         'H': self.host,
+         'h': remote.name or remote.ip,
+         'r': request.request_line,
+         's': response.status.split(" ", 1)[0],
+         'b': outheaders.get('Content-Length', '') or "-",
+         'T': (time.time() - request.start_time)*1e6,
+         'AS': inheaders.get("CMS-Auth-Status", "-"),
+         'AU': inheaders.get("CMS-Auth-Cert", inheaders.get("CMS-Auth-Host", "")),
+         'AC': getattr(request.cookie.get("cms-auth", None), "value", ""),
+         'f': inheaders.get("Referer", ""),
+         'a': inheaders.get("User-Agent", "") })
+
+# Get configuration options.
+optProfile = getattr(cfg, 'options', {}).get('python_profile', False)
+optThreads = getattr(cfg, 'options', {}).get('thread_pool', 100)
+optQueue   = getattr(cfg, 'options', {}).get('socket_queue_size', 100)
+optStack   = getattr(cfg, 'options', {}).get('stack_size', 128*1024)
+
+# Adjust default thread stack size so we can start more server
+# threads.  The default thread stack size (8MB) burns far too
+# much memory with many threads.  However allow server config
+# to specify a different value, overview and matplotlib with
+# complex graphs tends to need more.
+thread.stack_size(optStack)
+
+# Set the number of bytecode instructions executed per global python
+# interpreter lock check.  We want the check rarely to allow each
+# thread to complete as quickly and linearly as possible.  The lock
+# will be released naturally because of I/O operations.
+sys.setcheckinterval(10000)
+
+# Write a pid file.  This is process group, not actual pid.
+open("%s/pid" % cfg.serverDir, "w").write(str(os.getpgid(0)))
+
+# Mount GUI and set up configuration.  Turn off code auto-reload.
+# Increase the socket queue size so we don't unnecessarily drop
+# incoming clients when the server is busy (usually waiting for image
+# rendering to complete, usually meaning the live backend fetching
+# data from locked-up sources or rendering gone wrong).  Bump up the
+# number of server threads according to thread stack memory use.  Turn
+# on reverse proxy handling and install our own proxy handler.
+#
+# If (python) profiling is requested, re-decorate the application
+# with one that gathers per-request performance statistics.  Note
+# that the profiler module "make_app" does not work as it does not
+# decorate the application correctly, so we have custom code.  Nor
+# does the aggregator module seem to work, it appears to have issues
+# with concurrent (image) requests.
+#
+# To analyse the profiles, run the cherrypy profiler module with the
+# name of the profile data directory.  To browse the data connect to
+# http://localhost:8080.  For example:
+#   python .../cherrypy/lib/profiler.py /home/dqm/gui/profile
+
+gui = cherrypy.Application\
+  (Server(cfgfile, cfg, x['modules']),
+   cfg.baseUrl, {"/": {'request.show_tracebacks': False}})
+
+if optProfile:
+  class ProfApp(cherrypy.Application):
+    def __init__(self, app, path):
+      cherrypy.Application.__init__(self, app.root, app.script_name, app.config)
+      self.profiler = profiler.Profiler(path)
+    def __call__(self, environ, start_response):
+      def gather():
+        result = []
+        for line in cherrypy.Application.__call__(self, environ, start_response):
+          result.append(line)
+        return result
+      return self.profiler.run(gather)
+  profdir = "%s/profile" % cfg.serverDir
+  if not os.path.exists(profdir):
+    os.makedirs(profdir)
+  gui = ProfApp(gui, profdir)
+
+cherrypy.log = DQMLogger()
+cherrypy.tools.time = cherrypy.Tool('on_start_resource', mytime)
+cherrypy.tools.proxy = cherrypy.Tool('before_request_body', myproxy, priority=30)
+cherrypy.tree.mount(gui)
+cherrypy.config.update({"server.max_request_body_size": 0})
+cherrypy.config.update({"server.environment": "production"})
+cherrypy.config.update({"server.socket_host": "0.0.0.0"})
+cherrypy.config.update({"server.socket_port": cfg.port})
+cherrypy.config.update({"server.socket_queue_size": optQueue})
+cherrypy.config.update({"server.thread_pool": optThreads})
+cherrypy.config.update({"tools.proxy.on": True, "tools.proxy.base": cfg.localBase })
+cherrypy.config.update({"tools.time.on": True})
+cherrypy.config.update({"engine.autoreload_on": False})
+
+# Run. Override signal handlers after CherryPy has itself started and
+# installed its own handlers. To achieve this we need to start the
+# server in non-blocking, fiddle, then ask it to block.
+cherrypy.log("INFO: Starting server in %s" % cfg.serverDir, severity=logging.INFO)
+cherrypy.engine.start()
+signal(SIGHUP, myreload)
+signal(SIGTERM, myterminate)
+signal(SIGQUIT, myterminate)
+signal(SIGINT, myterminate)
+signal(SIGUSR1, mygraceful)
+cherrypy.engine.block()

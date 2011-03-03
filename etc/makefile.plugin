@@ -1,0 +1,31 @@
+# Makefile for building render plug-in extensions. Most paths come via
+# makefile.ext which points to various RPM locations. In addition the
+# following parameters are set by monControl when invoking the make:
+#  PLUGIN_DIR      The directory where to place the plug-in and to use as a
+#                  working directory while re-building the library.
+#  PLUGIN_BINARY   Full path to the plug-in library binary.
+#  PLUGIN_SOURCES  Space separated list of full paths to the source files.
+
+include $(dir $(lastword $(MAKEFILE_LIST)))/makefile.ext
+
+PLUGIN_DIR     = DEFINE_ME
+PLUGIN_BINARY  = DEFINE_ME
+PLUGIN_SOURCES = DEFINE_ME
+
+CXX            = c++
+LDFLAGS        = -Wl,-z,defs $(patsubst %,-L%,$(LIBRARY_DIRS))
+CXXFLAGS       = -D_GNU_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
+	         -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long -Werror \
+	         -ansi -pedantic $(patsubst %,-I%,$(INCLUDE_DIRS))
+ROOT_LIBS      = -lCint -lCore -lRIO -lNet -lTree -lTreePlayer -lGpad -lGraf3d \
+	         -lGraf -lHist -lMatrix -lPhysics -lPostscript -lASImage -lpng
+OTHER_LIBS     = -lclasslib -lpcre -lz
+
+PLUGIN_OBJ     = $(patsubst %.cc,$(PLUGIN_DIR)/%.o,$(notdir $(PLUGIN_SOURCES)))
+PLUGIN_LINK    = $(CXX) $(CXXFLAGS) -shared -o $@ $(PLUGIN_OBJ) \
+                 $(LDFLAGS) -lDQMGUI $(ROOT_LIBS) $(OTHER_LIBS)
+
+vpath %.cc $(sort $(dir $(PLUGIN_SOURCES)))
+
+$(PLUGIN_BINARY): $(PLUGIN_OBJ); $(PLUGIN_LINK)
+$(PLUGIN_DIR)/%.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@

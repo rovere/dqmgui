@@ -1,0 +1,294 @@
+#!/usr/bin/env python
+
+import urllib2, re, os, time, sys
+from traceback import print_exc
+from datetime import datetime
+from urllib import quote_plus
+from fcntl import lockf, LOCK_EX, LOCK_UN
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+# --------------------------------------------------------------------
+# Command line parameters
+BASEURL = sys.argv[1]		# Server's web address
+INDEX = sys.argv[2]		# GUI's index location
+QUOTASFILE = sys.argv[3]	# Location of quotas file
+
+# GLOBAL CONSTANTS
+CACHEFILE = "%s/.indexCache" % INDEX	# location of the cache file.
+MINNUMSUBSYS = 13			# minimu number of subsytems needed to keep a run.
+WAITTIME = 15 * 60
+REFRESHINTERVAL = 15 * 24 * 3600	# Time between full cache refreshing.
+MAXPERSISTENCE = 2 * 365 * 24 * 3600	# Max time ANY run/dataset would stay registered in the GUI
+
+# GLOBAL CONSTANTS - Run Types
+ALL_RUNS = 0xFF
+OTHER_RUN = 0x01
+TEST_RUN = 0x02
+COSMICS_RUN = 0X04
+COLLISIONS_RUN = 0X08
+
+# Control Variables
+refreshCache = False
+lastRefresh = time.time()
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# Write chache to disk.
+def saveCacheFile(runIndex):
+  f=open(CACHEFILE,"w")
+  f.write(str(runIndex))
+  f.write('\n')
+  f.close()
+
+# Shorthand to extract GUI information, it fails if the retrieved
+# data is not python format.
+def getGuiData(opener,url):
+  page1 = opener1.open(url)
+  data = page1.read()
+  try:
+    contents = eval(data)
+  except Exception, e:
+    raise e
+  page1.close()
+  return contents
+
+# Converts the time from a formatted string to a time-stamp. It is the
+# inverse of the function used in the GUI to print the Run Start time
+# on the title bar.
+def str2time(dateStr):
+  now = time.gmtime()
+  t=(now.tm_year, now.tm_mon, now.tm_mday,
+     now.tm_hour, now.tm_min, 0,
+     now.tm_wday, now.tm_yday, now.tm_isdst)
+  try:
+    tstruct=time.strptime(dateStr,"Today %H:%M")
+    t=(now.tm_year, now.tm_mon, now.tm_mday,
+       tstruct.tm_hour, tstruct.tm_min, 0,
+       now.tm_wday, now.tm_yday, now.tm_isdst)
+  except ValueError:
+    try:
+      tstruct=time.strptime(dateStr,"%a %d, %H:%M")
+      t=(now.tm_year, now.tm_mon, tstruct.tm_mday,
+         tstruct.tm_hour, tstruct.tm_min, 0,
+         tstruct.tm_wday, now.tm_yday, now.tm_isdst)
+    except ValueError:
+      try:
+        tstruct=time.strptime(dateStr,"%a %b %d, %H:%M")
+        t=(now.tm_year, tstruct.tm_mon, tstruct.tm_mday,
+           tstruct.tm_hour, tstruct.tm_min, 0,
+           tstruct.tm_wday, now.tm_yday, now.tm_isdst)
+      except ValueError:
+          tstruct=time.strptime(dateStr,"%a %b %d '%y, %H:%M")
+          t=(tstruct.tm_year, tstruct.tm_mon, tstruct.tm_mday,
+             tstruct.tm_hour, tstruct.tm_min, 0,
+             tstruct.tm_wday, tstruct.tm_yday, now.tm_isdst)
+
+  return time.mktime(t)
+
+# --------------------------------------------------------------------
+# The DeleteDaemon uses a combination of the http pages and the python
+# dictionaries delivered by the GUI to determine which runs it will
+# delete. It also uses a cache to minimize the load on the server;
+# this cache is stored on disk to survive daemon restarts but it is
+# refreshed every REFRESHINTERVAL seconds to ensure that the
+# information remains consistent.
+#
+# When the cache is created, the delete daemon assumes that no further
+# changes to the run will happen. In the online case this is critical
+# as for a given run each subsystem is registered individually; to
+# avoid mis-classifying a run, the daemon skips the newest run and it
+# assumes that the run might not be fully registered.
+#
+# The strongest criteria is the number of subsystems or data
+# subfolders, if a sample contains less folders than MINNUMSUBSYS,
+# then it gets eliminated immediately.
+#
+# The Quotas come in a directory with the format:
+# {'Datatype':{'FDSN_re':[[runt_type,keep_period,min_num_lumis]]}}
+# where FDSN_re is a regular expression to be applied to the "Full
+# Dataset Name, i.e. "Commisioning[0-9]+/.*Express.*/DQM.*". Quotas
+# work differently in online and in offline. In the online case the
+# data type is always online_data and we enforce removal of run types
+# which have no quotas assigned. In the offline case, the Dataset name
+# implicitly classifies the run; moreover the Monitor Elements used to
+# classify the run are not present in the offline: hence the run gets
+# classified as OTHER_RUN and, if no quotas apply, the run is kept for
+# MAXPERSISTENCE seconds.
+#
+# Quotas may overlap, e.g. 1 run can trigger several quotas:
+# in this case, the quota that gives the run the greatest time of permanence in
+# the index will be the ruling one.
+
+opener1 = urllib2.build_opener(urllib2.ProxyHandler({}))
+sr = re.search(r"dqm/([-a-zA-Z0-9_]+)",BASEURL)
+if not sr:
+  logme("FATAL:  Couold not identify the site from the BaseURL(%s)",
+        BASEURL)
+  sys.exit(1)
+
+site = sr.group(1)
+
+# Import QUOTAS
+try:
+  QUOTAS = eval(file(QUOTASFILE).read())
+except:
+  logme("ERROR: Invalid quotas file")
+  print_exc()
+  sys.exit(2)
+
+while True:
+  try:
+
+    # Read index cache, if there's a problem ignore and recreate the cache
+    runDS = {}
+    now = time.time()
+    if REFRESHINTERVAL < now - lastRefresh:
+      refreshCache = True
+      lastRefresh = now
+
+    if os.path.exists(CACHEFILE) and refreshCache == False:
+      try:
+        runDS = eval(file(CACHEFILE).read())
+      except Exception, e:
+        refreshCache = True
+        raise e
+
+    # Get list of new runs
+    new = {}
+    page1 = opener1.open("%s/data/json/samples" % BASEURL)
+    data = eval(page1.read())
+    for sample in data["samples"]:
+      if sample["type"] == 'live':
+        continue
+
+      runDS.setdefault(sample["type"], {})
+      for tp in sorted(sample["items"],cmp=lambda x,y: cmp(x['run'],y['run']))[:-1]:
+        newSample = runDS[tp["type"]].setdefault(tp["dataset"], {}).setdefault(tp["run"], {})
+        if newSample == {}:
+          new.setdefault((tp["type"], tp["dataset"], tp["run"]), newSample)
+
+    del data
+
+    # Update information for new runs
+    for key, sample in new.items():
+      dataType = key[0]
+      dsName = key [1]
+      run = key[2]
+      url = "%s/data/json/archive/%s/%s" % (BASEURL,run,dsName)
+      contents = getGuiData(opener1,url)
+      sample["numSubdirs"] = len(contents['contents'])
+      sample["runType"] = OTHER_RUN
+      sample["skip"] = False
+      url = "%s/data/json/archive/%s/%s/Info/ProvInfo/" %  (BASEURL,run,dsName)
+      contents = getGuiData(opener1,url)
+      for obj in contents["contents"][1:]:
+        if 'obj' not in obj.keys():
+          continue
+
+        if obj["obj"] == "isCollisionsRun" and sample["runType"] != COSMICS_RUN:
+          if int(obj["value"]) == 0:
+            sample["runType"] = TEST_RUN
+          else:
+            sample["runType"] = COLLISIONS_RUN
+
+        elif obj["obj"] == "hltKey" and "Cosmics" in obj["value"]:
+          sample["runType"] = COSMICS_RUN
+
+      page1 = opener1.open("%s/start?runnr=%s;dataset=%s;sampletype=%s" %
+                  (BASEURL,run,dsName,dataType))
+      session = re.search(r"location.replace\('/dqm/%s/session/([-A-Za-z0-9_]+)'\)" % site,
+                  page1.read()).group(1)
+      url = "%s/session/%s/state" %  (BASEURL,session)
+      contents = getGuiData(opener1,url)
+      for item in contents:
+        if "DQMHeaderRow" == item["kind"]:
+          if item['lumi'] == '(None)':
+            logme("WARNING: Run %s with dataset %s has no valid EventInfo folder",run,dsName)
+            sample["skip"] = True
+            continue
+
+          sample["Lumis"] = int(item['lumi'].replace("'",""))
+          sample["runStartTimeStamp"] = str2time(item['runstart'])
+          sample["runEndTimeStamp"] = sample["runStartTimeStamp"]+sample["Lumis"]*22.3
+
+    saveCacheFile(runDS)
+
+    #Apply quotas
+    remove = []
+    now = time.time()
+    for dataType in runDS:
+      for dsName in runDS[dataType]:
+        applicableQuotas=[]
+        for qDataType in QUOTAS:
+          dt = re.match(qDataType,dataType)
+          if dt:
+            for qDsName in QUOTAS[qDataType]:
+              dsn = re.match(qDsName,dsName)
+              if dsn:
+                applicableQuotas = QUOTAS[qDataType][qDsName]
+
+        for run, runInfo in runDS[dataType][dsName].items():
+          if runInfo["skip"]:
+            continue
+
+          if runInfo["runEndTimeStamp"] < now - MAXPERSISTENCE:
+            remove.append([run,dsName])
+            continue
+
+          if len(applicableQuotas) == 0:
+            continue
+
+          maxPersistance = 1
+          for quota in applicableQuotas:
+            if runInfo["runType"] & quota[0] and runInfo["Lumis"] > quota[2]:
+              if maxPersistance < quota[1]:
+                maxPersistance = quota[1]
+
+          if dataType != 'online_data' and maxPersistance == 1:
+            continue
+
+          if runInfo["runEndTimeStamp"] < now - ( maxPersistance * 24 * 3600) or runInfo["numSubdirs"] <= MINNUMSUBSYS:
+            remove.append([run, dsName, dataType])
+
+    # Proceed to remove
+    for run, dsn, dt in remove:
+      try:
+        refreshCache = True
+        lFile=open("%s/lock" % INDEX ,"w+")
+        lockf(lFile,LOCK_EX)
+        lFile.write(str(os.getpid()))
+
+        # Print a small diagnostic
+        logme('INFO: Removing run# %s'
+              ' from the \'%s\' dataset', run,dsn)
+        rc = os.system("visDQMIndex remove --dataset "
+                       "%s --run %s %s" % (dsn,run,INDEX))
+        if rc != 0:
+          logme('command failed with exit code %d', rc)
+          assert False
+
+        # Since everything worked only write cache on the end of the cycle
+        refreshCache = False
+
+      finally:
+        lockf(lFile,LOCK_UN)
+        lFile.close()
+        del runDS[dt][dsn][run]
+        if refreshCache:
+          logme('INFO: saving cache file')
+          saveCacheFile(runDS)
+
+    saveCacheFile(runDS)
+
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

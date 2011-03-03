@@ -1,0 +1,418 @@
+#!/usr/bin/env python
+
+import os, os.path, time, sys, re, hashlib
+from traceback import print_exc
+from datetime import datetime
+from tempfile import mkstemp
+from stat import *
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
+FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
+NEXT = sys.argv[3:]	# Directories for the next agent in chain.
+WAITTIME = 5		# Daemon cycle time.
+
+# Regexp for save file name paths. We don't process anything else.
+RXSAFEPATH = re.compile(r"^[-A-Za-z0-9_/]+\.root$")
+
+# Regexp for valid dataset names.
+RXDATASET = re.compile(r"^(/[-A-Za-z0-9_]+){3}$")
+
+# Regexp for valid RelVal dataset names.
+RXRELVALMC = re.compile(r"^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$")
+RXRELVALDATA = re.compile(r"^/[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$")
+
+# Regexp for online DQM files.
+RXONLINE = re.compile(r"^(?:.*/)?DQM_V(\d+)(_[A-Za-z0-9]+)?_R(\d+)\.root$")
+
+# Regexp for offline DQM files.
+RXOFFLINE = re.compile(r"^(?:.*/)?DQM_V(\d+)_R(\d+)((?:__[-A-Za-z0-9_]+){3})\.root$")
+
+# Regexp for acquisition era part of the processed dataset name.
+RXERA = re.compile(r"^([A-Za-z]+\d+|CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)")
+
+# Regexp for .origin file contents.
+RXORIGIN = re.compile(r"^md5:([0-9a-f]+) (\d+) (\S+)$")
+
+# Location of the distribution root and the ROOT verification scripts.
+CHECKDIR = os.path.normcase(os.path.abspath(__file__)).rsplit('/', 1)[0]
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+def warnPath(info, path, msg):
+  logme("%s: %s", path, msg)
+  if isinstance(info, str):
+    try: os.rename(info, "%s.bad" % info)
+    except: pass
+  elif isinstance(info, dict):
+    try: os.rename(info['origin'], "%s.bad" % info['origin'])
+    except: pass
+
+# --------------------------------------------------------------------
+# Pre-classify a file into main category based on file name structure.
+def classifyDQMFile(path, origin):
+  try:
+    m = re.match(RXONLINE, path)
+    if m:
+      version = int(m.group(1))
+      runnr = int(m.group(3))
+      subsys = m.group(2) and m.group(2)[1:]
+      if version != 1:
+       warnPath(origin, path, "file version is not 1")
+       return None
+      if runnr <= 10000:
+	warnPath(origin, path, "online file has run number <= 10000")
+	return None
+      return { 'class': 'online_data', 'version': version,
+	       'subsystem': subsys, 'runnr': runnr,
+	       'dataset': "/Global/Online/ALL" }
+
+    m = re.match(RXOFFLINE, path)
+    if m:
+      version = int(m.group(1))
+      dataset = m.group(3).replace("__", "/")
+      relvalmc = re.match(RXRELVALMC, dataset)
+      relvaldata = re.match(RXRELVALDATA, dataset)
+      runnr = int(m.group(2))
+      if version != 1:
+       warnPath(origin, path, "file version is not 1")
+       return None
+      if runnr < 1:
+	warnPath(origin, path, "file matches offline naming, but run number is < 1")
+	return None
+      elif relvalmc:
+	if runnr != 1:
+	  warnPath(origin, path, "file matches relval mc naming, but run number != 1")
+	  return None
+	return { 'class': 'relval_mc', 'version': version,
+		 'runnr': runnr, 'dataset': dataset,
+		 'release': relvalmc.group(1) }
+      elif relvaldata:
+        if runnr == 1:
+          warnPath(origin, path, "file matches relval data naming, but run number = 1")
+          return None
+        return { 'class': 'relval_data', 'version': version,
+                 'runnr': runnr, 'dataset': dataset,
+                 'release': relvaldata.group(1) }
+      elif dataset.find("CMSSW") >= 0:
+	warnPath(origin, path, "non-relval dataset name contains 'CMSSW'")
+	return None
+      elif runnr > 1:
+	return { 'class': 'offline_data', 'version': version,
+		 'runnr': runnr, 'dataset': dataset }
+      else:
+	return { 'class': 'simulated', 'version': int(m.group(1)),
+		 'runnr': runnr, 'dataset': dataset }
+
+    warnPath(origin, path, "file matches no known naming convention")
+    return None
+  except:
+    warnPath(origin, path, "error while classifying file name")
+    return None
+
+# Verify DQM file. This makes initial checks required to ensure
+# the file is suitable for registration into the DQM GUI, enough
+# to make a tentative ordering for file registration.
+def verifyDQMFile(path, md5sum, size, xpath, origin):
+  # Verify the path name is completely safe
+  if not re.match(RXSAFEPATH, path):
+    warnPath(origin, path, "unsafe file path")
+    return None
+
+  # Verify we can read the file.
+  if not os.access(path, os.R_OK):
+    warnPath(origin, path, "no such file")
+    return None
+
+  # Verify it's a regular file.
+  info = os.lstat(path)
+  if not S_ISREG(info[ST_MODE]):
+    warnPath(origin, path, "not a file")
+    return None
+
+  # Verify the file size is as expected.
+  if size != info[ST_SIZE]:
+    warnPath(origin, path, "size mismatch, expected %d, found %d bytes"
+	     % (size, info[ST_SIZE]))
+    return None
+
+  # Ask for file classification, and fail if it fails.
+  c = classifyDQMFile(path, origin)
+  if not c:
+    return None
+
+  # OK for now, return classification.
+  c['origin'] = origin
+  c['import'] = path
+  c['size'] = size
+  c['md5sum'] = md5sum
+  c['xpath'] = xpath
+  c['time'] = info[ST_MTIME]
+  return c
+
+# --------------------------------------------------------------------
+# Find new files. Look for specific ROOT file names with complete
+# upload info (.origin file), verify file integrity, then process
+# the files.
+def findNewFiles():
+  new = []
+  for dir, subdirs, files in os.walk(DROPBOX):
+    for f in files:
+      # We are only interested in ROOT files.
+      if not f.endswith(".root"):
+	continue
+
+      # Locate the file and its upload info, and read the latter in.
+      # If we fail to do so, skip the file.
+      path = "%s/%s" % (dir, f)
+      origin = "%s.origin" % path
+      try:
+	m = re.match(RXORIGIN, file(origin).read())
+	if not m: continue
+	md5sum = m.group(1)
+	size = int(m.group(2))
+        xpath = m.group(3)
+      except:
+	continue
+
+      # If the file is ok, append it to the list of new files.
+      c = verifyDQMFile(path, md5sum, size, xpath, origin)
+      if c:
+        new.append(c)
+
+  return new
+
+# Split a dataset name /PRIMDS/PROCDS/TIER to tuple parts,
+# with additional ERA separated from the beginning of PROCDS.
+def splitDataset(dataset):
+  (junk, primds, procds, tier) = dataset.split("/")
+  era = re.match(RXERA, procds)
+  return (primds, procds, tier, era and era.group(1))
+
+# Check file object dataset for validity.
+def checkDataset(info):
+  (primds, procds, tier, era) = splitDataset(info['dataset'])
+  if not era:
+    warnPath(info, info['import'], "failed to determine era")
+    return False
+  elif info['class'].startswith('relval_'):
+    if not era.startswith("CMSSW_"):
+      warnPath(info, info['import'], "relval dataset era '%s' is not CMSSW release" % era)
+      return False
+  elif era.find("CMSSW") >= 0:
+    warnPath(info, info['import'], "CMSSW era '%s' but data is not relval" % era)
+    return False
+  info['era'] = era
+  info['primds'] = primds
+  info['procds'] = procds
+  info['tier'] = tier
+  return True
+
+# --------------------------------------------------------------------
+# Create uniquely versioned file name.
+def assignUniqueVersion(info):
+  while True:
+    destpath = info['filepat'] % info['version']
+    if not os.path.exists("%s/%s.dqminfo" % (FILEREPO, destpath)): break
+    info['version'] += 1
+  info['path'] = destpath
+
+# Order input files so we process them in a sane order:
+# - descending by run
+# - ascending by version
+# - descending by release (if set)
+# - descending by dataset
+# - ascending by file name (= original version)
+def orderFiles(a, b):
+  diff = b['runnr'] - a['runnr']
+  if diff: return diff
+  diff = a['version'] - b['version']
+  if diff: return diff
+  diff = cmp(b.get('release', ''), a.get('release', ''))
+  if diff: return diff
+  diff = cmp(b['dataset'], a['dataset'])
+  if diff: return diff
+  return cmp(a['import'], b['import'])
+
+# --------------------------------------------------------------------
+# Complete checking and other processing for one input file.  This is
+# the slowest code, mainly because we have to actually look into the
+# file to make sure it's ok. So we want to make continuous process.
+#
+# This routine first completes the checks to verify the file is safe
+# for importing into the DQM GUI.  Files which this routine rejects
+# should be treated as a potential hazard to the system, such as
+# malicious content or a badly written file.  The file is passed to
+# subsequent processing only if all checks pass.
+def finaliseOneFile(info):
+  path = info['import']
+
+  # Verify the MD5 checksum matches
+  curmd5 = hashlib.md5(file(path).read()).hexdigest()
+  if curmd5 != info['md5sum']:
+    warnPath(info, path, "md5 checksum mismatch, expected [%s], found [%s]"
+	     % (info['md5sum'], curmd5))
+    return False
+
+  # Verify it's a ROOT file.
+  if file(path).read(5) != "root\0":
+    warnPath(info, path, "not a root file")
+    return False
+
+  # Verify it's a properly structure ROOT file.
+  checklevel = 'Loose'
+  if 'online_data' in info['class'] and not info['subsystem']:
+    checklevel = 'Strict'
+  checkprog = "%s/visDQMVerify%s.C" % (CHECKDIR, checklevel)
+  check = os.popen("exec perl -e 'alarm(30); exec qw(root -n -l -b -q %s %s)' 2>&1 >/dev/null"
+		   % (path, checkprog)).read().rstrip()
+  if not check.startswith("VERIFY: Good to go"):
+    warnPath(info, path, check)
+    return False
+
+  # OK, update classification.
+  info['check'] = check
+
+  # Assign file paths, including versioning
+  ok = False
+  assert 'version' in info
+  assert 'runnr' in info
+  assert info['version'] == 1, "starting version should be one"
+  if info['class'] == 'online_data':
+    assert 'subsystem' in info
+    assert info['runnr'] > 1
+    subsys = info['subsystem']
+    if subsys:
+      info['filepat'] = ("OnlineData/%05dxxxx/%07dxx/DQM_V%%04d_%s_R%09d.root"
+	                 % (info['runnr']/10000, info['runnr']/100,
+			    subsys, info['runnr']))
+    else:
+      info['filepat'] = ("OnlineData/%05dxxxx/%07dxx/DQM_V%%04d_R%09d.root"
+	                 % (info['runnr']/10000, info['runnr']/100, info['runnr']))
+    info['zippat'] = ("OnlineData/%05dxxxx/DQM_Online_R%07dxx_S%%04d.zip"
+		      % (info['runnr']/10000, info['runnr']/100))
+    assignUniqueVersion(info)
+    ok = True
+
+  elif info['class'] == 'offline_data':
+    assert 'dataset' in info
+    assert re.match(RXDATASET, info['dataset'])
+    assert not re.match(RXRELVALMC, info['dataset'])
+    assert not re.match(RXRELVALDATA, info['dataset'])
+    assert info['runnr'] > 1
+    if checkDataset(info):
+      info['filepat'] = ("OfflineData/%s/%s/%07dxx/DQM_V%%04d_R%09d%s.root"
+	                 % (info['era'], info['primds'], info['runnr']/100,
+		            info['runnr'], info['dataset'].replace("/", "__")))
+      info['zippat'] = ("OfflineData/%s/%s/DQM_Offline_%s_%s_R%07dxx_S%%04d.zip"
+	                % (info['era'], info['primds'], info['era'], info['primds'],
+	                   info['runnr']/100))
+      assignUniqueVersion(info)
+      ok = True
+
+  elif info['class'] == 'relval_data':
+    assert 'dataset' in info
+    assert 'release' in info
+    assert re.match(RXDATASET, info['dataset'])
+    assert not re.match(RXRELVALMC, info['dataset'])
+    assert re.match(RXRELVALDATA, info['dataset'])
+    assert info['runnr'] > 1
+    assert info['release'].startswith("CMSSW")
+    if checkDataset(info):
+      info['filepat'] = ("RelValData/%s_x/DQM_V%%04d_R%09d%s.root"
+	                 % ("_".join(info['release'].split("_")[0:3]),
+		            info['runnr'], info['dataset'].replace("/", "__")))
+      info['zippat'] = ("RelValData/%s_x_x/DQM_RelValData_%s_%s_S%%04d.zip"
+	                % ("_".join(info['release'].split("_")[0:2]),
+	                   info['release'], info['primds']))
+      assignUniqueVersion(info)
+      ok = True
+
+  elif info['class'] == 'relval_mc':
+    assert 'dataset' in info
+    assert 'release' in info
+    assert re.match(RXDATASET, info['dataset'])
+    assert re.match(RXRELVALMC, info['dataset'])
+    assert info['runnr'] == 1
+    assert info['release'].startswith("CMSSW")
+    if checkDataset(info):
+      info['filepat'] = ("RelVal/%s_x/DQM_V%%04d_R%09d%s.root"
+	                 % ("_".join(info['release'].split("_")[0:3]),
+		            info['runnr'], info['dataset'].replace("/", "__")))
+      info['zippat'] = ("RelVal/%s_x_x/DQM_RelVal_%s_S%%04d.zip"
+	                % ("_".join(info['release'].split("_")[0:2]),
+	                   info['release']))
+      assignUniqueVersion(info)
+      ok = True
+
+  elif info['class'] == 'simulated':
+    assert 'dataset' in info
+    assert re.match(RXDATASET, info['dataset'])
+    assert not re.match(RXRELVALMC, info['dataset'])
+    assert not re.match(RXRELVALDATA, info['dataset'])
+    assert info['runnr'] == 1
+    if checkDataset(info):
+      filedate = time.strftime("%Y%m", time.gmtime(info['time']))
+      info['filepat'] = ("MonteCarlo/%s/DQM_V%%04d_R%09d%s.root"
+	                 % (info['era'], info['runnr'],
+			    info['dataset'].replace("/", "__")))
+      info['zippat'] = ("MonteCarlo/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
+	                % (info['era'], info['era'], info['primds'], filedate))
+      assignUniqueVersion(info)
+      ok = True
+
+  else:
+    assert False, "don't know how to handle data %s" % info
+
+  # If the final checks didn't pass, bail out now.
+  if not ok:
+    return False
+
+  # Move the files into place. Output a new info file with all
+  # the info we have created, and remove the .origin file.
+  fname = "%s/%s" % (FILEREPO, info['path'])
+  finfo = "%s.dqminfo" % fname
+  (dname, filepart) = fname.rsplit("/", 1)
+
+  if not os.path.exists(dname):
+    os.makedirs(dname)
+
+  (fd, tmp) = mkstemp(dir=dname)
+  os.write(fd, "%s\n" % info)
+  os.close(fd)
+  os.chmod(tmp, 0644)
+  os.rename(tmp, finfo)
+  os.rename(info['import'], fname)
+  os.remove("%s.origin" % info['import'])
+
+  for n in NEXT:
+    if not os.path.exists(n):
+      os.makedirs(n)
+    ninfo = "%s/%s" % (n, finfo.rsplit("/", 1)[-1])
+    if not os.path.exists(ninfo):
+      os.link(finfo, ninfo)
+
+  return True
+
+# --------------------------------------------------------------------
+# Process files forever.
+while True:
+  try:
+    # Find new complete files. Compute repository destination for
+    # each file. Reversion files where an older one already exists.
+    for info in sorted(findNewFiles(), orderFiles):
+      logme('receiving %s' % info['import'])
+      finaliseOneFile(info)
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

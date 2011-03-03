@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import sys, os, re, string, httplib, mimetypes, urllib, urllib2, gzip
+from cStringIO import StringIO
+from stat import *
+
+def filetype(filename):
+  return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+
+def encode(args, files):
+  """
+    Encode form (name, value) and (name, filename, type) elements into
+    multi-part/form-data. We don't actually need to know what we are
+    uploading here, so just claim it's all text/plain.
+  """
+  boundary = '----------=_DQM_FILE_BOUNDARY_=-----------'
+  (body, crlf) = ('', '\r\n')
+  for (key, value) in args.items():
+    body += '--' + boundary + crlf
+    body += ('Content-disposition: form-data; name="%s"' % key) + crlf
+    body += crlf + str(value) + crlf
+  for (key, filename) in files.items():
+    body += '--' + boundary + crlf
+    body += ('Content-Disposition: form-data; name="%s"; filename="%s"'
+             % (key, os.path.basename(filename))) + crlf
+    body += ('Content-Type: %s' % filetype(filename)) + crlf
+    body += crlf + open(filename, "r").read() + crlf
+  body += '--' + boundary + '--' + crlf + crlf
+  return ('multipart/form-data; boundary=' + boundary, body)
+
+def marshall(args, files, request):
+  """
+    Marshalls the arguments to the CGI script as multi-part/form-data,
+    not the default application/x-www-form-url-encoded.  This improves
+    the transfer of the large inputs and eases command line invocation
+    of the CGI script.
+  """
+  (type, body) = encode(args, files)
+  request.add_header('Content-type', type)
+  request.add_header('Content-length', str(len(body)))
+  request.add_data(body)
+
+def upload(url, args, files):
+  request = urllib2.Request(url)
+  request.add_header ('Accept-encoding', 'gzip')
+  marshall(args, files, request)
+  result = urllib2.build_opener().open(request)
+  data = result.read()
+  if result.headers.get ('Content-encoding', '') == 'gzip':
+    data = gzip.GzipFile (fileobj=StringIO(data)).read ()
+  return (result.headers, data)
+
+try:
+  (headers, data) = upload(sys.argv[1] + "/iguana-snapshot/store",
+			  { 'meta': open(sys.argv[3]).read(),
+			    'size': os.stat(sys.argv[2])[ST_SIZE] },
+			  { 'file': sys.argv[2] })
+  print 'Status code: ', headers.get("Evd-Status-Code", "None")
+  print 'Message:     ', headers.get("Evd-Status-Message", "None")
+  print 'Detail:      ', headers.get("Evd-Status-Detail", "None")
+  print data
+  sys.exit(0)
+except urllib2.HTTPError, e:
+  print "ERROR", e
+  print 'Status code: ', e.hdrs.get("Evd-Status-Code", "None")
+  print 'Message:     ', e.hdrs.get("Evd-Status-Message", "None")
+  print 'Detail:      ', e.hdrs.get("Evd-Status-Detail", "None")
+  sys.exit(1)

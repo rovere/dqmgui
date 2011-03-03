@@ -1,0 +1,135 @@
+#!/usr/bin/env python
+
+import os, os.path, time, sys
+from traceback import print_exc
+from datetime import datetime
+from tempfile import mkstemp
+from glob import glob
+from fcntl import lockf, LOCK_EX, LOCK_UN
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
+FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
+INDEX = sys.argv[3]     # Location of the DQM GUI index.
+NEXT = sys.argv[4:]	# Directories for the next agents in chain.
+WAITTIME = 5		# Daemon cycle time.
+MAXFILES = 10		# Maximum number of files to register between checks.
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# Order input files so we process them in a sane order:
+# - descending by run
+# - ascending by version
+# - descending by dataset
+def orderFiles(a, b):
+  diff = b['runnr'] - a['runnr']
+  if diff: return diff
+  diff = a['version'] - b['version']
+  if diff: return diff
+  return cmp(b['dataset'], a['dataset'])
+
+# Checks if the file is the newest file by comparing the version
+# number with the number of files available.
+def isNewest(info):
+  fname = "%s/%s.dqminfo" % (FILEREPO, info['path'])
+  fname = fname.replace('V%04d' % info['version'], "*")
+  if info['version'] >= len(glob(fname)):
+    return True
+
+  return False
+# --------------------------------------------------------------------
+# Process files forever.
+while True:
+  try:
+    # If the index doesn't exist yet, create it.
+    if not os.path.exists(INDEX):
+      os.system("visDQMIndex create %s" % INDEX)
+
+    # Find new input files.
+    new = []
+    for path in glob("%s/*.root.dqminfo" % DROPBOX):
+      # Read in the file info.
+      try:
+	info = eval(file(path).read())
+      except:
+	continue
+
+      info['infofile'] = path
+      new.append(info)
+
+    # If we found new files, print a little diagnostic.
+    if len(new):
+      logme('found %d new files.', len(new))
+
+    # Process the files in registration order.
+    nfiles = 0
+    existing = None
+    for info in sorted(new, orderFiles):
+      fname = "%s/%s" % (FILEREPO, info['path'])
+      finfo = "%s.dqminfo" % fname
+
+      # Detect what has already been registered.
+      if not existing:
+        existing = dict((x, 1) for x in
+                        os.popen("visDQMIndex dump %s catalogue |"
+                                 " grep '^SOURCE-FILE #' |"
+                                 " awk -F\"'\" '{print $2}'" % INDEX)
+                        .read().split())
+
+      # If we've already registered the file, skip it.
+      if fname in existing or not isNewest(info):
+	os.remove(info['infofile'])
+	continue
+
+      # If we've registered too many files, skip it.
+      if nfiles >= MAXFILES:
+	break
+
+      # Actually register the file.
+      try:
+        lFile=open("%s/lock" % INDEX ,"w+")
+        lockf(lFile,LOCK_EX)
+        lFile.write(str(os.getpid()))
+        logme('importing %s', fname)
+        if info['class'] == 'online_data':
+          rc = os.system('exec visDQMIndex add --dataset '
+                         ' "%s" %s %s' % (info['dataset'], INDEX, fname))
+        else:
+          rc = os.system('exec visDQMIndex add %s %s' % (INDEX, fname))
+
+      finally:
+        lockf(lFile,LOCK_UN)
+        lFile.close()
+
+      # Barf if the registration failed, mark the file as bad;
+      # otherwise pass the file onwards.
+      if rc != 0:
+	logme('command failed with exit code %d', rc)
+	finfobad = "%s.bad" % info['infofile']
+	os.rename(info['infofile'], finfobad)
+	continue
+
+      else:
+        existing[fname] = 1
+        nfiles += 1
+        for n in NEXT:
+          if not os.path.exists(n):
+            os.makedirs(n)
+          ninfo = "%s/%s" % (n, finfo.rsplit("/", 1)[-1])
+          if not os.path.exists(ninfo):
+            os.link(finfo, ninfo)
+	os.remove(info['infofile'])
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

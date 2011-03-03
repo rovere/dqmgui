@@ -1,0 +1,146 @@
+#!/usr/bin/env python
+
+import os, os.path, time, sys
+from traceback import print_exc
+from datetime import datetime
+from tempfile import mkstemp
+from glob import glob
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
+FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
+MERGEREPO = sys.argv[3] # Final file repository of merged DQM files.
+NEXT = sys.argv[4:]	# Directories for the next agents in chain.
+WAITTIME = 5		# Daemon cycle time.
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# Order input files so we process them in a sane order:
+# - descending by run
+# - ascending by version
+# - ascending by dataset
+def orderFiles(a, b):
+  diff = b['runnr'] - a['runnr']
+  if diff: return diff
+  diff = a['version'] - b['version']
+  if diff: return diff
+  return cmp(a['dataset'], b['dataset'])
+
+# --------------------------------------------------------------------
+# Process files forever.
+while True:
+  try:
+    # Find new ROOT files.
+    new = []
+    for path in glob("%s/*.root.dqminfo" % DROPBOX):
+      # Read in the file info.
+      try:
+	info = eval(file(path).read())
+      except:
+	continue
+
+      info['infofile'] = path
+      new.append(info)
+
+    # If we found new files, print a little diagnostic.
+    if len(new):
+      logme('found %d new files.', len(new))
+
+    # Merge new ROOT files by run using pattern from receiver.  First
+    # build list of files to merge, then merge them.
+    merge = {}
+    for info in sorted(new, orderFiles):
+      fname = "%s/%s" % (FILEREPO, info['path'])
+      finfo = "%s.dqminfo" % fname
+      version = 1
+      while True:
+        destname = info['mergepat'] % version
+        destpath = "%s/%s" % (MERGEREPO, destname)
+	if not os.path.exists(destpath): break
+	version += 1
+
+      if destpath not in merge:
+	merge[destpath] = { 'rank': len(merge), 'files': [], 'meta': [] }
+	merge[destpath]['info'] = dict((k, v) for k, v in info.iteritems()
+				       if k in ('class', 'version', 'runnr',
+						'dataset', 'release',
+						'subsystem', 'zippat', 'era',
+						'primds', 'procds', 'tier'))
+        merge[destpath]['info']['infofile'] = "%s.dqminfo" % destpath
+        merge[destpath]['info']['filepat'] = info['mergepat']
+	merge[destpath]['info']['path'] = destname
+	merge[destpath]['info']['version'] = version
+	if version > 1:
+	  oldfile = "%s/%s" % (MERGEREPO, info['mergepat'] % (version-1))
+	  oldinfo = eval(file("%s.dqminfo" % oldfile).read())
+	  merge[destpath]['files'].append(oldfile)
+	  merge[destpath]['meta'].append(oldinfo)
+
+      merge[destpath]['files'].append(fname)
+      merge[destpath]['meta'].append(info)
+
+    # Now store to the zip files, adding all files designated for the
+    # single zip in a single operation to avoid excessive rewrites.
+    # Note that if the file already exists in the archive, it will be
+    # replaced, which is perfectly ok with us.
+    for path, info in sorted(merge.iteritems(), lambda a, b: a[1]['rank'] - b[1]['rank']):
+      files = " ".join(info['files'])
+      dir = path.rsplit("/", 1)[0]
+      if not os.path.exists(dir):
+        os.makedirs(dir)
+
+      logme('creating %s from %d files' % (path, len(info['files'])))
+      for f in info['files']:
+	logme('  %s' % f)
+
+      rc = os.system("exec perl -e 'alarm(300); exec qw(DQMMergeFile %s %s)'" % (path, files))
+      if rc != 0:
+        logme('DQMMergeFile command failed with exit code %d', rc)
+        continue
+
+      # Save the information.  Replaces the .dqminfo file with an updated
+      # one, with the merged file path.  There is a short window where
+      # the info file does not exist, which is ok since everyone reading
+      # the files protects against disappearing info files.
+      for fname, finfo in zip(info['files'], info['meta']):
+        finfo['mergedto'] = info['info']['path']
+        (dname, filepart) = fname.rsplit("/", 1)
+        (fd, tmp) = mkstemp(dir=dname)
+        os.write(fd, "%s\n" % finfo)
+        os.close(fd)
+        os.chmod(tmp, 0644)
+        os.remove("%s.dqminfo" % fname)
+        os.rename(tmp, "%s.dqminfo" % fname)
+
+      # Now save the information for the merged file itself.
+      minfo = "%s.dqminfo" % path
+      info['mergedfrom'] = info['files']
+      (dname, filepart) = path.rsplit("/", 1)
+      (fd, tmp) = mkstemp(dir=dname)
+      os.write(fd, "%s\n" % info['info'])
+      os.close(fd)
+      os.chmod(tmp, 0644)
+      os.rename(tmp, minfo)
+
+      # Make the result merged file a task in the next drop box.
+      for n in NEXT:
+        if not os.path.exists(n):
+          os.makedirs(n)
+        nfile = "%s/%s" % (n, minfo.rsplit("/", 1)[-1])
+        if not os.path.exists(nfile):
+          os.link(minfo, nfile)
+	for finfo in info['meta']:
+	  os.remove(finfo['infofile'])
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

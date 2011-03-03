@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+
+import sys, cPickle
+
+for f in sys.argv[1:]:
+  print "%s:" % f
+  data = cPickle.load(file(f, "r"))
+  for k in sorted(data.keys()):
+    print "  %-15s %s" % (k, repr(data[k]))

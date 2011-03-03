@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+import os, sys, socket
+from struct import pack, unpack
+from binascii import hexlify
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+MESSAGES = {
+  'HELLO':		0,
+  'UPDATE_ME':		1,
+  'LIST_OBJECTS':	2,
+  'GET_OBJECT':		3,
+  'GET_IMAGE_DATA':	4,
+  'DUMP_PROFILE':	5
+}
+
+if sys.argv[2] not in MESSAGES:
+  print >> sys.stderr, "Message '%s' not known, possible messages: %s" % \
+    (sys.argv[2], ", ".join(sorted(MESSAGES.keys())))
+message = MESSAGES[sys.argv[2]]
+wait = (sys.argv[2] == 'UPDATE_ME')
+
+prefix = ''
+suffix = ''
+for i in xrange(3, len(sys.argv)):
+  prefix = prefix + pack('I', len(sys.argv[i]))
+  suffix = suffix + sys.argv[i]
+packet = pack('II', 8 + len(prefix) + len(suffix), message) + prefix + suffix
+
+if sys.argv[1].index(":") > 0:
+  (host, port) = sys.argv[1].split(":")
+  port = int(port)
+else:
+  host = sys.argv[1]
+  port = 9091
+
+# Send our request.
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect ((host, port))
+s.send (packet)
+if not wait:
+  s.shutdown (socket.SHUT_WR)
+
+# Get response
+data = ''
+while True:
+  msg = s.recv(1048576)
+  data = data + msg
+
+  # Parse the response as much as we can
+  while len(data) >= 8:
+    (length, type) = unpack('II', data[0:8])
+    if len(data) < length:
+      break
+
+    item = data[0:length]
+    data = data[length:]
+    if type == 101:
+      (nitems, full) = unpack('2I', item[8:16])
+      print "OBJECT LIST BEGIN %d, full=%d" % (nitems, full)
+    elif type == 102:
+      (nitems, full) = unpack('2I', item[8:16])
+      print "OBJECT LIST END %d, full=%d" % (nitems, full)
+    elif type == 103:
+      (namelen,) = unpack('I', item[8:12])
+      name = item[12:12+namelen]
+      print "NO SUCH OBJECT '%s'" % name
+    elif type == 104:
+      (flags, vlo, vhi, tag, namelen, datalen, qlen) = unpack('7I', item[8:36])
+      name = item[36:36+namelen]
+      objdata = item[36+namelen:36+namelen+datalen]
+      qdata = item[36+namelen+datalen:36+namelen+datalen+qlen]
+      print "OBJECT '%s' VERSION=%ld FLAGS=0x%x TAG=%d DATA='%s' QDATA='%s'" % \
+        (name, (vhi << 32 | vlo), flags, tag, objdata, qdata)
+    elif type == 105:
+      datalen, = unpack('I', item[8:12])
+      imgdata = hexlify(item[12:])
+      print "IMAGE DATA %s" % (imgdata)
+    elif type == 106:
+      (namelen, speclen, filelen, datalen) = unpack('4I', item[8:24])
+      name = item[24:24+namelen]
+      spec = item[24+namelen:24+namelen+speclen]
+      file = item[24+namelen+speclen:24+namelen+speclen+filelen]
+      imgdata = hexlify(item[24+namelen+speclen+filelen:])
+      print "IMAGE FILE '%s' SPEC='%s' FILE='%s' DATA=%s" % (name, spec, file, imgdata)
+    else:
+      print "UNRECOGNISED RESPONSE TYPE=%d LENGTH=%d" % (type, length)
+
+  # Stop looping if we received end of channel
+  if msg == '':
+    break
+
+s.close ()
