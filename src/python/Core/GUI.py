@@ -158,7 +158,13 @@ class Server:
     self.templates = {}
     self.css = []
     self.js = []
-    self.contentpath = os.getenv("MONITOR_ROOT") + "/data"
+
+    monitor_root = os.getenv("MONITOR_ROOT")
+    if os.access("%s/xdata/templates/index.tmpl" % monitor_root, os.R_OK):
+      self.contentpath = "%s/xdata" % monitor_root
+    else:
+      self.contentpath = "%s/data" % monitor_root
+
     self.baseUrl = cfg.baseUrl
     self.sessiondir = cfg.serverDir + '/sessions'
     self.logdir = cfg.logFile.rsplit('/', 1)[0]
