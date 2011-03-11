@@ -34,8 +34,12 @@ RXERA = re.compile(r"^([A-Za-z]+\d+|CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)")
 # Regexp for .origin file contents.
 RXORIGIN = re.compile(r"^md5:([0-9a-f]+) (\d+) (\S+)$")
 
-# Location of the distribution root and the ROOT verification scripts.
-CHECKDIR = os.path.normcase(os.path.abspath(__file__)).rsplit('/', 1)[0]
+# Location of the ROOT verification scripts.
+CHECKDIR = os.path.normcase(os.path.abspath(__file__)).rsplit('/', 2)[0]
+if os.access("%s/xdata/root/visDQMVerifyLoose.C" % CHECKDIR, os.R_OK):
+  CHECKDIR = "%s/xdata/root" % CHECKDIR
+else:
+  CHECKDIR = "%s/data/root" % CHECKDIR
 
 # --------------------------------------------------------------------
 def logme(msg, *args):
