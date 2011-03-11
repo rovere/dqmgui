@@ -198,7 +198,10 @@ class Server:
     self._addJSFragment("%s/javascript/Core/End.js" % self.contentpath)
     self._addChecksum(None, cfgfile, open(cfgfile).read())
     for name, m in sys.modules.iteritems():
-      if (name.startswith("Gui") or name == "__main__") \
+      if ((name.startswith("Monitoring.")
+           and name.count(".") % 2 == 0
+           and name.rsplit(".", 1)[-1][0].isupper())
+          or name == "__main__") \
 	 and m and m.__dict__.has_key('__file__'):
         self._addChecksum(name,
 			  inspect.getsourcefile(m) \
