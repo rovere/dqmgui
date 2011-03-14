@@ -9,10 +9,10 @@ systems = \
 {
   'DQM':
   {
-    'h':      ['DQM/*.h',
-               'boost/*/*/*/*.hpp',
-               'rtgu/i*/*.hpp',
-               'rtgu/i*/*/*.hpp'],
+    'h':      ['DQM/*.h', 'DQM/DQMCollector.cc', 'DQM/MonitorElement.cc',
+               'DQM/DQMNet.cc', 'DQM/DQMError.cc', 'DQM/DQMStore.cc',
+               'DQM/QTest.cc', 'DQM/QReport.cc', 'DQM/QStatisticalTests.cc',
+               'boost/*/*/*/*.hpp', 'rtgu/i*/*.hpp', 'rtgu/i*/*/*.hpp'],
     'cpp':    [('bin', 'visDQM*'),
 	       ('bin', 'DQMCollector'),
 	       ('lib', 'libDQMGUI.so'),
@@ -169,7 +169,7 @@ class InstallCommand(install):
     # already in define_the_build(), but we need to fix up others.
     if self.patch:
       self.install_lib = re.sub(r'(.*)/lib/python(.*)', r'\1/xlib/python\2', self.install_lib)
-      self.install_scripts = re.sub(r'(.*)/bin$', r'\1/xbin\2', self.install_scripts)
+      self.install_scripts = re.sub(r'(.*)/bin$', r'\1/xbin', self.install_scripts)
 
   def run(self):
     for cmd_name in self.get_sub_commands():

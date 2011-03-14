@@ -45,9 +45,10 @@ RENDER_OBJ   = $(patsubst %.cc,%.o,$(notdir $(RENDER_SRC)))
 RENDER_LINK  = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(RENDER_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTG_LIBS) $(OTHER_LIBS) -ljpeg
 
+vpath %.cc $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQM
 all: visDQMIndex visDQMRender DQMCollector Accelerator.so libDQMGUI.so
 clean:; rm -f *.o *.so visDQMIndex visDQMRender
-%.o: $(SRCDIR)/DQM/%.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
+%.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
 libDQMGUI.so: $(LIB_OBJ); $(LIB_LINK)
 Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)

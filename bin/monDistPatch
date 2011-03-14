@@ -10,10 +10,10 @@ R=${MONITOR_ROOT-$(dirname $(dirname $0))}
 [ -x $R/bin/monDistPatch ] || { echo "$R does not appear to be the right place" 1>&2; exit 1; }
 [ -x bin/monDistPatch ] || { echo "$PWD is not a root of a local area" 1>&2; exit 1; }
 
-set -e
+set -ex
 rm -fr $R/x{lib,bin,python,include,data}/{*,.??*}
 if [ -f etc/makefile.ext ]; then :
 elif ln $R/etc/makefile.ext etc/makefile.ext 2>/dev/null; then :
 else cp $R/etc/makefile.ext etc/makefile.ext; fi
-python setup.py build
-python setup.py install --patch --prefix=$R
+python setup.py build_system ${1+"$@"}
+python setup.py install_system ${1+"$@"} --patch --prefix=$R
