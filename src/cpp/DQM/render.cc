@@ -1277,13 +1277,9 @@ private:
           {
             double norm = 1.;
             if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-              norm = th1f->GetEntries()
-		     - th1f->GetBinContent(0)
-		     - th1f->GetBinContent(th1f->GetNbinsX()+1);
+              norm = th1f->GetSumOfWeights();
             else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-              norm = th1d->GetEntries()
-		     - th1d->GetBinContent(0)
-		     - th1d->GetBinContent(th1d->GetNbinsX()+1);
+              norm = th1d->GetSumOfWeights();
 
 	    TH1 *ref = (ref1f
 			? static_cast<TH1 *>(ref1f)
