@@ -208,7 +208,13 @@ GUI.Plugin.DQMHeaderRow = new function() {
 			      "<span>_</span><span class='delimiter'>&nbsp;&nbsp;.</span>",
 			      "pickMenu(\"workspace\")").firstChild;
 
-    _runNr = this.heading("Run #", "<span>_</span><span class='delimiter'>"
+    _runNr = this.heading("<img src='" + ROOTPATH + "/static/previous.png'"
+			      + "style='margin-left:5px;padding-bottom:1px; height: 8px' "
+			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"backward\")' />"
+			      + "&nbsp;Run #"
+			      + "<img src='" + ROOTPATH + "/static/next.png'"
+			      + "style='margin-left:5px;padding-bottom:1px; height: 8px' "
+			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"forward\")' />", "<span>_</span><span class='delimiter'>"
 		          + "&nbsp;&nbsp;.</span>", "pickSample(\"run\", \"dataset\")").firstChild;
     _lumiNr = this.heading("LS #", "<span>_</span><span class='delimiter'>"
 			   + "&nbsp;&nbsp;.</span>").firstChild;
@@ -776,6 +782,19 @@ GUI.Plugin.DQMHeaderRow = new function() {
     default:
       return false;
     }
+  };
+
+  /** Loop over runs, keeping the current dataset fixed */
+
+  this.loopRuns = function(e,direction)
+  {
+    // Prevent bubbling of onclick event which is already registered for the
+    // header part. See http://www.quirksmode.org/js/events_access.html
+    e = e || window.event;
+    e.cancelBubble = true;
+    if (e.stopPropagation)
+      e.stopPropagation();
+    _gui.makeCall(_url() + "/changeRun?" + direction);
   };
 
   /** Expose private variables needed to assemble the link-me hyperlink.

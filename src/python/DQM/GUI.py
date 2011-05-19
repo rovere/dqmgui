@@ -980,6 +980,13 @@ class DQMWorkspace:
 #    return "Ma."
     return self._state(session)
 
+  def sessionChangeRun(self, session, *args, **kwargs):
+    forward = kwargs.get('forward', None)
+    nextRun = self._changeRun(session, forward != None)
+    session['dqm.sample.runnr'] = nextRun
+    self.gui._saveSession(session)
+    return self._state(session)
+
 # --------------------------------------------------------------------
 class DQMSummaryWorkspace(Accelerator.DQMSummaryWorkspace, DQMWorkspace):
   def __init__(self, gui, rank, category, name):

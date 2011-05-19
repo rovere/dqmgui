@@ -4133,6 +4133,56 @@ public:
       }
     }
 
+  // Helper function to compute next available run in current dataset
+  int changeRun(py::dict session, bool forward)
+    {
+      std::vector<VisDQMSource *> srclist;
+      std::set<long>		  runlist;
+      sources(srclist);
+
+      VisDQMSample sample(sessionSample(session));
+
+      // Give sources pre-scan warning so they can do python stuff.
+      for (size_t i = 0, e = srclist.size(); i != e; ++i)
+	srclist[i]->prescan();
+
+      // Now do the hard stuff, out of python.
+      {
+
+	PyReleaseInterpreterLock nogil;
+	VisDQMSamples		samples;
+	std::set<long>::iterator rli, rle;
+
+	// Request samples from backends.
+	for (size_t i = 0, e = srclist.size(); i != e; ++i)
+	  srclist[i]->samples(samples);
+
+	// Filter out samples which do not pass search criteria.  In
+	// this particular case the fixed criteria are current sample
+	// and current dataset.
+	for (size_t i = 0, e = samples.size(); i != e; ++i)
+	{
+	  VisDQMSample &s = samples[i];
+
+	  // Stay on current sample type
+	  if (s.type != sample.type)
+	    continue;
+	  // Stay on current dataset
+	  if (s.dataset != sample.dataset)
+	    continue;
+	  runlist.insert(s.runnr);
+	}
+      }
+	// Now find current run and move according to the prescription
+	// received.
+	std::set<long>::iterator curr = runlist.find(sample.runnr);
+	assert (curr != runlist.end());
+	if (forward)
+	  return ++curr != runlist.end() ? *curr : *(--curr);
+	else
+	  return curr == runlist.begin() ? *curr : *(--curr);
+    }
+
 protected:
   template <class T> T
   workspaceParam(const py::dict &session, const char *key)
@@ -5645,6 +5695,7 @@ BOOST_PYTHON_MODULE(Accelerator)
 
   py::class_<VisDQMWorkspace, shared_ptr<VisDQMWorkspace>, boost::noncopyable>
     ("DQMWorkspace", py::no_init)
+    .def("_changeRun", &VisDQMContentWorkspace::changeRun)
     .def("_profilesnap", &VisDQMWorkspace::profilesnap);
 
   py::class_<VisDQMSampleWorkspace, shared_ptr<VisDQMSampleWorkspace>,
