@@ -62,6 +62,7 @@ struct VisDQMImgInfo
   VisDQMStripTrend	trend;
   int			width;
   int			height;
+  double                ktest;
   VisDQMAxisInfo	xaxis;
   VisDQMAxisInfo	yaxis;
   VisDQMAxisInfo	zaxis;

@@ -265,6 +265,8 @@ GUI.Plugin.DQMHeaderRow = new function() {
       refrun.onkeyup = reftype.paste = refupdate;
       refds.onkeyup = refds.paste = refupdate;
     }
+    var refkt   = $('subhead-ref-0-ktest');
+    refkt.onkeyup = refupdate;
 
     // Set up the view settings floating panel.
     var ww = (window.innerWidth || document.documentElement.clientWidth);
@@ -272,7 +274,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     _toolsgroup.style.display = '';
     _toolspanel = new YAHOO.widget.Panel(_toolsgroup, {
       visible: true, draggable: true, close: true, zindex: 2,
-      x: 10, y: 80, width: parseInt(0.40 * ww) + "px",
+      x: 10, y: 80, width: parseInt(0.45 * ww) + "px",
       constraintoviewport: true, autofillheight: "body" });
     var resize = new YAHOO.util.Resize(_toolsgroup, {
       handles: ["br"], autoRatio: false, minWidth: 200,
@@ -445,9 +447,14 @@ GUI.Plugin.DQMHeaderRow = new function() {
     var opt = "?", sep = "";
     for (var i = 0; i < 4; ++i, sep = ";")
     {
-      var reftype = $('subhead-ref-' + i + '-type');
-      var refrun  = $('subhead-ref-' + i + '-run');
-      var refds   = $('subhead-ref-' + i + '-ds');
+      var reftype  = $('subhead-ref-' + i + '-type');
+      var refrun   = $('subhead-ref-' + i + '-run');
+      var refds    = $('subhead-ref-' + i + '-ds');
+      var refktest = $('subhead-ref-' + i + '-ktest');
+
+      var ktest = "";
+      if (refktest)
+	ktest += refktest.value ? refktest.value : "";
 
       if (obj == reftype && reftype.selectedIndex != 1)
 	refrun.value = refds.value = "";
@@ -455,11 +462,14 @@ GUI.Plugin.DQMHeaderRow = new function() {
       if ((refrun.value || refds.value) && reftype.selectedIndex != 1)
 	reftype.selectedIndex = 1;
 
+      if ((ktest != "") && reftype.selectedIndex != 1)
+	reftype.selectedIndex = 1;
+
       if (reftype.selectedIndex == 0)
 	opt += sep + "r" + (i+1) + "=refobj";
       else if (reftype.selectedIndex == 1 && (refrun.value || refds.value))
 	opt += sep + "r" + (i+1) + "=other:" + encodeURIComponent(refrun.value)
-	       + ":" + encodeURIComponent(refds.value);
+	       + ":" + encodeURIComponent(refds.value) + ":" + encodeURIComponent(ktest);
       else
 	opt += sep + "r" + (i+1) + "=none";
     }
@@ -685,6 +695,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       var reftype  = $('subhead-ref-' + i + '-type');
       var refrun   = $('subhead-ref-' + i + '-run');
       var refds    = $('subhead-ref-' + i + '-ds');
+      var refktest = $('subhead-ref-' + i + '-ktest');
 
       if (refparam.type == 'refobj')     index = 0;
       else if (refparam.type == 'other') index = 1;
@@ -698,6 +709,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
 
       if (refds.value != refparam.dataset)
         refds.value = refparam.dataset;
+
+      if (refktest)
+	if (refktest.value != refparam.ktest)
+        refktest.value = refparam.ktest;
     }
 
     // Update the search info.
@@ -809,7 +824,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       else if (r.type == 'none')
 	return 'none';
       else if (r.type == 'other')
-	return r.type + ':' + r.run + ':' + r.dataset;
+	return r.type + ':' + r.run + ':' + r.dataset + ':' + r.ktest;
       else
 	return 'none';
     }

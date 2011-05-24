@@ -253,6 +253,8 @@ function layout(type, container, item, obj, sz, ref, strip, focus, onclick, xsty
 
 	    xargs += ";obj=" + encodeURIComponent
 	      (parts.join("/") + dataset + "/" + ob.name);
+	    if (refdef.ktest)
+	      xargs += ';ktest='+refdef.ktest;
           }
 	}
       }

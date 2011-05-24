@@ -1160,6 +1160,7 @@ static IMGOPT STDIMGOPTS[] = {
   { "ztype",	RX_OPT_AXISTYPE },
   { "zmin",	RX_OPT_FLOAT },
   { "zmax",	RX_OPT_FLOAT },
+  { "ktest",	RX_OPT_FLOAT },
   { "",		RX_OPT_INT }
 
 };
@@ -4257,10 +4258,11 @@ protected:
   static std::string
   sessionReferenceOne(const py::dict &ref)
     {
-      return StringFormat("{'type':'%1','run':%2,'dataset':%3}")
+      return StringFormat("{'type':'%1','run':%2,'dataset':%3, 'ktest':%4}")
 	.arg(py::extract<std::string>(ref.get("type"))) // refobj, other, none
 	.arg(stringToJSON(py::extract<std::string>(ref.get("run"))))
-	.arg(stringToJSON(py::extract<std::string>(ref.get("dataset"))));
+	.arg(stringToJSON(py::extract<std::string>(ref.get("dataset"))))
+	.arg(stringToJSON(py::extract<std::string>(ref.get("ktest"))));
     }
 
   // Produce a reference description.

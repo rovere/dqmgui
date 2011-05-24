@@ -522,10 +522,10 @@ class DQMWorkspace:
                  'dqm.strip.axis':     "run",
                  'dqm.strip.n':        "",
                  'dqm.reference':      {'show': "customise", 'position': "overlay", 'param':
-					[{'type': "refobj", 'run': "", 'dataset': ""},
-					 {'type': "none",   'run': "", 'dataset': ""},
-					 {'type': "none",   'run': "", 'dataset': ""},
-					 {'type': "none",   'run': "", 'dataset': ""}]},
+                                        [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
+					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
+					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
+					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""}]},
                  'dqm.submenu':	       "data",
                  'dqm.size':           "M",
                  'dqm.root':           {},
@@ -696,15 +696,17 @@ class DQMWorkspace:
       if refobj != None:
         if not isinstance(refobj, str):
           raise HTTPError(500, "Incorrect referenceobj parameter")
-        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*)$", refobj)
+        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*):([0-9.]*)$", refobj)
         if refobj == "refobj" or refobj == "none":
           param['type'] = refobj
           param['run'] = ""
           param['dataset'] = ""
+          param['ktest']   = ""
         elif m:
-          param['type'] = "other"
-          param['run'] = m.group(1)
+          param['type']    = "other"
+          param['run']     = m.group(1)
           param['dataset'] = m.group(2)
+          param['ktest']   = m.group(3)
 	else:
           raise HTTPError(500, "Incorrect referenceobj parameter")
 

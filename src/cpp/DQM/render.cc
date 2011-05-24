@@ -285,6 +285,7 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
   i.height = -1;
   i.reference = DQM_REF_OBJECT;
   i.trend = DQM_TREND_OBJECT;
+  i.ktest = NAN;
   i.xaxis.type = i.yaxis.type = i.zaxis.type = "def";
   i.xaxis.min  = i.yaxis.min  = i.zaxis.min  = NAN;
   i.xaxis.max  = i.yaxis.max  = i.zaxis.max  = NAN;
@@ -310,6 +311,7 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
 	&& ! parseAxisType  (p, "ytype=",    6, i.yaxis.type)
 	&& ! parseDouble    (p, "zmin=",     5, i.zaxis.min)
 	&& ! parseDouble    (p, "zmax=",     5, i.zaxis.max)
+	&& ! parseDouble    (p, "ktest=",    6, i.ktest)
 	&& ! parseAxisType  (p, "ztype=",    6, i.zaxis.type)
 	&& ! parseOption    (p, "drawopts=", 9, i.drawOptions))
       return false;
@@ -1275,7 +1277,11 @@ private:
           }
           else if (ref1f || ref1d)
           {
-            double norm = 1.;
+	    // Perform KS statistical test only on the first available
+	    // reference, excluding the (possible) default one
+	    // injected during the harvesting step.
+	    int color = 40 + n;
+	    double norm = 1.;
             if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
               norm = th1f->GetSumOfWeights();
             else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
@@ -1284,9 +1290,21 @@ private:
 	    TH1 *ref = (ref1f
 			? static_cast<TH1 *>(ref1f)
 			: static_cast<TH1 *>(ref1d));
-            ref->SetLineColor(40 + n);
+	    if (n==1 && ! isnan(i.ktest))
+	      if (TH1 *h = dynamic_cast<TH1 *>(ob))
+	      {
+		double prob = h->KolmogorovTest(ref);
+		color = prob < i.ktest ? kRed-4 : kGreen-3;
+		char buffer[14];
+		snprintf(buffer, 14, "%6.5f", prob);
+		TText t;
+		t.SetTextColor(color);
+		t.DrawTextNDC(0.45, 0.9, buffer);
+	      }
+
+            ref->SetLineColor(color);
             ref->SetLineWidth(0);
-            ref->SetFillColor(40 + n);
+            ref->SetFillColor(color);
             ref->SetFillStyle(3002);
             ref->GetListOfFunctions()->Delete();
             if (norm)
