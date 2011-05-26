@@ -1133,6 +1133,16 @@ public:
   virtual void
   samples(VisDQMSamples &samples)
     {}
+
+  virtual void
+  getcert(VisDQMSample &sample,
+	  const std::string &path,
+	  const std::string &variableName,
+	  std::vector<VisDQMIndex::Summary> &attrs,
+	  std::vector<double> &axisvals,
+	  std::string &binlabels)
+    {}
+
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -1144,7 +1154,7 @@ static Regexp RX_OPT_FLOAT("^([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)?$");
 static Regexp RX_OPT_DRAWOPT("^[A-Za-z ]*$");
 static Regexp RX_OPT_REFTYPE("^(|object|reference|overlay)$");
 static Regexp RX_OPT_AXISTYPE("^(def|lin|log)$");
-static Regexp RX_OPT_TREND_TYPE("^(num-(entries|bins|bytes)|"
+static Regexp RX_OPT_TREND_TYPE("^(num-(entries|bins|bytes)|value|"
 				"[xyz]-(min|max|bins|mean(-rms|-min-max)?))$");
 static IMGOPT STDIMGOPTS[] = {
   { "w",	RX_OPT_INT },
@@ -1169,6 +1179,8 @@ static IMGOPT TRENDIMGOPTS[] = {
   { "w",	RX_OPT_INT },
   { "h",	RX_OPT_INT },
   { "trend",	RX_OPT_TREND_TYPE },
+  { "xmin",	RX_OPT_FLOAT },
+  { "xmax",	RX_OPT_FLOAT },
   { "",		RX_OPT_INT }
 };
 
@@ -2360,7 +2372,7 @@ public:
 	  // mutilated and original dataset names, former for relval
 	  // and the other for other sample matches.  At this stage we
 	  // don't know the type of this sample.
-	  cursample.runnr = py::extract<int>(t[1]);
+	  cursample.runnr = py::extract<long>(t[1]);
 	  origdataset = py::extract<std::string>(t[2]);
 	  cursample.dataset = StringOps::remove(origdataset, RX_CMSSW_VERSION);
 	}
@@ -2536,6 +2548,93 @@ public:
 	}
       }
 
+      // Return the image we produced.
+      if (imageok)
+	return py::make_tuple(imagetype, imagedata);
+      else
+	return py::make_tuple(py::object(), py::object());
+    }
+};
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+/** Make Data Certification. */
+class VisDQMCertificationSource : public VisDQMSource
+{
+  VisDQMRenderLink *link_;
+public:
+  VisDQMCertificationSource(void)
+    : link_(VisDQMRenderLink::instance())
+    {}
+
+  virtual const char *
+  plotter(void) const
+    {
+      return "certification";
+    }
+
+  py::tuple
+  plot(py::object info, const std::string &fullpath, const std::string &path, const std::string &variableName, py::dict opts)
+    {
+      VisDQMSample cursample = { SAMPLE_ANY, -1 };
+      std::map<std::string, std::string> options;
+      bool imageok = false;
+      std::string imagedata;
+      std::string imagetype;
+      std::string origdataset;
+      copyopts(opts, options);
+
+      // Get the current source.
+      if (info.ptr() != Py_None)
+      {
+	py::tuple t = py::extract<py::tuple>(info);
+	py::extract<VisDQMSource *> src(t[0]);
+	if (src.check())
+	{
+	  DQMNet::Object xobj[2];
+	  std::string streamers[2];
+	  std::string binlabels;
+	  std::vector<double> axisvals;
+	  std::vector<VisDQMIndex::Summary> attrs;
+	  VisDQMIndex::Summary oneattr;
+	  // Extract run number and dataset name.  Remember both the
+	  // mutilated and original dataset names, former for relval
+	  // and the other for other sample matches.  At this stage we
+	  // don't know the type of this sample.
+	  cursample.runnr = py::extract<long>(t[1]);
+	  origdataset = py::extract<std::string>(t[2]);
+	  cursample.dataset = StringOps::remove(origdataset, RX_CMSSW_VERSION);
+	  // Get the attributes here. An accompanying vector is passed
+	  // and filled with actual values of lumisection number: this
+	  // is mandatory in case we miss some lumisection.
+	  src()->getcert(cursample, path, variableName, attrs, axisvals, binlabels);
+	  clearobj(xobj[0]);
+	  clearobj(xobj[1]);
+	  if (attrs.size())
+	  {
+	    assert(attrs.size() == axisvals.size());
+	    size_t attrsize = attrs.size() * sizeof(VisDQMIndex::Summary);
+	    size_t axissize = attrs.size() * sizeof(double);
+	    size_t binssize = binlabels.size();
+	    xobj[0].tag = attrs.size();
+	    xobj[0].flags = DQMNet::DQM_PROP_TYPE_DATABLOB;
+	    xobj[0].rawdata.resize(attrsize + axissize + binlabels.size());
+	    memcpy(&xobj[0].rawdata[0], &axisvals[0], axissize);
+	    memcpy(&xobj[0].rawdata[axissize], &attrs[0], attrsize);
+	    memcpy(&xobj[0].rawdata[axissize+attrsize], &binlabels[0], binssize);
+	    imageok = link_->render(imagedata, imagetype, fullpath, options,
+				    streamers, xobj,
+				    1,
+				    TRENDIMGOPTS);
+	  }
+	  else
+	  {
+	    imageok = link_->render(imagedata, imagetype, path, options,
+				    streamers, xobj, 1, STDIMGOPTS);
+	  }
+	}
+      }
       // Return the image we produced.
       if (imageok)
 	return py::make_tuple(imagetype, imagedata);
@@ -3517,6 +3616,11 @@ public:
 	watch_.stop();
     }
 
+  static inline void makeBinLabel(char * buff, uint64_t value)
+    {
+      sprintf(buff, "%ld", value);
+    }
+
   virtual void
   getdata(const VisDQMSample &sample,
 	  const std::string &path,
@@ -4040,6 +4144,134 @@ public:
     }
 
   virtual void
+  getcert(VisDQMSample &sample,
+	  const std::string &rootpath,
+          const std::string &variableName,
+	  std::vector<VisDQMIndex::Summary> &attrs,
+          std::vector<double> &axisvals,
+	  std::string &binlabels)
+    {
+      attrs.reserve(4000);
+      axisvals.reserve(4000);
+      char tmpbuf[64];
+      // No point in even trying unless this is archived data.
+      if (sample.type < SAMPLE_ONLINE_DATA)
+	return;
+
+      // Keep retrying until we can successfully read the data.
+      for (int ntries = 1; true; ++ntries)
+      {
+	try
+	{
+	  // Reload index if necessary.
+	  maybeReloadIndex();
+
+	  // Locate the requested sample.
+	  RDLock rdgate(&lock_);
+	  SampleList::const_iterator si = findSample(sample);
+
+	  // Return with empty "items" if we didn't find the sample.
+	  if (si == samples_.end())
+	    return;
+
+	  // Found the sample, try opening the info file.  If this
+	  // fails we will end up in the catch statement which will
+	  // loop around to retry a certain number of times.  The
+	  // stack unwinding automatically handles lock release.
+	  VisDQMFilePtr info(open(VisDQMIndex::MASTER_FILE_INFO, si->files));
+	  std::string name;
+	  std::string dir;
+	  std::string path;
+
+	  // Read the summary for the requested sample.
+	  uint64_t keyidx = (si - samples_.begin());
+	  VisDQMFile::ReadHead rdinfo(info.get(), keyidx << 44);
+	  for ( ; ! rdinfo.isdone(); rdinfo.next())
+	  {
+	    uint64_t ikey;
+	    uint64_t dkey;
+	    void *begin;
+	    void *end;
+	    rdinfo.get(&ikey, &begin, &end);
+	    uint64_t keyparts[4] = { (ikey >> 44) & 0xfffff, (ikey >> 40) & 0xf,
+				     (ikey >> 20) & 0xfffff, ikey & 0xfffff };
+	    if (keyparts[0] != keyidx)
+	      break;
+	    if (keyparts[1] == 0)
+	      continue;
+
+	    VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
+	    const std::string &path = objnames_.key(keyparts[3]);
+	    name.clear();
+	    dir.clear();
+	    splitPath(dir, name, path);
+
+	    // Skip object outside directory of interest to us.
+	    if (rootpath != dir)
+	      continue;
+
+	    // Select only the proper variable, in case one was
+	    // supplied.
+	    if (!variableName.empty() && variableName != name)
+	      continue;
+
+	    uint32_t type = s->properties & DQMNet::DQM_PROP_TYPE_MASK;
+	    // Expose only scalar data: there is no point in making a
+	    // trend plot for TH* objects.
+	    if (type == DQMNet::DQM_PROP_TYPE_INT || type == DQMNet::DQM_PROP_TYPE_REAL)
+	    {
+	      // Get data for this object.
+	      const char *data = (s->dataLength ? (const char *) (s+1) : "");
+	      double t = atof(data);
+	      // Check if the last lumisection used is equal to the
+	      // current one decremented by 1 unit. If this is not the
+	      // case, fill the gap with values -2 (to differentiate
+	      // between default -1), until we reach the current
+	      // lumisection.
+	      if (attrs.size() > 0)
+		while (attrs.back().mean[0] < (double)(keyparts[2]-1))
+		{
+		  VisDQMIndex::Summary tmp = attrs.back();
+		  tmp.mean[0] += 1.;
+		  tmp.mean[1] = -2.;
+		  attrs.push_back(tmp);
+		  axisvals.push_back(tmp.mean[0]); /* Lumisection number */
+		  makeBinLabel(tmpbuf, (uint64_t)tmp.mean[0]);
+		  std::string binlabel(tmpbuf);
+		  binlabels.append(binlabel.c_str(), binlabel.size()+1);
+		}
+	      axisvals.push_back((double)keyparts[2]); /* Lumisection number */
+	      attrs.push_back(*s);
+	      attrs.back().mean[0] = (double)keyparts[2];
+	      attrs.back().mean[1] = t;
+	      makeBinLabel(tmpbuf, keyparts[2]);
+	      std::string binlabel(tmpbuf);
+	      binlabels.append(binlabel.c_str(), binlabel.size()+1);
+	    }
+	  }
+
+	  // Successfully read the data, return.
+	  return;
+	}
+	catch (Error &e)
+	{
+	  if (fileReadFailure(ntries, e.explain().c_str()))
+	    return;
+	}
+	catch (std::exception &e)
+	{
+	  if (fileReadFailure(ntries, e.what()))
+	    return;
+	}
+	catch (...)
+	{
+	  if (fileReadFailure(ntries, "(unknown error)"))
+	    return;
+	}
+      }
+    }
+
+  virtual void
   samples(VisDQMSamples &samples)
     {
       try
@@ -4252,6 +4484,26 @@ protected:
       h = py::extract<int>(session.get("dqm.zoom.h", -1));
 
       return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5}")
+	.arg(show).arg(x).arg(y).arg(w).arg(h);
+    }
+
+  // Produce Certification zoom configuration format.
+  static std::string
+  sessionCertZoomConfig(const py::dict &session)
+    {
+      bool show;
+      int  x;
+      int  y;
+      int  w;
+      int  h;
+
+      show = py::extract<bool>(session.get("dqm.certzoom.show", false));
+      x = py::extract<int>(session.get("dqm.certzoom.x", -1));
+      y = py::extract<int>(session.get("dqm.certzoom.y", -1));
+      w = py::extract<int>(session.get("dqm.certzoom.w", -1));
+      h = py::extract<int>(session.get("dqm.certzoom.h", -1));
+
+      return StringFormat("'certzoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5}")
 	.arg(show).arg(x).arg(y).arg(w).arg(h);
     }
 
@@ -4729,6 +4981,163 @@ private:
       }
 
       return result;
+    }
+};
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+class VisDQMCertificationWorkspace : public VisDQMWorkspace
+{
+  typedef std::map<std::string, std::vector<std::string> > KeyVectorMap;
+
+  Regexp rxevi_;
+public:
+  VisDQMCertificationWorkspace(py::object gui, const std::string &name)
+    : VisDQMWorkspace(gui, name),
+      rxevi_("(.*?)/EventInfo/(CertificationContents|DAQContents|DCSContents|reportSummaryContents)/(.*)")
+    {
+      rxevi_.study();
+    }
+
+  virtual ~VisDQMCertificationWorkspace(void)
+    {}
+
+  virtual std::string
+  state(py::dict session)
+    {
+      Time startTime = Time::current();
+      gui_.attr("_noResponseCaching")();
+      std::vector<VisDQMSource *> srclist;
+      sources(srclist);
+
+      const std::string &services = serviceListJSON();
+      const std::string &workspaces = workspaceListJSON();
+
+      VisDQMSample sample(sessionSample(session));
+      std::string toolspanel(sessionPanelConfig(session, "tools"));
+      std::string zoom(sessionCertZoomConfig(session));
+      std::string qplot(py::extract<std::string>(session.get("dqm.qplot", "")));
+      std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string reference(sessionReference(session));
+      std::string strip(sessionStripChart(session));
+      std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
+      std::string rxstr(py::extract<std::string>(session.get("dqm.search")));
+      std::string rxerr;
+      shared_ptr<Regexp> rxsearch;
+      makerx(rxstr, rxsearch, rxerr, Regexp::IgnoreCase);
+
+      // Give sources pre-scan warning so they can do python stuff.
+      for (size_t i = 0, e = srclist.size(); i != e; ++i)
+	srclist[i]->prescan();
+
+      // Now do the hard stuff, out of python.
+      {
+	PyReleaseInterpreterLock nogil;
+
+	VisDQMItems		contents;
+	StringAtomSet		myobjs; // deliberately empty, not needed
+	VisDQMItems::iterator	ci, ce;
+	VisDQMStatusMap		status;
+	RegexpMatch		m;
+	std::string		plotter;
+	KeyVectorMap		cert;
+	VisDQMEventNum		current = { "", -1, -1, -1, -1 };
+
+	buildContents(srclist, contents, myobjs, sample,
+		      current, 0, rxsearch.get(), 0, 0, 0);
+	updateStatus(contents, status);
+
+	for (ci = contents.begin(), ce = contents.end(); ci != ce; ++ci)
+	{
+	  VisDQMItem &o = *ci->second;
+	  if (! isScalarType(o.flags))
+	    continue;
+
+	  m.reset();
+	  if (! rxevi_.match(o.name.string(), 0, 0, &m))
+	    continue;
+
+	  std::string system(m.matchString(o.name.string(), 1));
+	  std::string kind(m.matchString(o.name.string(), 2));
+	  std::string variable(m.matchString(o.name.string(), 3));
+
+	  if (rxsearch && rxsearch->search(system) < 0)
+	    continue;
+
+	  std::vector<std::string> &info = cert[system];
+	  if (info.empty())
+	  {
+	    plotter = StringFormat("%1/%2%3")
+		      .arg(o.plotter ? o.plotter->plotter() : "unknown")
+		      .arg(sample.runnr)
+		      .arg(sample.dataset);
+	  }
+	  info.push_back(kind+"/"+variable);
+	}
+
+        return makeResponse(StringFormat("{\"kind\":\"DQMCertification\", \"items\":[%1],"
+					 " \"current\":\"%2\", %3}")
+			    .arg(certificationToJSON(cert))
+			    .arg(plotter)
+			    .arg(zoom),
+			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
+			    services, workspaceName_, workspaces,
+			    submenu, sample, filter, reference, strip,
+			    rxstr, rxerr, cert.size(), toolspanel,
+			    startTime);
+      }
+    }
+
+private:
+  static std::string
+  certificationToJSON(const KeyVectorMap &cert)
+    {
+      size_t len = 4 * cert.size();
+      KeyVectorMap::const_iterator si, se;
+      std::vector<std::string>::const_iterator vi, ve;
+      for (si = cert.begin(), se = cert.end(); si != se; ++si)
+      {
+	len += 8 * si->second.size();
+	for (vi = si->second.begin(), ve = si->second.end(); vi != ve; ++vi)
+	  len += 2 * vi->size();
+      }
+
+      std::string result;
+      result.reserve(len + 1);
+      bool first = true;
+      for (si = cert.begin(), se = cert.end(); si != se; ++si, first = false)
+      {
+	if (! first)
+	    result += ", ";
+	result += StringFormat("{ \"text\": \"%1\", \"children\": [")
+		  .arg(si->first);
+	std::string prevFolder = "";
+	for (vi = si->second.begin(), ve = si->second.end(); vi != ve; ++vi)
+	{
+	  std::string validationFolder = vi->substr(0,vi->rfind('/'));
+	  std::string variable = vi->substr(vi->rfind('/')+1, vi->size());
+	  if (prevFolder.empty())
+	  {
+	    prevFolder = validationFolder;
+	    result += StringFormat("{ \"text\": \"%1\", \"children\": [{\"text\": \"%2\", \"leaf\": true}")
+		      .arg(validationFolder)
+		      .arg(variable);
+	  }
+	  if (prevFolder != validationFolder)
+	  {
+	    prevFolder = validationFolder;
+	    result += StringFormat("]}, { \"text\": \"%1\", \"children\": [{\"text\": \"%2\", \"leaf\": true}")
+		      .arg(validationFolder)
+		      .arg(variable);
+	  }
+	  else
+	    result += StringFormat(",{\"text\": \"%1\", \"leaf\": true}")
+		      .arg(variable);
+	}
+	result += "]}]}";
+      }
+      return result ;
     }
 };
 
@@ -5677,6 +6086,12 @@ BOOST_PYTHON_MODULE(Accelerator)
     .add_property("plothook", &VisDQMStripChartSource::plotter)
     .def("_plot", &VisDQMStripChartSource::plot);
 
+  py::class_<VisDQMCertificationSource, shared_ptr<VisDQMCertificationSource>,
+             py::bases<VisDQMSource>, boost::noncopyable>
+    ("DQMCertificationSource", py::init<>())
+    .add_property("plothook", &VisDQMCertificationSource::plotter)
+    .def("_plot", &VisDQMCertificationSource::plot);
+
   py::class_<VisDQMLiveSource, shared_ptr<VisDQMLiveSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMLiveSource", py::init<py::object, py::dict>())
@@ -5709,6 +6124,11 @@ BOOST_PYTHON_MODULE(Accelerator)
 	     py::bases<VisDQMWorkspace>, boost::noncopyable>
     ("DQMSummaryWorkspace", py::init<py::object, std::string>())
     .def("_state", &VisDQMSummaryWorkspace::state);
+
+  py::class_<VisDQMCertificationWorkspace, shared_ptr<VisDQMCertificationWorkspace>,
+	     py::bases<VisDQMWorkspace>, boost::noncopyable>
+    ("DQMCertificationWorkspace", py::init<py::object, std::string>())
+    .def("_state", &VisDQMCertificationWorkspace::state);
 
   py::class_<VisDQMQualityWorkspace, shared_ptr<VisDQMQualityWorkspace>,
 	     py::bases<VisDQMWorkspace>, boost::noncopyable>

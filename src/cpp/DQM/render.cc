@@ -184,6 +184,12 @@ parseStripChart(const char *&p, const char *name, size_t len, VisDQMStripTrend &
       p += 9;
       return true;
     }
+    else if (! strncmp(p, "value", 5))
+    {
+      value = DQM_TREND_LS_VALUE;
+      p += 5;
+      return true;
+    }
     else if ((p[0] == 'x' || *p == 'y' || *p == 'z') && p[1] == '-')
     {
       int offset = (p[0] == 'z' ? DQM_TREND_Z_MEAN - DQM_TREND_X_MEAN
@@ -363,7 +369,7 @@ public:
 };
 
 TObject *
-makeStripChart(VisDQMImgInfo &i,
+makeStripChart(VisDQMImgInfo &info,
 	       uint32_t flags,
 	       const std::string &title,
 	       std::vector<double> &axisvals,
@@ -374,9 +380,9 @@ makeStripChart(VisDQMImgInfo &i,
 {
   std::string titlepfx;
   const char *axispfx[] = { "X ", "Y ", "Z ", "" };
-  size_t axis = (i.trend >= DQM_TREND_X_MEAN && i.trend <= DQM_TREND_X_NUM_BINS ? 0
-		 : i.trend >= DQM_TREND_Y_MEAN && i.trend <= DQM_TREND_Y_NUM_BINS ? 1
-		 : i.trend >= DQM_TREND_Z_MEAN && i.trend <= DQM_TREND_Z_NUM_BINS ? 2
+  size_t axis = (info.trend >= DQM_TREND_X_MEAN && info.trend <= DQM_TREND_X_NUM_BINS ? 0
+		 : info.trend >= DQM_TREND_Y_MEAN && info.trend <= DQM_TREND_Y_NUM_BINS ? 1
+		 : info.trend >= DQM_TREND_Z_MEAN && info.trend <= DQM_TREND_Z_NUM_BINS ? 2
 		 : 3);
   TH1 *extra = (numobjs > 1 ? dynamic_cast<TH1 *>(objs[1].object) : 0);
   size_t nextra = extra ? 1 : 0;
@@ -385,11 +391,32 @@ makeStripChart(VisDQMImgInfo &i,
   std::vector<double> yerr;
   std::vector<double> ylo;
   std::vector<double> yhi;
+  size_t nattrsmin = 0;
+  size_t realsize = nattrs;
 
-  switch (i.trend)
+  switch (info.trend)
   {
   case DQM_TREND_OBJECT:
     assert(false);
+    break;
+
+  case DQM_TREND_LS_VALUE:
+    titlepfx = "Values for ";
+    for (size_t i = nextra; i != nattrs; ++i)
+    {
+      if (! (isnan(info.xaxis.max)) && (attrs[i].mean[0] > info.xaxis.max))
+      {
+	realsize--;
+	continue;
+      }
+      if (! (isnan(info.xaxis.min)) && (attrs[i].mean[0] < info.xaxis.min))
+      {
+	nattrsmin++;
+	continue;
+      }
+      vals[i] = attrs[i].mean[1];
+    }
+    realsize -= nattrsmin;
     break;
 
   case DQM_TREND_NUM_ENTRIES:
@@ -526,8 +553,8 @@ makeStripChart(VisDQMImgInfo &i,
   // Construct the histogram. We use it only for the bins.
   double vmax = 0;
   double vmin = 0;
-  size_t skip = vals.size() / 30 + 1;
-  TH1D *bins = new TH1D("Trend", fulltitle.c_str(), vals.size(), &axisvals[0]);
+  size_t skip = (info.trend != DQM_TREND_LS_VALUE) ? vals.size() / 30 + 1 : 1;
+  TH1D *bins = new TH1D("Trend", fulltitle.c_str(), realsize, &axisvals[nattrsmin]);
   TAxis *xaxis = bins->GetXaxis();
   for (size_t i = 0, e = vals.size(); i != e; ++i)
   {
@@ -544,8 +571,13 @@ makeStripChart(VisDQMImgInfo &i,
       vmin = std::min(vmin, vals[i] - ylo[i]);
     }
 
+    // swap label ordering, since DQM_TREND_LS_VALUE is increasing, while
+    // in all other cases the order is reversed (older runs comes
+    // first).
+    size_t labelIndex = (info.trend == DQM_TREND_LS_VALUE) ? nattrsmin+i : (nattrs-i-1);
     if (i % skip == 0)
-      xaxis->SetBinLabel(i+1, labels[nattrs-i-1].c_str());
+      if (i < realsize)
+	xaxis->SetBinLabel(i+1, labels[labelIndex].c_str());
 
     axisvals[i] = (axisvals[i] + axisvals[i+1])/2;
   }
@@ -559,13 +591,12 @@ makeStripChart(VisDQMImgInfo &i,
   // Construct a graph of data points.
   TGraph *graph = 0;
   if (yerr.empty() && yhi.empty())
-    graph = new TGraph(vals.size(), &axisvals[0], &vals[0]);
+    graph = new TGraph(realsize, &axisvals[nattrsmin], &vals[nattrsmin]);
   else if (! yerr.empty())
-    graph = new TGraphErrors(vals.size(), &axisvals[0], &vals[0], 0, &yerr[0]);
+    graph = new TGraphErrors(realsize, &axisvals[nattrsmin], &vals[nattrsmin], 0, &yerr[nattrsmin]);
   else if (! yhi.empty())
-    graph = new TGraphAsymmErrors(vals.size(), &axisvals[0], &vals[0],
-				  0, 0, &ylo[0], &yhi[0]);
-
+    graph = new TGraphAsymmErrors(realsize, &axisvals[nattrsmin], &vals[nattrsmin],
+				  0, 0, &ylo[nattrsmin], &yhi[nattrsmin]);
   graph->SetMarkerColor(46);
   graph->SetMarkerStyle(20);
   graph->SetMarkerSize(1.1);

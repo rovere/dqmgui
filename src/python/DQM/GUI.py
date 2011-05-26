@@ -378,6 +378,31 @@ class DQMStripChartSource(Accelerator.DQMStripChartSource):
     return self._plot(sources.values(), info, "/".join(path), options)
 
 # --------------------------------------------------------------------
+# Source for plotting byLumi Certification Results of DQM.
+class DQMCertificationSource(Accelerator.DQMCertificationSource):
+  def __init__(self, server, statedir):
+    Accelerator.DQMCertificationSource.__init__(self)
+    self.server = server
+
+  # Generate a bylumi certification strip chart.  Pass the source for
+  # the "current" object choice, path and the render options to the
+  # C++ layer to process.
+
+  def plot(self, *path, **options):
+    sources = dict((s.plothook, s) for s in self.server.sources
+		   if getattr(s, 'plothook', None))
+    info = None
+    current = options.get("current", None)
+    if current != None:
+      if not isinstance(current, str):
+        raise HTTPError(500, "Incorrect current option")
+      (srcname, runnr, dataset) = current.split("/", 2)
+      if srcname in sources and srcname != "unknown":
+        info = (sources[srcname], int(runnr), "/" + dataset)
+
+    return self._plot(info, ".".join(path), "/".join(path[:-1]), path[-1], options)
+
+# --------------------------------------------------------------------
 # DQM data source which provides layout content from python
 # configuration files.  There is no backend process attached to this
 # data source.
@@ -546,7 +571,7 @@ class DQMWorkspace:
 
     gui.css = [x for x in gui.css if x[0] != '%s/css/Core/style.css' % gui.contentpath]
     gui._addCSSFragment("%s/css/DQM/style.css" % gui.contentpath)
-    for p in ("Canvas", "Header", "Quality", "Sample", "Summary", "Play"):
+    for p in ("Canvas", "Header", "Quality", "Sample", "Summary", "Play", "Certification"):
       gui._addJSFragment("%s/javascript/DQM/%s.js" % (gui.contentpath, p))
 
     self.gui       = gui
@@ -611,6 +636,7 @@ class DQMWorkspace:
            reset = None,
            add = None,
            zoom = None,
+           certzoom = None,
            **kwargs):
 
     if samplevary != None:
@@ -807,6 +833,11 @@ class DQMWorkspace:
         raise HTTPError(500, "Invalid Zoom show parameter")
       session['dqm.zoom.show'] = (zoom == "yes")
 
+    if certzoom != None:
+      if not isinstance(certzoom, str) or certzoom not in ("yes", "no"):
+        raise HTTPError(500, "Invalid Certifcation Zoom show parameter")
+      session['dqm.certzoom.show'] = (certzoom == "yes")
+
 
   # -----------------------------------------------------------------
   # Initialise a new session with the "start" URL.
@@ -989,10 +1020,57 @@ class DQMWorkspace:
     self.gui._saveSession(session)
     return self._state(session)
 
+  # Change Zoom window parameters.
+  def sessionSetCertZoom(self, session, *args, **kwargs):
+    show = kwargs.get('show', None)
+    x = kwargs.get('x', None)
+    y = kwargs.get('y', None)
+    w = kwargs.get('w', None)
+    h = kwargs.get('h', None)
+
+    if show != None:
+      if not isinstance(show, str) or show not in ("yes", "no"):
+        raise HTTPError(500, "Invalid Zoom show parameter")
+      session['dqm.certzoom.show'] = (show == "yes")
+
+    if x != None:
+      if not isinstance(x, str) or not re.match(r"^\d+$", x):
+        raise HTTPError(500, "Invalid Zoom position parameter")
+      session['dqm.certzoom.x'] = int(x)
+
+    if y != None:
+      if not isinstance(y, str) or not re.match(r"^\d+$", y):
+        raise HTTPError(500, "Invalid Zoom position parameter")
+      session['dqm.certzoom.y'] = int(y)
+
+    if w != None:
+      if not isinstance(w, str) or not re.match(r"^\d+$", w):
+        raise HTTPError(500, "Invalid Zoom width parameter")
+      session['dqm.certzoom.w'] = int(w)
+
+    if h != None:
+      if not isinstance(h, str) or not re.match(r"^\d+$", h):
+        raise HTTPError(500, "Invalid Zoom height parameter")
+      session['dqm.certzoom.h'] = int(h)
+
+    self.gui._saveSession(session)
+
+    return self._state(session)
+
 # --------------------------------------------------------------------
 class DQMSummaryWorkspace(Accelerator.DQMSummaryWorkspace, DQMWorkspace):
   def __init__(self, gui, rank, category, name):
     Accelerator.DQMSummaryWorkspace.__init__(self, gui, name)
+    DQMWorkspace.__init__(self, gui, rank, category, name)
+
+  # Return JSON object for the current session state.
+  def sessionState(self, session, *args, **kwargs):
+    return self._state(session)
+
+# --------------------------------------------------------------------
+class DQMCertificationWorkspace(Accelerator.DQMCertificationWorkspace, DQMWorkspace):
+  def __init__(self, gui, rank, category, name):
+    Accelerator.DQMCertificationWorkspace.__init__(self, gui, name)
     DQMWorkspace.__init__(self, gui, rank, category, name)
 
   # Return JSON object for the current session state.
