@@ -41,6 +41,10 @@ while True:
       # further test are carried out.
       verpat = re.sub("_V[0-9]{4}_", "_V[0-9][0-9][0-9][0-9]_", info['path'])
       flist = sorted(glob("%s/%s" % (FILEREPO, verpat)), reverse=True)
+      if not len(flist):
+        os.remove(path)
+        continue
+
       hversion = int(re.search("_V([0-9]{4})_", flist[0]).group(1))
       for rfile in flist[1:]:
         # Read in the file info.

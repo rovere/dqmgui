@@ -6,6 +6,7 @@ from datetime import datetime
 from tempfile import mkstemp
 from glob import glob
 from fcntl import lockf, LOCK_EX, LOCK_UN
+from socket import getfqdn
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
@@ -15,6 +16,14 @@ INDEX = sys.argv[3]     # Location of the DQM GUI index.
 NEXT = sys.argv[4:]	# Directories for the next agents in chain.
 WAITTIME = 5		# Daemon cycle time.
 MAXFILES = 10		# Maximum number of files to register between checks.
+
+# Activate different features depending on where the script is running
+MODE = 'Offline'
+
+# Detect mode of operation
+hostName = getfqdn()
+if hostName.split(".")[1] == "cms":
+  MODE = 'Online'
 
 # --------------------------------------------------------------------
 def logme(msg, *args):
@@ -26,7 +35,11 @@ def logme(msg, *args):
 # - ascending by version
 # - descending by dataset
 def orderFiles(a, b):
-  diff = b['runnr'] - a['runnr']
+  classOrder = ['online_data', 'offline_data', 'simulated',
+                'relval_data', 'relval_mc']
+  diff = classOrder.index(a['class']) - classOrder.index(b['class'])
+  if diff: return diff
+  diff = a['runnr'] - b['runnr']
   if diff: return diff
   diff = a['version'] - b['version']
   if diff: return diff
@@ -81,7 +94,7 @@ while True:
                         .read().split())
 
       # If we've already registered the file, skip it.
-      if fname in existing or not isNewest(info):
+      if fname in existing or (MODE == 'Offline' and not isNewest(info)):
 	os.remove(info['infofile'])
 	continue
 

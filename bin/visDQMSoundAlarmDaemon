@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+
+import urllib2, re, os, time, sys
+from traceback import print_exc
+from datetime import datetime
+from urllib import quote_plus
+from fcntl import lockf, LOCK_EX, LOCK_UN
+from socket import socket, AF_INET, SOCK_STREAM
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+# --------------------------------------------------------------------
+# Command line parameters
+BASEURL = sys.argv[1] # GUI Server's URL
+SOUNDSERVER = sys.argv[2] # CMS-WOW server's name
+PORT = int(sys.argv[3]) # Listening port on the CMS-WOW server
+REMINDERINTERVAL = int(sys.argv[4]) # Seconds between sonourous alarms
+REBROADCAST = int(sys.argv[5]) # Number of times the same alarm is breoadcasted
+
+# GLOBAL CONSTANTS
+# location of the error folder that contains alarms histos.
+EFLOCATION = "00 Shift/Errors"
+
+# Body of the XML message that is sent to CMS-WOW
+MSGBODY = "<CommandSequence source=\"DQM\"><play file=\"starwars_Esqueese_me.wav\"" \
+          " source=\"DQM\"/><talk source=\"DQM\">%s</talk></CommandSequence>"
+SESSIONLIFE = 24 * 3600 # Session life time in seconds
+WAITTIME = 30
+
+# Control Variables:
+lastSessionRenew = 0
+lastGlobalReminder = 0
+noRun = True
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+# Short hand to send XML message to CMS-WOW
+def sendMsg(msg):
+  s = socket(AF_INET, SOCK_STREAM)
+  s.connect((SOUNDSERVER, PORT))
+  s.send(MSGBODY % msg)
+  data = s.recv(1024)
+  s.close()
+  if data == "All ok\n":
+    logme("INFO: Broadcasted message: %s ", msg)
+    return True
+
+  else:
+    logme("ERROR: Unexpected answer from CMS-WOW: %s", repr(data))
+    return False
+
+# Short hand to extract GUI information, it fails if the retrieved
+# data is not python format.
+def getGuiData(opener,url):
+  page1 = opener1.open(url)
+  data = page1.read()
+  try:
+    contents = eval(data)
+  except Exception, e:
+    raise e
+  page1.close()
+  return contents
+# --------------------------------------------------------------------
+# The SoundAlarm agent monitors the state of alarm in histograms
+# located in EFLOCATION. This location is a layout with a selection
+# of MEs that fallow very closely the state of the detector. The agent
+# makes the following assumptions:
+# 1. Each ME listed in the layout will rise an alarm if its QT fails,
+#    however, the ME and QT have to be done in such way that, if the
+#    condition for the QT to fail ceases, the QT should be successful
+#    and thus the alarm should be turned off.
+# 2. Trend plots located in this layout should *not* rise alarms, if
+#    they do, they must comply with assumption 1.
+# 3. The GUI that is specified by BASEURL has a Live source.
+#
+# Once a ME rises an alarm it would be immediately broadcasted, after
+# that it gets bundled with all actives alarms so that only one
+# message is broadcasted every REMINDERINTERVAL seconds. An alarm
+# ceases to be broadcasted if it has been sent more than REBROADCAST
+# times. In order to generate the most efficient use of CMS-WOW
+# system, the global clock gets reset every time we pass from 0 alarms
+# to at least 1 alarm.
+
+opener1 = urllib2.build_opener(urllib2.ProxyHandler({}))
+sr = re.search(r"dqm/([-a-zA-Z0-9_]+)",BASEURL)
+if not sr:
+  logme("FATAL:  Couold not identify the site from the BaseURL(%s)",
+        BASEURL)
+  sys.exit(1)
+
+site = sr.group(1)
+session = ""
+alarms = {}
+activeAlarmsList = []
+while True:
+  try:
+    now = time.time()
+
+    # get GUI session
+    if now - SESSIONLIFE > lastSessionRenew:
+      page1 = opener1.open("%s/" % BASEURL)
+      session = re.search(r"location.replace\('/dqm/%s/session/([-A-Za-z0-9_]+)'\)" % site,
+                   page1.read()).group(1)
+      url = "%s/session/%s/" %  (BASEURL,session)
+      page1 = opener1.open(url)
+      page1.read()
+      url = "%s/session/%s/workspace?name=shift" %  (BASEURL,session)
+      page1 = opener1.open(url)
+      page1.read()
+      url = "%s/session/%s/setRoot?n=00%%20Shift%%2FErrors" %  (BASEURL,session)
+      page1 = opener1.open(url)
+      page1.read()
+
+    url = "%s/session/%s/state" %  (BASEURL,session)
+    page1 = opener1.open(url)
+    state = eval(page1.read())
+
+    # Detect No run state
+    if noRun == False and state[1]['run']  == '(None)':
+      noRun = True
+      alarms = {}
+      lastGlobalReminder = 0
+
+    if noRun and state[1]['run'] != '(None)':
+      noRun = False
+
+    if noRun:
+      continue
+
+    # Find new alarm histos, and update alarm states
+    newAlarmsList = []
+    for histo in state[2]['items']:
+      m=re.match(r'00 Shift/Errors/(([0-9\-_:. ]*|[0-9 ]*|)(.*))',histo['name'])
+      name = m.group(3)
+      alarms.setdefault(name,{'state':0, 'lastBroadcast':0,
+                              'numOfBroadcasts':0, 'broadcast':False})
+      localAlarms = 0
+      for row in histo['items']:
+        for col in row:
+          if col['alarm']:
+            localAlarms += 1
+
+      if localAlarms:
+        if alarms[name]['numOfBroadcasts'] <= REBROADCAST:
+          alarms[name]['state'] = 1
+          alarms[name]['broadcast'] = True
+          if alarms[name]['lastBroadcast'] == 0:
+            newAlarmsList.append(name)
+            alarms[name]['broadcast'] = False
+
+        else:
+          alarms[name]['broadcast'] = False
+
+      else:
+        alarms[name]={'state':0, 'lastBroadcast':0,
+                        'numOfBroadcasts':0, 'broadcast':False}
+        if name in activeAlarmsList:
+          activeAlarmsList.remove(name)
+
+    now = time.time()
+
+    # Broadcast new alarms
+    if len(newAlarmsList):
+      if len(newAlarmsList) > 1:
+        msg = "THERE ARE %d NEW DQM ALARMS!, please check %s histograms"
+      else:
+        msg = "THERE IS %d NEW DQM ALARM!, please check %s histogram"
+
+      msg = msg % (len(newAlarmsList)," and ".join(newAlarmsList))
+      sendMsg(msg)
+      for a in newAlarmsList:
+        alarms[a]['lastBroadcast'] = now
+        alarms[a]['numOfBroadcasts'] += 1
+
+    # Do compiled broadcast
+    alarmsToBroadcastList = []
+    for a in activeAlarmsList:
+      if alarms[a]['broadcast']:
+        alarmsToBroadcastList.append(a)
+        alarms[a]['numOfBroadcasts'] += 1
+
+    if now - lastGlobalReminder > REMINDERINTERVAL and len(alarmsToBroadcastList):
+      if len(alarmsToBroadcastList) > 1:
+        msg = "THERE ARE %d DQM ALARMS!, please check %s histograms"
+      else:
+        msg = "THERE IS %d DQM ALARM!, please check %s histogram"
+
+      msg = msg % (len(activeAlarmsList)," ,and ".join(alarmsToBroadcastList))
+      sendMsg(msg)
+      lastGlobalReminder = now
+
+    activeAlarmsList += newAlarmsList
+
+    # Sync all lastBroadcast times to have a consistent group
+    for a in activeAlarmsList:
+      if lastGlobalReminder > 0:
+        alarms[a]['lastBroadcast'] = lastGlobalReminder
+
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME)

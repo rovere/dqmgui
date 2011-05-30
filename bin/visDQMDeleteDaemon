@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import urllib2, re, os, time, sys
+import urllib2, re, os, time, sys, json
 from traceback import print_exc
 from datetime import datetime
 from urllib import quote_plus
@@ -20,6 +20,7 @@ MINNUMSUBSYS = 13			# minimu number of subsytems needed to keep a run.
 WAITTIME = 15 * 60
 REFRESHINTERVAL = 15 * 24 * 3600	# Time between full cache refreshing.
 MAXPERSISTENCE = 2 * 365 * 24 * 3600	# Max time ANY run/dataset would stay registered in the GUI
+BADQUOTING=re.compile(r'""([^"]*)""')
 
 # GLOBAL CONSTANTS - Run Types
 ALL_RUNS = 0xFF
@@ -52,8 +53,15 @@ def getGuiData(opener,url):
   try:
     contents = eval(data)
   except Exception, e:
-    raise e
-  page1.close()
+    try:
+      contents = eval(BADQUOTING.subn('"\g<1>"',data)[0])
+
+    except Exception, e:
+      raise e
+
+  finally:
+    page1.close()
+
   return contents
 
 # Converts the time from a formatted string to a time-stamp. It is the
@@ -185,7 +193,7 @@ while True:
       sample["skip"] = False
       url = "%s/data/json/archive/%s/%s/Info/ProvInfo/" %  (BASEURL,run,dsName)
       contents = getGuiData(opener1,url)
-      for obj in contents["contents"][1:]:
+      for obj in contents["contents"][2:]:
         if 'obj' not in obj.keys():
           continue
 
@@ -209,6 +217,12 @@ while True:
           if item['lumi'] == '(None)':
             logme("WARNING: Run %s with dataset %s has no valid EventInfo folder",run,dsName)
             sample["skip"] = True
+            del runDS[key[0]][key[1]][key[2]]
+            continue
+
+          if item['runstart'] == '(Not recorded)':
+            sample["skip"] = True
+            del runDS[key[0]][key[1]][key[2]]
             continue
 
           sample["Lumis"] = int(item['lumi'].replace("'",""))
@@ -236,7 +250,7 @@ while True:
             continue
 
           if runInfo["runEndTimeStamp"] < now - MAXPERSISTENCE:
-            remove.append([run,dsName])
+            remove.append([run, dsName, dataType])
             continue
 
           if len(applicableQuotas) == 0:
