@@ -1123,7 +1123,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       StringAtomTree vnames(10000);
       StringAtomTree dsnames(100000);
       StringAtomTree pathnames(1000000);
-      StringAtomTree objnames(1000000);
+      StringAtomTree objnames(1500000);
       StringAtomTree streamers(100);
 
       readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
@@ -1363,7 +1363,7 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
     StringAtomTree vnames(10000);
     StringAtomTree dsnames(100000);
     StringAtomTree pathnames(1000000);
-    StringAtomTree objnames(1000000);
+    StringAtomTree objnames(1500000);
     StringAtomTree streamers(100);
 
     readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
@@ -1710,7 +1710,7 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       StringAtomTree vnames(10000),     othvnames(10000);
       StringAtomTree dsnames(100000),    othdsnames(100000);
       StringAtomTree pathnames(1000000), othpathnames(1000000);
-      StringAtomTree objnames(1000000), othobjnames(1000000);
+      StringAtomTree objnames(1500000), othobjnames(1500000);
       StringAtomTree streamers(100),    othstreamers(100);
 
       readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
@@ -1934,7 +1934,7 @@ dumpIndex(const Filename &indexdir, DumpType what)
   StringAtomTree vnames(10000);
   StringAtomTree dsnames(100000);
   StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(1000000);
+  StringAtomTree objnames(1500000);
   StringAtomTree streamers(100);
   DQMNet::QReports qreports;
 
