@@ -126,5 +126,8 @@ do
     done
     log "INFO: Finished partial synchronization of merged files"
   fi
+
+  # Fix directory permissions, curl --create-dirs makes them 0750.
+  find $BASE_DIR -type d \! -perm 755 -exec chmod o+rx {} \;
   sleep $(( 3600 * 4 ))
 done
