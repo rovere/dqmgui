@@ -167,7 +167,7 @@ while True:
       lname = "%s/%s" % (ZIPREPO, info['zpath'])
 
       # Create directory tree ignore directory exist error
-      (rc, so, se) = runme("rfmkdir -p %s", cdir, retcodes=(0, 1))
+      (rc, so, se) = runme("nsmkdir -p %s", cdir, retcodes=(0, 1))
       if rc not in (0, 1):
         continue
 
