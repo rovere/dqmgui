@@ -56,6 +56,7 @@
 #include <stdexcept>
 #include <ext/hash_map>
 #include <dlfcn.h>
+#include <math.h>
 
 namespace boost { namespace gil {
   /** Kernel for sinc filter of radius 2.0.  NB: Some say sinc(x) is
@@ -857,11 +858,33 @@ orderSamplesByRun(const VisDQMSample &a, const VisDQMSample &b)
 static std::string
 axisStatsToJSON(uint32_t nbins[3], double mean[3], double rms[3], double bounds[3][2], int axis)
 {
-  return StringFormat("{ \"nbins\": %1, \"mean\": %2, \"rms\": %3,"
-		      " \"min\": %4, \"max\": %5 }")
+  if (std::isfinite(mean[axis]) && std::isfinite(rms[axis]))
+    return StringFormat("{ \"nbins\": %1, \"mean\": %2, \"rms\": %3,"
+			" \"min\": %4, \"max\": %5 }")
+      .arg(nbins[axis])
+      .arg(mean[axis])
+      .arg(rms[axis])
+      .arg(bounds[axis][0])
+      .arg(bounds[axis][1]);
+  if (!std::isfinite(mean[axis]))
+  {
+    if (!std::isfinite(rms[axis]))
+      return StringFormat("{ \"nbins\": %1, \"mean\": \"NaN or Inf\", \"rms\": \"Nan or Inf\","
+			  " \"min\": %2, \"max\": %3 }")
+	.arg(nbins[axis])
+	.arg(bounds[axis][0])
+	.arg(bounds[axis][1]);
+    return StringFormat("{ \"nbins\": %1, \"mean\": \"NaN or Inf\", \"rms\": %2,"
+		      " \"min\": %3, \"max\": %4 }")
+    .arg(nbins[axis])
+    .arg(rms[axis])
+    .arg(bounds[axis][0])
+    .arg(bounds[axis][1]);
+  }
+  return StringFormat("{ \"nbins\": %1, \"mean\": %2, \"rms\": \"Nan or Inf\","
+		      " \"min\": %3, \"max\": %4 }")
     .arg(nbins[axis])
     .arg(mean[axis])
-    .arg(rms[axis])
     .arg(bounds[axis][0])
     .arg(bounds[axis][1]);
 }
@@ -954,7 +977,7 @@ objectToJSON(const std::string &name,
     .arg(axisStatsToJSON(nbins, mean, rms, bounds, 1))
     .arg(axisStatsToJSON(nbins, mean, rms, bounds, 2))
     .arg(isScalarType(flags) ? "value" : "rootobj")
-    .arg(isScalarType(flags) ? std::string(value) : hexlify(rawdata));
+    .arg(isScalarType(flags) ? StringOps::replace(std::string(value),"\"","\\\"") : hexlify(rawdata));
 }
 
 static void
@@ -1127,7 +1150,8 @@ public:
        bool lumisect,
        std::string &result,
        double &stamp,
-       const std::string &name)
+       const std::string &name,
+       std::set<std::string> &dirs)
     {}
 
   virtual void
@@ -2113,6 +2137,7 @@ public:
     {
       VisDQMSample sample = { SAMPLE_ANY, runnr, dataset };
       std::map<std::string, std::string> options;
+      std::set<std::string> dirs;
       VisDQMItems    layoutResult;
       double         stamp = 0;
       std::string    result;
@@ -2134,7 +2159,7 @@ public:
 
       {
 	PyReleaseInterpreterLock nogil;
-	src->json(sample, path, options.count("rootcontent") > 0, options.count("lumisect") > 0, result, stamp, "");
+	src->json(sample, path, options.count("rootcontent") > 0, options.count("lumisect") > 0, result, stamp, "", dirs);
 
 	// Add layout content, in case a layout source had been
 	// registered to the main server.
@@ -2148,7 +2173,7 @@ public:
 			  &alarm,
 			  &layoutroot,
 			  &rxlayout);
-	  json(layoutResult, sample, src, options, stamp, path, result);
+	  json(layoutResult, sample, src, options, stamp, path, result, dirs);
 	}
 	result = StringFormat("{\"contents\": [%1]}").arg(result);
       }
@@ -2163,11 +2188,12 @@ public:
 	    const std::map<std::string, std::string> &options,
 	    double &stamp,
 	    const std::string &rootpath,
-	    std::string &result)
+	    std::string &result,
+	    std::set<std::string> &dirs)
     {
       VisDQMItems::const_iterator ci, ce;
       std::set<std::string>::iterator di, de;
-      std::set<std::string> dirs;
+      std::set<std::string> newdirs;
       std::string name;
       std::string dir;
       bool doroot = options.count("rootcontent") > 0;
@@ -2185,7 +2211,8 @@ public:
 	    // Object in subdirectory, remember subdirectory part
 	    size_t begin = (rootpath.empty() ? 0 : rootpath.size()+1);
 	    size_t slash = dir.find('/', begin);
-	    dirs.insert(std::string(dir, begin, slash - begin));
+	    if (dirs.find(std::string(dir, begin, slash - begin)) == dirs.end())
+	      newdirs.insert(std::string(dir, begin, slash - begin));
 	    continue;
 	  }
 	  else
@@ -2213,14 +2240,14 @@ public:
 		// would have the side effect of including all
 		// directories, starting from the root one.
 		if (!name.empty() && !dir.empty())
-		  src->json(sample, dir, doroot, dolumi, result, stamp, name);
+		  src->json(sample, dir, doroot, dolumi, result, stamp, name, dirs);
 	      }
 	    }
 	  }
 	}
 
       // Format sub-directories.
-      for (di = dirs.begin(), de = dirs.end(); di != de; ++di)
+      for (di = newdirs.begin(), de = newdirs.end(); di != de; ++di)
 	result += StringFormat(", { \"subdir\": %1 }\n").arg(stringToJSON(*di));
 
       // Successfully read the data, return.
@@ -3035,9 +3062,14 @@ public:
     }
 
   void
-  json(const std::string &rootpath, bool fulldata, bool lumisect, std::string &result, double &stamp, const std::string &mename)
+  json(const std::string &rootpath,
+       bool fulldata,
+       bool lumisect,
+       std::string &result,
+       double &stamp,
+       const std::string &mename,
+       std::set<std::string> &dirs)
     {
-      std::set<std::string> dirs;
       std::vector<DQMNet::Object> objs;
       PeerMap::iterator pi, pe;
       ObjectMap::iterator oi, oe;
@@ -3281,10 +3313,11 @@ public:
        bool lumisect,
        std::string &result,
        double &stamp,
-       const std::string &name)
+       const std::string &name,
+       std::set<std::string> &dirs)
     {
       if (sample.type == SAMPLE_LIVE || sample.type == SAMPLE_ANY)
-	thread_->json(rootpath, fulldata, lumisect, result, stamp, name);
+	thread_->json(rootpath, fulldata, lumisect, result, stamp, name, dirs);
     }
 
   virtual void
@@ -3994,7 +4027,8 @@ public:
        bool lumisect,
        std::string &result,
        double &stamp,
-       const std::string &mename)
+       const std::string &mename,
+       std::set<std::string> &dirs)
     {
       // No point in even trying unless this is archived data.
       if (sample.type < SAMPLE_ONLINE_DATA)
@@ -4032,7 +4066,6 @@ public:
 	  VisDQMFilePtr info(open(VisDQMIndex::MASTER_FILE_INFO, si->files));
 	  VisDQMFilePtr data(open(VisDQMIndex::MASTER_FILE_DATA, si->files));
 	  std::set<std::string>::iterator di, de;
-	  std::set<std::string> dirs;
 	  DQMNet::DataBlob rawdata;
 	  DQMNet::QReports qreports;
 	  std::string qstr;
