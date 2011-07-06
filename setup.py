@@ -18,7 +18,7 @@ systems = \
 	       ('lib', 'libDQMGUI.so'),
 	       ('pylib', 'Accelerator.so', 'Monitoring/DQM')],
     'etc':    ['makefile*'],
-    'bin':    ['mon*', 'visDQM*'],
+    'bin':    ['mon*', 'visDQM*', 'dqm-*'],
     'python': ['Monitoring.Core', 'Monitoring.DQM'],
     'data':   ['javascript/Core/*.js', 'javascript/DQM/*.js',
                'css/Core/*.css', 'css/DQM/*.css',
