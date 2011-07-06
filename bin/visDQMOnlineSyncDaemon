@@ -1,133 +1,301 @@
-#!/bin/zsh
+#!/usr/bin/env python
 
-#Repository location
-BASE_DIR=$1
-mkdir -p $BASE_DIR/{original,merged}
-Counter=0
-log(){
-  echo $(date +"%F %T") \[OnlineSynchronyzer/$$\] $1
-}
+"""Usage: visDQMOnlineSyncDaemon [-s ONLINE-SERVER] [-n CONNECTIONS]
+             [-d WAITTIME] DROPBOX FILEREPO NEXT
 
-[[ X$X509_USER_PROXY == X || X$X509_CERT_DIR == X ]] && \
-  log "ERROR: Ether X509_USER_PROXY or X509_CERT_DIR are not properly set Aborting" && \
-  exit 1
-[[ ! -d $X509_CERT_DIR ]] && \
-  log "ERROR: X509_CERT_DIR does not exists Aborting" && \
-  exit 2
+Synchronise ROOT file repository from ONLINE-SERVER to local FILEREPO.
+Transfers all files appearing on ONLINE-SERVER which are not yet in
+FILEREPO, or have different file size or modification time stamp than
+the remote ones.
 
-rcurl(){
-  [[ -z $2 ]] && removeTree=0 || removeTree=$2
-  if [[ $removeTree -eq 0 ]]
-  then
-    rootDir=$1
-    remoteDirBase="dqm/online/data/browse"
-  else
-    [[ ${(w)#${(SI:$removeTree:)1/\// }} -gt 1 ]] && rootDir=${${(s: :SI:$removeTree:)1/\// }[2]} || rootDir=""
-    [[ ${(w)#${(SI:$removeTree:)1/\// }} -gt 1 ]] && remoteDirBase="dqm/online/data/browse"/${${(s: :SI:$removeTree:)1/\// }[1]} || remoteDirBase="dqm/online/data/browse"/$1
-  fi
-  host="https://cmsweb.cern.ch"
-  [[ -e $rootDir/index.html ]] && dirTimeStamp=$(date -d "$(curl -A "OnlineSyncDev/0.1" -s -I \
-       --capath $X509_CERT_DIR/ \
-       --key $X509_USER_PROXY \
-       --cert $X509_USER_PROXY \
-       $host/$remoteDirBase/$rootDir/ | grep "Last-Modified:.*$" | sed -e "s|Last-Modified: ||" )" +%s) || dirTimeStamp=$(date +%s)
-  if [[ ! -e $rootDir/index.html || $dirTimeStamp -gt $(stat $rootDir/index.html -c %Y) ]]
-  then
-    echo Fetching $rootDir content
-    curl -A "OnlineSyncDev/0.1" -s -R -o $rootDir/index.html --create-dirs \
-         --capath $X509_CERT_DIR/ \
-         --key $X509_USER_PROXY \
-         --cert $X509_USER_PROXY \
-         $host/$remoteDirBase/$rootDir/
-  fi
-  dirs=($(<$rootDir/index.html | egrep -oe "<tr><td><a.*</a>" | egrep -o "href='([^']*)'" | egrep -v "\.root" | sed -re "s/(href='\/|\/'$)//g" | sort -r ))
-  files=($(<$rootDir/index.html | egrep -oe "<tr><td><a.*</a>" | egrep -o "href='([^']*)'" | egrep  "\.root" |  sed -re "s/(href='\/|'$)//g" | sort -r ))
-  for d in $dirs
-  do
-    rcurl ${d/dqm\/online\/data\/browse\//} $removeTree
-  done
-  for f in $files
-  do
-    [[ -e $rootDir/$(basename $f) ]] && fTimeStamp=$(date -d "$(curl -A "OnlineSyncDev/0.1" -s -I \
-       --capath $X509_CERT_DIR/ \
-       --key $X509_USER_PROXY \
-       --cert $X509_USER_PROXY \
-       $host/$remoteDirBase/$rootDir/$(basename $f ) | grep "Last-Modified:.*$" | sed -e "s|Last-Modified: ||" )" +%s) || fTimeStamp=$(date +%s)
-    if [[ ! -e $rootDir/$(basename $f) || $fTimeStamp -gt $(stat $rootDir/$(basename $f) -c %Y) ]]
-    then
-      curl -A "OnlineSyncDev/0.1" -s -R -o $rootDir/$(basename $f) --create-dirs \
-         --capath $X509_CERT_DIR/ \
-         --key $X509_USER_PROXY \
-         --cert $X509_USER_PROXY \
-         $host/$f && log "INFO: Successfully downloaded "$PWD/$rootDir/$(basename $f) || \
-         log "ERROR: Unable to download "$PWD/$rootDir/$(basename $f)
-    fi
+$X509_CERT_DIR and either $X509_USER_PROXY or $X509_USER_CERT/KEY must
+be set correctly for authentication.
+"""
 
-  done
+from Monitoring.Core.HTTP import RequestManager
+from Monitoring.Core.X509 import SSLOptions
+import os, os.path, sys, re, hashlib, pycurl, urllib
+from time import time, strptime, sleep
+from optparse import OptionParser
+from urlparse import urlparse
+from calendar import timegm
+from datetime import datetime
+from traceback import print_exc
+from tempfile import mkstemp
+from stat import *
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
-}
-while [ 1 ]
-do
-  if [[ $Counter -gt 7 ]]
-  then
-    Counter=0
-    #log "INFO: Starting daily full tree synchronization"
-    #cd $BASE_DIR/original
-    #[[ $(pwd) == $BASE_DIR/original ]] && wget -q -e robots=off --mirror -np -nH --cut-dirs=5 -T120 \
-    #   --ca-dir /etc/grid-security/certificates \
-    #   --private-key /dqmdata/auth/proxy.pem \
-    #   --certificate /dqmdata/auth/proxy.pem \
-    #   https://cmsweb.cern.ch/dqm/online/data/browse/Original/ || (log "ERROR: Could not go to $BASE_DIR/original";exit)
-    #cd $BASE_DIR/merged
-    #[[ $(pwd) == $BASE_DIR/merged ]] && wget -q -e robots=off --mirror -np -nH --cut-dirs=5 -T120 \
-    #   --ca-dir /etc/grid-security/certificates \
-    #   --private-key /dqmdata/auth/proxy.pem \
-    #   --certificate /dqmdata/auth/proxy.pem \
-    #   https://cmsweb.cern.ch/dqm/online/data/browse/Merged/ || (log "ERROR: Could not go to $BASE_DIR/Merged";exit)
-    #log "INFO: Finished daily full tree synchronization"wget
-    continue
-  fi
-  Counter=$(( $Counter + 1 ))
-  cd $BASE_DIR/original
-  latestLocalDir=$(find $BASE_DIR/original -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort -n | tail -n 1)
-  latestDir=$(curl -A "OnlineSyncDev/0.1" \
-    --capath $X509_CERT_DIR --key $X509_USER_PROXY \
-    --cert $X509_USER_PROXY \
-    https://cmsweb.cern.ch/dqm/online/data/browse/Original/ 2>&1 \
-    | egrep -oe "<tr><td><a.*</a>" | egrep -o "'>.*<" | egrep -o "[0-9]{5}xxxx" |sort -r | head -n 1)
-  [[ -z $latestDir ]] && continue
-  [[ -z $latestLocalDir ]] && latestLocalDir=00009
-  dirs=({${latestLocalDir/xxxx/}..${latestDir/xxxx/}}xxxx)
-  #log "INFO: Starting partial synchronization of original files"
-  for d in $dirs
-  do
-    #log "INFO: Synchronizing  https://cmsweb.cern.ch/dqm/online/data/browse/Original/$d"
-    rcurl Original/$d 1
-  done
-  #log "INFO: Finished partial synchronization of original files"
+# Directory where we receive input ("drop box"). Not used.
+DROPBOX = None
 
-  cd $BASE_DIR/merged
-  latestLocalDir=$(find $BASE_DIR/merged -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort -n | tail -n 1)
-  latestDir=$(curl -A "OnlineSyncDev/0.1" \
-    --capath $X509_CERT_DIR --key $X509_USER_PROXY \
-    --cert $X509_USER_PROXY \
-    https://cmsweb.cern.ch/dqm/online/data/browse/Merged/ 2>&1|
-    egrep -oe "<tr><td><a.*</a>" | egrep -o "'>.*<" | egrep -o "[0-9]{5}xxxx" |sort -r | head -n 1)
-  [[ -z $latestDir ]] && continue
-  [[ -z $latestLocalDir ]] && latestLocalDir=00009
-  dirs=({${latestLocalDir/xxxx/}..${latestDir/xxxx/}}xxxx)
-  log "INFO: Starting partial synchronization of merged files"
-  if [[ X$latestDir != X ]]
-  then
-    for d in $dirs
-    do
-      log "INFO: Synchronizing  https://cmsweb.cern.ch/dqm/online/data/browse/Merged/$d"
-      rcurl Merged/$d 1
-    done
-    log "INFO: Finished partial synchronization of merged files"
-  fi
+# Final file repository of original DQM files.
+FILEREPO = None
 
-  # Fix directory permissions, curl --create-dirs makes them 0750.
-  find $BASE_DIR -type d \! -perm 755 -exec chmod o+rx {} \;
-  sleep $(( 3600 * 4 ))
-done
+# Directories for the next agent in chain. This is where online info
+# files are created, e.g. for zipping and transfer to tape.
+NEXT = None
+
+# Root URL for the server where we are retrieving contents, to be
+# stripped off from file paths.
+ROOT_URL = None
+
+# Daemon cycle time. This should not be excessively frequent to avoid
+# generating too much file-related load on the target online server.
+WAITTIME = 1800
+
+# Process umask, used to fix up temporary files after they are ok.
+UMASK = None
+
+# Object types.
+DIR = 0
+FILE = 1
+
+# HTTP protocol `User-agent` identification string.
+ident = "OnlineSync/1.0 python/%s.%s.%s" % sys.version_info[:3]
+
+# SSL/X509 options.
+ssl_opts = None
+
+# HTTP request manager for content requests.
+reqman = None
+
+# Number of HTTP requests made for content.
+nfetched = 0
+
+# Number of files found in the scan.
+nfound = 0
+
+# Number of files copied on this round.
+ncopied = 0
+
+def logme(msg, *args):
+  """Generate agent log message."""
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+def myumask():
+  """Get the current process umask."""
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
+def need_to_copy(path, size, date):
+  """Check if a remote file needs to be (re)copied to local repository.
+  If the file exists, and has the same size and mtime, no copy is needed.
+  Otherwise requests the file to be copied."""
+  try:
+    info = os.stat(path)
+    if int(info.st_mtime) == date and info.st_size == size:
+      return False
+  except:
+    pass
+
+  return True
+
+def handle_init(c):
+  """Prepare custom properties on download handles."""
+  c.temp_file = None
+  c.temp_path = None
+  c.local_path = None
+
+def request_init(c, options, kind, path, size, date):
+  """`RequestManager` callback to initialise directory contents request."""
+  # Set the download URL.
+  assert c.temp_file == None
+  assert c.temp_path == None
+  assert c.local_path == None
+  c.setopt(pycurl.URL, options.server + urllib.quote(path)
+           + ((kind == DIR and path != "/" and "/") or ""))
+
+  # If this is file download, prepare temporary destination file
+  # in the target directory. process_task() will finish this off.
+  if kind == FILE:
+    local_path = "%s/%s" % (FILEREPO, path)
+    dir, name = local_path.rsplit('/', 1)
+    try:
+      if not os.path.exists(dir):
+        os.makedirs(dir, 0777 & ~UMASK)
+
+      (fd, tmp) = mkstemp(dir=dir)
+      fp = os.fdopen(fd, 'wb')
+      c.setopt(pycurl.WRITEFUNCTION, fp.write)
+      c.temp_file = fp
+      c.temp_path = tmp
+      c.local_path = local_path
+      c.buffer = None
+    except Exception, e:
+      logme("ERROR: %s: %s", local_path, str(e))
+      print_exc()
+
+def cleanup(c):
+  """Clean up file copy operation, usually after any failures."""
+  if c.temp_file:
+    try: c.temp_file.close()
+    except: pass
+  if c.temp_path:
+    try: os.remove(c.temp_path)
+    except: pass
+  if c.local_path:
+    try: os.remove(c.local_path)
+    except: pass
+  c.temp_file = None
+  c.temp_path = None
+  c.local_path = None
+  c.buffer = None
+
+def report_error(c, task, errmsg, errno):
+  """`RequestManager` callback to report directory contents request errors."""
+  global nfetched; nfetched += 1
+  logme("ERROR: failed to retrieve %s %s from %s: %s (%d)",
+        (task[1] == DIR and "directory") or "file", task[2],
+	task[0].server, errmsg, errno)
+  cleanup(c)
+
+def process_task(c):
+  """`RequestManager` callback to handle directory content response.
+
+  This gets called once per every directory which has been successfully
+  retrieved from the server. It parses the HTML response and turns it
+  into object listing with all the file meta information.
+
+  If verbosity has been requested, also shows simple progress bar on the
+  search progress, one dot for every ten directories retrieved."""
+  global nfetched, nfound, ncopied; nfetched += 1
+  options, kind, path, size, date = c.task
+
+  # First check if various basic info like HTTP response code.
+  if c.getinfo(pycurl.HTTP_CODE) != 200:
+    logme("ERROR: server responded with status %d for %s; skipping",
+          c.getinfo(pycurl.HTTP_CODE), path)
+    cleanup(c)
+    return
+
+  # If it's a FILE, process HTTP download. Finish saving the file contents
+  # and set file mtime stamp.
+  if kind == FILE:
+    assert c.local_path, "Expected local path property to be set"
+    assert c.temp_file, "Exepected temporary file property to be set"
+    try:
+      c.setopt(pycurl.WRITEFUNCTION, lambda *args: None)
+      c.temp_file.close()
+      c.temp_file = None
+
+      if os.path.exists(c.local_path):
+	os.remove(c.local_path)
+
+      os.chmod(c.temp_path, 0666 & ~UMASK)
+      os.utime(c.temp_path, (date, date))
+      os.rename(c.temp_path, c.local_path)
+
+      ncopied += 1
+      c.local_path = None
+      logme("INFO: downloaded %s", path)
+    except Exception, e:
+      logme("ERROR: downloading %s into %s failed: %s",
+            path, c.local_path, str(e))
+      print_exc()
+    finally:
+      cleanup(c)
+
+  # If it's a DIR, scan directory contents and maybe fetch files.
+  elif kind == DIR:
+    assert c.temp_file == None, "Unexpected temporary file for a directory"
+    assert c.temp_path == None, "Unexpected temporary path for a directory"
+    assert c.local_path == None, "Unexpected local path for a directory"
+    assert size == None, "Unexpected size for a directory"
+    assert date == None, "Unexpected date for a directory"
+    items = re.findall(r"<tr><td><a href='(.*?)'>(.*?)</a></td><td>(\d+|&nbsp;|-)</td>"
+                       r"<td>(&nbsp;|\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d UTC)</td>",
+                       c.buffer.getvalue())
+
+    for path, name, size, date in items:
+      assert path.startswith(ROOT_URL)
+      path = path[len(ROOT_URL):]
+
+      if date == "&nbsp;":
+        date = -1
+      else:
+        date = timegm(strptime(date, "%Y-%m-%d %H:%M:%S %Z"))
+
+      if size == "&nbsp;" or size == "-":
+        size = -1
+      else:
+        size = int(size)
+
+      if path.endswith("/"):
+        assert size == -1
+        path = path[:-1]
+        reqman.put((options, DIR, path, None, None))
+      else:
+        assert size >= 0
+        if need_to_copy("%s/%s" % (FILEREPO, path), size, date):
+          reqman.put((options, FILE, path, size, date))
+
+  # Anything else is an internal implementation error.
+  else:
+    logme("ERROR: task type %s (%s) not recognised", kind, path)
+
+# Parse command line options.
+op = OptionParser(usage = __doc__)
+op.add_option("-s", dest = "server",
+              type = "string", action = "store", metavar = "SERVER",
+              default = "https://cmsweb.cern.ch/dqm/online/data/browse",
+              help = "Pull content from SERVER [default: %default]")
+op.add_option("-n", dest = "connections",
+              type = "int", action = "store", metavar = "N", default = 5,
+              help = "Use N concurrent connections [default: %default]")
+op.add_option("-d", dest = "delay",
+              type = "int", action = "store", metavar = "N", default = WAITTIME,
+              help = "Delay N seconds between iterations [default: %default]")
+options, args = op.parse_args()
+if len(args) < 2:
+  print >> sys.stderr, "Too few arguments"
+  sys.exit(1)
+if not options.server:
+  print >> sys.stderr, "Server contact string required"
+  sys.exit(1)
+
+UMASK = myumask()
+ROOT_URL = urlparse(options.server).path.rstrip('/')
+DROPBOX = args[0]
+FILEREPO = args[1]
+NEXT = args[2:]
+
+# Get SSL X509 parametres.
+ssl_opts = SSLOptions()
+logme("INFO: using SSL cert dir %s", ssl_opts.ca_path)
+logme("INFO: using SSL private key %s", ssl_opts.key_file)
+logme("INFO: using SSL public key %s", ssl_opts.cert_file)
+
+# Start a request manager for contents.
+reqman = RequestManager(num_connections = options.connections,
+                        ssl_opts = ssl_opts,
+                        user_agent = ident,
+                        request_init = request_init,
+                        request_respond = process_task,
+                        request_error = report_error,
+                        handle_init = handle_init)
+
+# Process files forever.
+while True:
+  try:
+    nfetched = nfound = ncopied = 0
+    start = time()
+    reqman.put((options, DIR, "/", None, None))
+    reqman.process()
+    end = time()
+
+    logme("INFO: found %d directories, %d objects, %d copied in %.3f seconds",
+          nfetched, nfound, ncopied, end - start)
+
+  # If anything bad happened, barf but keep going.
+  except KeyboardInterrupt, e:
+    logme("INFO: exiting")
+    map(cleanup, reqman.handles)
+    sys.exit(0)
+
+  except Exception, e:
+    logme("ERROR: %s", e)
+    print_exc()
+
+  sleep(options.delay)
