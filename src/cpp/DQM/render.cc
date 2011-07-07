@@ -361,7 +361,7 @@ public:
       if (bins_)
 	bins_->Draw(opt);
       if (graph_)
-	graph_->Draw("P");
+	graph_->Draw("P|>");
 
       if (flags_ & DQM_PROP_STRIP_AXIS_TIME)
 	gPad->SetBottomMargin(0.25);
@@ -551,8 +551,8 @@ makeStripChart(VisDQMImgInfo &info,
     axisvals.push_back(axisvals.back() + 1);
 
   // Construct the histogram. We use it only for the bins.
-  double vmax = 0;
-  double vmin = 0;
+  double vmax = vals.size() > 0 ? -DBL_MAX : 0;
+  double vmin = vals.size() > 0 ? DBL_MAX : 0;
   size_t skip = (info.trend != DQM_TREND_LS_VALUE) ? vals.size() / 30 + 1 : 1;
   TH1D *bins = new TH1D("Trend", fulltitle.c_str(), realsize, &axisvals[nattrsmin]);
   TAxis *xaxis = bins->GetXaxis();
@@ -569,7 +569,7 @@ makeStripChart(VisDQMImgInfo &info,
     {
       vmax = std::max(vmax, vals[i] + yhi[i]);
       vmin = std::min(vmin, vals[i] - ylo[i]);
-    }
+     }
 
     // swap label ordering, since DQM_TREND_LS_VALUE is increasing, while
     // in all other cases the order is reversed (older runs comes
@@ -583,8 +583,8 @@ makeStripChart(VisDQMImgInfo &info,
   }
   bins->SetStats(kFALSE);
   bins->LabelsOption("v");
-  bins->SetMaximum(1.1*vmax);
-  bins->SetMinimum(1.1*vmin);
+  bins->SetMaximum(vmax >= 0 ? 1.1*vmax : 0.9*vmax);
+  bins->SetMinimum(vmin >= 0 ? 0.9*vmin : 1.1*vmin);
   //xaxis->CenterLabels(kFALSE);
   //xaxis->SetNdivisions(530);
 
