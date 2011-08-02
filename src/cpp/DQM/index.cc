@@ -88,8 +88,10 @@ struct SampleInfo
 /** Classification of input files to DQM samples. */
 struct FileInfo
 {
-  Filename	path;	 //< Path name of the input file.
-  SampleInfo	*sample; //< Sample classification of this file.
+  Filename	path;	   //< Path name of the input file (or File name of the root file inside a zip archive).
+  Filename	fullpath;  //< File name of the zip archive and ROOT filename.
+  Filename	container; //< File name of the zip archive, if any, or of the root file.
+  SampleInfo	*sample;   //< Sample classification of this file.
 };
 
 /** Information extracted from a monitor element and stored in the index. */
@@ -1070,7 +1072,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       newfiles.push_back(newmaster->path());
 
       // Read in the file.
-      store.open(fi.path.name());
+      store.open(fi.fullpath.name());
 
       // Extract monitor element information somewhat parallelised.
       static const size_t NUM_TASKS = 4;
@@ -2547,19 +2549,31 @@ int main(int argc, char **argv)
 
       files.push_back(FileInfo());
       FileInfo &fi = files.back();
-      fi.path = argv[arg];
+      std::string filename(argv[arg]);
+      fi.fullpath = filename;
+      size_t hash = filename.find('#');
+      if (hash != std::string::npos)
+      {
+	fi.path = filename.substr(hash+1, std::string::npos);
+	fi.container = filename.substr(0, hash);
+      }
+      else
+      {
+	fi.path = argv[arg];
+	fi.container = argv[arg];
+      }
       fi.sample = 0;
 
-      DEBUG(1, "considering file '" << fi.path.name() << "'\n");
-      if (! fi.path.exists() || ! fi.path.isRegular())
+      DEBUG(1, "considering file '" << fi.container.name() << "'\n");
+      if (! fi.container.exists() || ! fi.container.isRegular())
       {
-	std::cerr << fi.path.name() << ": no such file\n";
+	std::cerr << fi.container.name() << ": no such file\n";
 	return EXIT_FAILURE;
       }
 
-      if (! fi.path.isReadable())
+      if (! fi.container.isReadable())
       {
-	std::cerr << fi.path.name() << ": file not readable\n";
+	std::cerr << fi.container.name() << ": file not readable\n";
 	return EXIT_FAILURE;
       }
 
