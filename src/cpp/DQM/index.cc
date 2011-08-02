@@ -197,6 +197,8 @@ Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.root$");
 /// The first capture is the CMSSW release string.
 Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*$");
 
+static const size_t ALL_SAMPLES = ~(size_t)0;
+
 // ----------------------------------------------------------------------
 /** Utility function to round @a value to a value divisible by @a unit. */
 static inline uint32_t
@@ -1926,7 +1928,7 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
 // ----------------------------------------------------------------------
 /** Dump parts of a DQM GUI index.  */
 static int
-dumpIndex(const Filename &indexdir, DumpType what)
+dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 {
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
@@ -1974,31 +1976,32 @@ dumpIndex(const Filename &indexdir, DumpType what)
     si = samples.begin();
     se = samples.end();
     for (size_t n = 0; si != se; ++si, ++n)
-      std::cout
-	<< "SAMPLE #" << n
-	<< " first-import=" << si->firstImportTime
-	<< " last-import=" << si->lastImportTime
-	<< " import-version=" << si->importVersion
-	<< " info-file=#"
-	<< ((si->files[VisDQMIndex::MASTER_FILE_INFO] >> 16) & 0xffff)
-	<< ':' << (si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff)
-	<< " data-file=#"
-	<< ((si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16) & 0xffff)
-	<< ':' << (si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff)
-	<< " src-file=#" << si->sourceFileIdx
-	<< '/' << pathnames.key(si->sourceFileIdx)
-	<< " dataset-name=#" << si->datasetNameIdx
-	<< '/' << dsnames.key(si->datasetNameIdx)
-	<< " streamer-info=#" << si->streamerInfoIdx
-	<< '/' << streamers.key(si->streamerInfoIdx).size()
-	<< " runnr=" << si->runNumber
-	<< " cmssw-version='" << vnames.key(si->cmsswVersion).c_str()
-	<< "' num-objects=" << si->numObjects
-	<< " num-events=" << si->numEvents
-	<< " num-lumi-sections=" << si->numLumiSections
-	<< " run-start-time=" << si->runStartTime
-	<< " processed-time=" << si->processedTime
-	<< '\n';
+      if (n == sampleid || sampleid == ALL_SAMPLES)
+	std::cout
+	  << "SAMPLE #" << n
+	  << " first-import=" << si->firstImportTime
+	  << " last-import=" << si->lastImportTime
+	  << " import-version=" << si->importVersion
+	  << " info-file=#"
+	  << ((si->files[VisDQMIndex::MASTER_FILE_INFO] >> 16) & 0xffff)
+	  << ':' << (si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff)
+	  << " data-file=#"
+	  << ((si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16) & 0xffff)
+	  << ':' << (si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff)
+	  << " src-file=#" << si->sourceFileIdx
+	  << '/' << pathnames.key(si->sourceFileIdx)
+	  << " dataset-name=#" << si->datasetNameIdx
+	  << '/' << dsnames.key(si->datasetNameIdx)
+	  << " streamer-info=#" << si->streamerInfoIdx
+	  << '/' << streamers.key(si->streamerInfoIdx).size()
+	  << " runnr=" << si->runNumber
+	  << " cmssw-version='" << vnames.key(si->cmsswVersion).c_str()
+	  << "' num-objects=" << si->numObjects
+	  << " num-events=" << si->numEvents
+	  << " num-lumi-sections=" << si->numLumiSections
+	  << " run-start-time=" << si->runStartTime
+	  << " processed-time=" << si->processedTime
+	  << '\n';
 
     for (size_t i = 1, e = pathnames.size(); i != e; ++i)
       std::cout << "SOURCE-FILE #" << i
@@ -2034,6 +2037,8 @@ dumpIndex(const Filename &indexdir, DumpType what)
     se = samples.end();
     for (size_t n = 0; si != se; ++si, ++n)
     {
+      if (sampleid != ALL_SAMPLES && n != sampleid)
+	continue;
       std::cout << "BEGIN INFO #" << n << '\n';
       if (VisDQMFile *f
 	  = ix.open(VisDQMIndex::MASTER_FILE_INFO,
@@ -2159,6 +2164,8 @@ dumpIndex(const Filename &indexdir, DumpType what)
     se = samples.end();
     for (size_t n = 0; si != se; ++si, ++n)
     {
+      if (sampleid != ALL_SAMPLES && n != sampleid)
+	continue;
       std::cout << "BEGIN DATA #" << n << '\n';
       loadStreamerInfo(streamers.key(si->streamerInfoIdx));
 
@@ -2234,7 +2241,7 @@ showusage(void)
 	    << app.name() << " [OPTIONS] add [--dataset DATASET-NAME] INDEX-DIRECTORY [FILE...]\n  "
 	    << app.name() << " [OPTIONS] remove --dataset DATASET-NAME --run RUNNR INDEX-DIRECTORY\n  "
 	    << app.name() << " [OPTIONS] merge INDEX-DIRECTORY [IMPORT-INDEX-DIRECTORY...]\n  "
-	    << app.name() << " [OPTIONS] dump INDEX-DIRECTORY [{ catalogue | info | data | all }]\n";
+	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n";
   return EXIT_FAILURE;
 }
 
@@ -2258,6 +2265,7 @@ int main(int argc, char **argv)
   Filename indexdir;
   int32_t runnr = -1;
   std::string dataset;
+  size_t sampleid = ALL_SAMPLES;
   std::list<SampleInfo> samples;
   std::list<FileInfo> files;
   std::list<Filename> mergeix;
@@ -2379,6 +2387,23 @@ int main(int argc, char **argv)
       {
 	std::cerr << app.name() << ": unexpected option '" << argv[arg] << "'\n";
 	return showusage();
+      }
+      else
+	break;
+  }
+  else if (task == TASK_DUMP)
+  {
+    for ( ; arg < argc; ++arg)
+      if (! strcmp(argv[arg], "--sample"))
+      {
+	char *end = 0;
+	if (arg < argc-1)
+	  sampleid = strtoul(argv[++arg], &end, 10);
+	else
+	{
+	  std::cerr << app.name() << ": --sample option requires a value\n";
+	  return showusage();
+	}
       }
       else
 	break;
@@ -2621,7 +2646,7 @@ int main(int argc, char **argv)
     else if (task == TASK_MERGE)
       return mergeIndexes(indexdir, mergeix);
     else if (task == TASK_DUMP)
-      return dumpIndex(indexdir, dumpwhat);
+      return dumpIndex(indexdir, dumpwhat, sampleid);
     else
     {
       std::cerr << app.name() << ": internal error, unknown task\n";
