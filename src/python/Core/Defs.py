@@ -5,6 +5,7 @@ DEFAULT_PORT = 8030
 DEFAULT_HOST = gethostname()
 
 class ServerDef:
+  """FIXME: Server configuration."""
   def __init__(self):
     self.instrument  = None
     self.port        = None

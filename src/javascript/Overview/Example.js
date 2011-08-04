@@ -1,44 +1,41 @@
 GUI.Plugin.LHCCooldown = new function()
 {
-  var _gcanvas = $('canvas');
+  var _canvas = $('canvas');
 
   this.attach = function(gui)
   {
-    _gcanvas.style.top = 0;
-    _gcanvas.style.bottom = 0;
+    _canvas.style.top = 0;
+    _canvas.style.bottom = 0;
     var content = ""
       + "<div class='item' style='float:left;padding:.5em'>"
       + "<h3>LHC Cooldown Status</h3><img id='i-lhc-temp' style='margin:1em 0' src='"
       + ROOTPATH + "/plotfairy/lhc/lhc.png' />"
       + "</div>";
 
-    if (_gcanvas.innerHTML != content)
-      _gcanvas.innerHTML = content;
+    if (_canvas.innerHTML != content)
+      _canvas.innerHTML = content;
 
-    if (_gcanvas.style.display != '')
-      _gcanvas.style.display = '';
-  }
+    if (_canvas.style.display != '')
+      _canvas.style.display = '';
+  };
 
   this.detach = function()
   {
-    while (_gcanvas.firstChild)
-      _gcanvas.removeChild(_gcanvas.firstChild);
-  }
+    while (_canvas.firstChild)
+      _canvas.removeChild(_canvas.firstChild);
+  };
 
   this.update = function(data)
   {
-
-  }
+  };
 
   return this;
 }();
 
-
-
 GUI.Plugin.TPGQuery = new function()
 {
   var _self = this;
-  var _gcanvas = $('canvas');
+  var _canvas = $('canvas');
   var _gui = null;
   this._resultDiv = null;
   this._optLine = null;
@@ -52,8 +49,8 @@ GUI.Plugin.TPGQuery = new function()
   this.attach = function(gui)
   {
     _gui = gui;
-    _gcanvas.style.top = 0;
-    _gcanvas.style.bottom = 0;
+    _canvas.style.top = 0;
+    _canvas.style.bottom = 0;
 
     var content = ""
       + "<div class='item' style='float:left;padding:.5em'>"
@@ -81,54 +78,76 @@ GUI.Plugin.TPGQuery = new function()
       + "<div id='result-div'></div>"
       + "</div>";
 
-    if (_gcanvas.innerHTML != content) _gcanvas.innerHTML = content;
+    if (_canvas.innerHTML != content)
+      _canvas.innerHTML = content;
 
-    if (_gcanvas.style.display != '') _gcanvas.style.display = '';
+    if (_canvas.style.display != '')
+      _canvas.style.display = '';
 
-    this._resultDiv       = document.getElementById('result-div');
-    this._optLine     = document.getElementById('opt-line');
-    this._optDirection   = document.getElementById('opt-direction');
-    this._optStop = document.getElementById('opt-stop');
-    this._optLine.onchange = function() {_self.sendInput('line',this.value); return false; };
-    this._optDirection.onchange = function() {_self.sendInput('direction',this.value); return false; };
-    this._optStop.onchange = function() {_self.sendInput('stop',this.value); return false; };
+    this._resultDiv    = $('result-div');
+    this._optLine      = $('opt-line');
+    this._optDirection = $('opt-direction');
+    this._optStop      = $('opt-stop');
 
-    var c1 = YAHOO.util.Connect.asyncRequest('GET',ROOTPATH + "/plotfairy/tpg/linelist",{success:GUI.Plugin.TPGQuery.receiveText,argument:'linelist'});
+    this._optLine.onchange = function() {
+      _self.sendInput('line', this.value);
+      return false;
+    };
 
-  }
+    this._optDirection.onchange = function() {
+      _self.sendInput('direction', this.value);
+      return false;
+    };
+
+    this._optStop.onchange = function() {
+      _self.sendInput('stop', this.value);
+      return false;
+    };
+
+    var c1 = YAHOO.util.Connect.asyncRequest
+     ('GET',ROOTPATH + "/plotfairy/tpg/linelist",
+      { success: GUI.Plugin.TPGQuery.receiveText,
+        argument: 'linelist' });
+  };
 
   this.receiveText = function(response)
   {
-    if (response.argument=='linelist') {
+    if (response.argument == 'linelist')
+    {
       _self._optLine.innerHTML = _self.makeOptionList(eval(response.responseText));
-      _self.setSelection(_self._optLine,_self._curLine);
+      _self.setSelection(_self._optLine, _self._curLine);
     }
-    if (response.argument=='directionlist') {
+
+    else if (response.argument == 'directionlist')
+    {
       _self._optDirection.innerHTML = _self.makeOptionList(eval(response.responseText));
-      _self.setSelection(_self._optDirection,_self._curDirection);
+      _self.setSelection(_self._optDirection, _self._curDirection);
     }
-    if (response.argument=='stoplist') {
+
+    else if (response.argument == 'stoplist')
+    {
       _self._optStop.innerHTML = _self.makeOptionList(eval(response.responseText));
-      _self.setSelection(_self._optStop,_self._curStop);
+      _self.setSelection(_self._optStop, _self._curStop);
     }
-    if (response.argument=='times') {
-    json = eval(response.responseText);
-    content = "";
-    for (var i=0;i<json.length;i++) {
-      content += "<div>"+json[i]+"</div>";
+
+    else if (response.argument == 'times')
+    {
+      json = eval(response.responseText);
+
+      content = "";
+      for (var i = 0; i < json.length; i++)
+        content += "<div>" + json[i] + "</div>";
+
+      _self._resultDiv.innerHTML = content;
     }
-    _self._resultDiv.innerHTML = content;
-    }
-  }
+  };
 
   this.setSelection = function(listobj,which)
   {
-  for (var i=0;i<listobj.length;i++) {
-    if (listobj.options[i].value==which) {
-      listobj.selectedIndex = i;
-    }
-  }
-  }
+    for (var i = 0; i < listobj.length; i++)
+      if (listobj.options[i].value == which)
+        listobj.selectedIndex = i;
+  };
 
   this.detach = function()
   {
@@ -136,62 +155,85 @@ GUI.Plugin.TPGQuery = new function()
     this._optLine = null;
     this._optDirection = null;
     this._optStop = null;
-    while (_gcanvas.firstChild)
-      _gcanvas.removeChild(_gcanvas.firstChild);
-  }
+    while (_canvas.firstChild)
+      _canvas.removeChild(_canvas.firstChild);
+  };
 
   this.sendInput = function(option,value)
   {
-    if (value != '') _gui.makeCall(_url() + "/alter?field=" + encodeURIComponent(option) + ";value=" + encodeURIComponent(value));
-  }
+    if (value != '')
+      _gui.makeCall(_url() + "/alter?field=" + encodeURIComponent(option)
+                    + ";value=" + encodeURIComponent(value));
+  };
 
   this.makeOptionList = function(data)
   {
     var result = "<option value=''></option>";
-    if (data != null)
-    {
-      for (var x in data) {
-        result+="<option value='"+x+"'>"+data[x]+"</option>";
-      }
-    }
-    return result;
-  }
 
+    if (data != null)
+      for (var x in data)
+        result += "<option value='" + x + "'>" + data[x] + "</option>";
+
+    return result;
+  };
 
   this.update = function(data)
   {
-  var line =  data['tpg.line'];
-  var direction = data['tpg.direction'];
-  var stop = data['tpg.stop'];
+    var line = data['tpg.line'];
+    var direction = data['tpg.direction'];
+    var stop = data['tpg.stop'];
 
-  if (line!=null && line!='null') {
-    if (line!=this._curLine) {
-      this._curLine = line;
-      this._curDirection = null;
-      this._curStop = null;
-      this._optDirection.innerHTML = "<option value=''></option>";
-      this._optStop.innerHTML = "<option value=''></option>";
-      this._resultDiv.innerHTML = "";
-      var c2 = YAHOO.util.Connect.asyncRequest('GET',ROOTPATH + "/plotfairy/tpg/directionlist?line="+encodeURIComponent(this._curLine),{success:GUI.Plugin.TPGQuery.receiveText,argument:'directionlist'});
+    if (line != null && line != 'null')
+    {
+      if (line != this._curLine)
+      {
+        this._curLine = line;
+        this._curDirection = null;
+        this._curStop = null;
+        this._optDirection.innerHTML = "<option value=''></option>";
+        this._optStop.innerHTML = "<option value=''></option>";
+        this._resultDiv.innerHTML = "";
+        var c2 = YAHOO.util.Connect.asyncRequest
+          ('GET', ROOTPATH + "/plotfairy/tpg/directionlist?line="
+           + encodeURIComponent(this._curLine),
+           { success: GUI.Plugin.TPGQuery.receiveText,
+             argument: 'directionlist' });
+      }
     }
-  }
-  if (direction!=null && direction!='null') {
-    if (direction!=this._curDirection) {
-      this._curDirection = direction;
-      this._curStop = null;
-      this._optStop.innerHTML = "<option value=''></option>";
-      this._resultDiv.innerHTML = "";
-      var c3 = YAHOO.util.Connect.asyncRequest('GET',ROOTPATH + "/plotfairy/tpg/stoplist?line="+encodeURIComponent(this._curLine)+";direction="+encodeURIComponent(this._curDirection),{success:GUI.Plugin.TPGQuery.receiveText,argument:'stoplist'});
-    }
-  }
-  if (stop!=null && stop!='null') {
-    if (stop!=this._curStop) {
-      this._curStop = stop;
-      this._resultDiv.innerHTML = "";
-      var c4 = YAHOO.util.Connect.asyncRequest('GET',ROOTPATH + "/plotfairy/tpg/times?line="+encodeURIComponent(this._curLine)+";direction="+encodeURIComponent(this._curDirection)+";stop="+encodeURIComponent(this._curStop),{success:GUI.Plugin.TPGQuery.receiveText,argument:'times'});
-    }
-  }
 
-  }
+    if (direction != null && direction != 'null')
+    {
+      if (direction != this._curDirection)
+      {
+        this._curDirection = direction;
+        this._curStop = null;
+        this._optStop.innerHTML = "<option value=''></option>";
+        this._resultDiv.innerHTML = "";
+        var c3 = YAHOO.util.Connect.asyncRequest
+          ('GET', ROOTPATH + "/plotfairy/tpg/stoplist?line="
+           + encodeURIComponent(this._curLine) + ";direction="
+           + encodeURIComponent(this._curDirection),
+           { success: GUI.Plugin.TPGQuery.receiveText,
+             argument: 'stoplist' });
+      }
+    }
+
+    if (stop != null && stop != 'null')
+    {
+      if (stop != this._curStop)
+      {
+        this._curStop = stop;
+        this._resultDiv.innerHTML = "";
+        var c4 = YAHOO.util.Connect.asyncRequest
+          ('GET', ROOTPATH + "/plotfairy/tpg/times?line="
+           + encodeURIComponent(this._curLine) + ";direction="
+           + encodeURIComponent(this._curDirection) + ";stop="
+           + encodeURIComponent(this._curStop),
+          { success: GUI.Plugin.TPGQuery.receiveText,
+            argument: 'times' });
+      }
+    }
+  };
+
   return this;
 }();

@@ -1,0 +1,11 @@
+doc/*/Monitoring*.rst
+doc/*/modules.rst
+doc/*/references.rst
+doc/build
+build
+
+etc/makefile.ext
+src/cpp/*.so
+src/cpp/DQMCollector
+src/cpp/visDQMIndex
+src/cpp/visDQMRender

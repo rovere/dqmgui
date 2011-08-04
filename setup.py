@@ -44,6 +44,7 @@ def get_relative_path():
 
 def define_the_build(self, dist, system_name, run_make = True, patch_x = ''):
   # Expand various sources.
+  docroot = "doc/build/html"
   system = systems[system_name]
   datasrc = sum((glob("src/%s" % x) for x in system['data']), [])
   etcsrc = sum((glob("etc/%s" % x) for x in system['etc']), [])
@@ -81,6 +82,12 @@ def define_the_build(self, dist, system_name, run_make = True, patch_x = ''):
   dist.data_files = [('etc', etcsrc),
                      ('%sbin' % patch_x, binsrc + cpp['bin']),
                      ('%slib' % patch_x, cpp['lib'])]
+  if os.path.exists(docroot):
+    for dirpath, dirs, files in os.walk(docroot):
+      dist.data_files.append(("%sdoc%s" % (patch_x, dirpath[len(docroot):]),
+                              ["%s/%s" % (dirpath, fname) for fname in files
+                               if fname != '.buildinfo']))
+
   for module, libs in cpp['pylib']:
     dist.data_files.append(('%s/%s' % (pylibdir, module.replace('.', '/')), libs))
   for dir in set(x.rsplit('/', 1)[0] for x in cpp['h']):
@@ -117,6 +124,11 @@ class BuildCommand(Command):
 
     # Force rebuild.
     shutil.rmtree("%s/build" % get_relative_path(), True)
+    shutil.rmtree("doc/build", True)
+
+  def generate_docs(self):
+    os.environ["PYTHONPATH"] = "%s/build/lib:%s" % (os.getcwd(), os.environ["PYTHONPATH"])
+    spawn(['make', '-C', 'doc', 'html', 'PROJECT=%s' % self.system.lower()])
 
   def run(self):
     command = 'build'
@@ -125,6 +137,7 @@ class BuildCommand(Command):
     cmd.force = self.force
     cmd.ensure_finalized()
     cmd.run()
+    self.generate_docs()
     self.distribution.have_run[command] = 1
 
 class InstallCommand(install):

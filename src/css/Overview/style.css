@@ -71,7 +71,7 @@ pre, code {
 pre {
   text-align:		left;
   line-height:		1.3em;
-  overflow:		auto; 
+  overflow:		auto;
   margin-bottom:	10px;
   padding:		10px;
   background:		#eee;
@@ -276,7 +276,7 @@ pre.wide
 
 #header-tools-group .odd {
 }
-  
+
 #header-tools-group a {
   text-decoration:	none;
   color:                #9a4927; /* HKS 84 N */
@@ -299,7 +299,7 @@ pre.wide
   text-decoration:	none;
   color:                #f0b030;
 }
- 
+
 #subheader a:hover {
   text-decoration:	underline;
   color:                #ff9000;
@@ -558,7 +558,7 @@ div.warningbox {
 
 div.notebox, div.note {
   padding-bottom:	0;
-  background-color:	#e4f1db; 
+  background-color:	#e4f1db;
   border:		1px solid #32a804;
   text-align:		center;
   max-width:		50%;

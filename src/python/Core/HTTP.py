@@ -17,7 +17,7 @@ class RequestManager:
   This class is not designed for multi-threaded use. It employs
   overlapping requests, but in a single thread. Only one thread
   at a time should be calling `process()`; several threads may
-  call `put()` provided the caller uses a mutex so that only one
+  call `.put()` provided the caller uses a mutex so that only one
   thread calls into the method at a time."""
 
   def __init__(self, num_connections = 10, ssl_opts = None,
@@ -25,22 +25,23 @@ class RequestManager:
                request_init = None, request_respond = None,
                request_error = None, handle_init = None):
     """Initialise the request manager. The arguments are:
-    - `num_connections`: maximum number of simultaneous connections.
-    - `ssl_opts`: optional SSLOptions (Monitoring.Core.X509) for SSL
-      X509 parametre values, e.g. for X509 client authentication.
-    - `user_agent`: sets user agent identification string if defined.
-    - `request_headers`: if defined, specifies list of additional HTTP
-      request headers to be added to each request.
-    - `request_init`: optional callback to initialise requests; the
-      default assumes each task is a URL to access and sets the `URL`
-      property on the curl object to the task value.
-    - `request_respond`: callback for handling responses; at the very
-      minimum this should be defined as the default one does nothing.
-    - `request_error`: callback for handling connection errors; the
-      default one raises a RuntimeException.
-    - `handle_init`: callback for customising connection handles at
-      creation time; the callback will be invoked for each connection
-      object as it's created and queued to the idle connection list."""
+
+    :arg num_connections: maximum number of simultaneous connections.
+    :arg ssl_opts: optional SSLOptions (Monitoring.Core.X509) for SSL
+                   X509 parametre values, e.g. for X509 client authentication.
+    :arg user_agent: sets user agent identification string if defined.
+    :arg request_headers: if defined, specifies list of additional HTTP
+                          request headers to be added to each request.
+    :arg request_init: optional callback to initialise requests; the
+                       default assumes each task is a URL to access and sets the `URL`
+                       property on the curl object to the task value.
+    :arg request_respond: callback for handling responses; at the very
+                          minimum this should be defined as the default one does nothing.
+    :arg request_error: callback for handling connection errors; the
+                        default one raises a RuntimeException.
+    :arg handle_init: callback for customising connection handles at
+                      creation time; the callback will be invoked for each connection
+                      object as it's created and queued to the idle connection list."""
     self.request_respond = request_respond or self._request_respond
     self.request_error = request_error or self._request_error
     self.request_init = request_init or self._request_init
@@ -83,18 +84,18 @@ class RequestManager:
 
   def put(self, task):
     """Add a new task. The task object should be a tuple and is
-    passed to `request_init` callback passed to the constructor."""
+    passed to ``request_init`` callback passed to the constructor."""
     self.queue.append(task)
 
   def process(self):
     """Process pending requests until none are left.
 
-    This method processes all requests queued with `put()` until they
-    have been fully processed. It calls the `request_respond` callback
-    for all successfully completed requests, and `request_error` for
+    This method processes all requests queued with `.put()` until they
+    have been fully processed. It calls the ``request_respond`` callback
+    for all successfully completed requests, and ``request_error`` for
     all failed ones.
 
-    Any new requests added by callbacks by invoking `put()` are also
+    Any new requests added by callbacks by invoking ``put()`` are also
     processed before returning."""
     npending = 0
     while self.queue or npending:

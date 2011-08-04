@@ -6,11 +6,12 @@ class SSLOptions:
   """Captures standard SSL X509 client parametres.
 
   Grab standard grid certificate environment into easier to access
-  fields: `ca_path`, `key_file`, `cert_file` and `key_pass`.
+  fields: ``ca_path``, ``key_file``, ``cert_file`` and ``key_pass``.
 
-  Typically `ca_path` will be taken from X509_CERT_DIR environment
-  variable, and `key_file` and `cert_file` from either X509_USER_PROXY
-  or X509_USER_CERT and X509_USER_KEY environment variables.
+  Typically ``ca_path`` will be taken from $X509_CERT_DIR environment
+  variable, and ``key_file`` and ``cert_file`` from either
+  $X509_USER_PROXY or $X509_USER_CERT and $X509_USER_KEY environment
+  variables.
 
   If the key file looks like it's a private key rather than a proxy,
   i.e. key and cert files are different paths, the class constructor
@@ -23,9 +24,10 @@ class SSLOptions:
 
   If the environment variables are not set, the following defaults
   are checked for existence:
-   - $X509_CERT_DIR: /etc/grid-security/certificates
-   - $X509_USER_KEY: $HOME/.globus/userkey.pem
-   - $X509_USER_CERT: $HOME/.globus/usercert.pem
+
+   * $X509_CERT_DIR: /etc/grid-security/certificates
+   * $X509_USER_KEY: $HOME/.globus/userkey.pem
+   * $X509_USER_CERT: $HOME/.globus/usercert.pem
 
   If neither the standard environment variables nor the default path
   locations exist, the constructor throws an exception."""

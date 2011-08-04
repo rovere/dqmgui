@@ -31,7 +31,7 @@ def import_module(name):
     mod = getattr(mod, part, None)
     if not mod: break
   return mod
-  
+
 def extension(modules, what, *args):
   for m in modules:
     ctor = getattr(m, what, None)
@@ -41,25 +41,33 @@ def extension(modules, what, *args):
   return None
 
 # -------------------------------------------------------------------
-# Background thread for managing the server's sessions.
-#
-# Saving each session in the HTTP service threads reduces server
-# responsiveness.  For a session modified at a high burst rate in
-# asynchronous requests it would be pointless to save every
-# modifiation to disk.
-#
-# The server runs this separate thread to save modified sessions back
-# to disk in python's pickled format.  It is essential the per-session
-# data is of limited size as pickling is slow.  The output is done in
-# as safe a manner as possible to avoid data loss if the server
-# crashes or is restarted, and even if it is terminated forcefully
-# with SIGKILL.  Modified sessions are written out about once a
-# second.
-#
-# ._stopme   Set by main server thread to indicate it's time to exit.
-# ._path     The directory where the sessions are stored.
-# ._save     A dictionary of sessions that must be saved.
 class SessionThread(Thread):
+  """Background thread for managing the server's sessions.
+
+   Saving each session in the HTTP service threads reduces server
+   responsiveness.  For a session modified at a high burst rate in
+   asynchronous requests it would be pointless to save every
+   modifiation to disk.
+
+   The server runs this separate thread to save modified sessions back
+   to disk in python's pickled format.  It is essential the per-session
+   data is of limited size as pickling is slow.  The output is done in
+   as safe a manner as possible to avoid data loss if the server
+   crashes or is restarted, and even if it is terminated forcefully
+   with SIGKILL.  Modified sessions are written out about once a
+   second.
+
+   .. attribute:: _stopme
+
+      Set by main server thread to indicate it's time to exit.
+
+   .. attribute:: _path
+
+      The directory where the sessions are stored.
+
+   .. attribute:: _save
+
+      A dictionary of sessions that must be saved."""
   def __init__(self, path):
     Thread.__init__(self, name="GUI session thread")
     self._lock = Lock()
@@ -67,24 +75,24 @@ class SessionThread(Thread):
     self._path = path
     self._save = {}
 
-  # Record a session for saving.  The session's data in VALUE will
-  # become the property of this thread exclusively.
   def save(self, data):
+    """Record a session for saving.  The session's data in VALUE will
+    become the property of this thread exclusively."""
     self._lock.acquire()
     self._save[data['core.name']] = data
     self._lock.release()
 
-  # Tell the thread to stop after it has flushed all the data to disk.
   def stop(self):
+    """Tell the thread to stop after it has flushed all the data to disk."""
     self._lock.acquire()
     self._stopme = True
     self._lock.release()
 
-  # The thread run loop.  Checks for dirty sessions about once a
-  # second, and if there are any, grabs the list of currently dirty
-  # sessions and starts writing them to disk in pickled format.
-  # Manipulates session files as safely as possible.
   def run(self):
+    """The thread run loop.  Checks for dirty sessions about once a
+    second, and if there are any, grabs the list of currently dirty
+    sessions and starts writing them to disk in pickled format.
+    Manipulates session files as safely as possible."""
     while True:
       self._lock.acquire()
       stopme = self._stopme
@@ -115,38 +123,83 @@ class SessionThread(Thread):
       time.sleep(1)
 
 # -------------------------------------------------------------------
-# The main server process, a CherryPy actor mounted to the URL tree.
-# The basic server core orchestrates basic services such as session
-# management, templates, static content and switching workspaces.
-# Behaviour beyond these basic functions is delegated to workspaces;
-# all other invocations are delegated to the current workspace of the
-# session in question.
-#
-# Note that all volatile user data is stored in session objects.  The
-# backends and worspaces cache data to store global state that is not
-# pertinent to any particular user/browser session, allowing them to
-# respond HTTP requests as quickly as possible (ideally using only
-# data currently in memory).
-#
-# Configuration data:
-# .title            Web page banner title.
-# .baseUrl          URL root for this service.
-# .serviceName      Label for this service, to show on the web page.
-# .services         List of (label, url) for all monitoring services.
-# .workspaces       List of workspaces configured for this service.
-# .sources          List of data sources attached to this service.
-# .sessiondir       Directory where session data is kept.
-# .logdir           Directory where logs are sent.
-#
-# Dynamic data or automatically determined configuration:
-# .contentpath      Directory where static content will be found.
-# .templates        Cheetah template files in .contentpath.
-# .sessions         Currently active sessions.
-# .sessionthread    Background thread for saving sessions.
-# .lock             Lock for modifying variable data.
-# .stamp            Server start time for forcing session reloads.
-# .checksums        Server integrity check of source files.
 class Server:
+  """The main server process, a CherryPy actor mounted to the URL tree.
+  The basic server core orchestrates basic services such as session
+  management, templates, static content and switching workspaces.
+  Behaviour beyond these basic functions is delegated to workspaces;
+  all other invocations are delegated to the current workspace of the
+  session in question.
+
+  Note that all volatile user data is stored in session objects.  The
+  backends and worspaces cache data to store global state that is not
+  pertinent to any particular user/browser session, allowing them to
+  respond HTTP requests as quickly as possible (ideally using only
+  data currently in memory).
+
+  Configuration data:
+
+  .. attribute:: title
+
+     Web page banner title.
+
+  .. attribute:: baseUrl
+
+     URL root for this service.
+
+  .. attribute:: serviceName
+
+     Label for this service, to show on the web page.
+
+  .. attribute:: services
+
+     List of (label, url) for all monitoring services.
+
+  .. attribute:: workspaces
+
+     List of workspaces configured for this service.
+
+  .. attribute:: sources
+
+     List of data sources attached to this service.
+
+  .. attribute:: sessiondir
+
+     Directory where session data is kept.
+
+  .. attribute:: logdir
+
+     Directory where logs are sent.
+
+  Dynamic or automatically determined configuration data:
+
+  .. attribute:: contentpath
+
+     Directory where static content will be found.
+
+  .. attribute:: templates
+
+     Cheetah template files in .contentpath.
+
+  .. attribute:: sessions
+
+     Currently active sessions.
+
+  .. attribute:: sessionthread
+
+     Background thread for saving sessions.
+
+  .. attribute:: lock
+
+     Lock for modifying variable data.
+
+  .. attribute:: stamp
+
+     Server start time for forcing session reloads.
+
+  .. attribute:: checksums
+
+     Server integrity check of source files."""
   def __init__(self, cfgfile, cfg, modules):
     modules = map(import_module, modules)
     self.instrument = cfg.instrument
@@ -219,6 +272,7 @@ class Server:
     engine.subscribe('stop', self.sessionthread.stop)
 
   def _addChecksum(self, modulename, file, data):
+    """Add info for a file into the internal checksum table."""
     s = (os.path.exists(file) and os.stat(file)) or None
     self.checksums.append({
       'module': modulename,
@@ -230,6 +284,7 @@ class Server:
     })
 
   def _maybeRefreshFile(self, dict, name):
+    """Possibly reload a configuration/data file."""
     self.lock.acquire()
     fileinfo = dict[name]
     mtime = os.stat(fileinfo[0])[ST_MTIME]
@@ -240,18 +295,21 @@ class Server:
     return fileinfo[2]
 
   def _templatePage(self, name, variables):
+    """Generate HTML page from cheetah template and variables."""
     template = self._maybeRefreshFile(self.templates, name)
     params = { 'CSS':        "".join(x[1] for x in self.css),
                'JAVASCRIPT': "".join(x[1] for x in self.js) }
     return str(Template(template, searchList=[variables, params]))
 
   def _noResponseCaching(self):
+    """Tell the browser not to cache this response."""
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = 'Sun, 19 Nov 1978 05:00:00 GMT'
     response.headers['Cache-Control'] = \
       'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
 
   def _addCSSFragment(self, filename):
+    """Add a piece of CSS to the master HTML page."""
     if not dict(self.css).has_key(filename):
       text = file(filename).read()
       if filename.startswith(self._yui):
@@ -272,6 +330,7 @@ class Server:
       self.css += [(filename, "\n" + clean + "\n")]
 
   def _addJSFragment(self, filename, minimise=True):
+    """Add a piece of javascript to the master HTML page."""
     if not dict(self.js).has_key(filename):
       text = file(filename).read()
       if minimise:
@@ -286,12 +345,12 @@ class Server:
 	return "%s:%s" % (id, request.headers[id])
     return request.remote.ip
 
-  # Check NAME is valid and a known session.  If yes, returns the
-  # session data, otherwise None.  Locks the session before returning
-  # it, making sure all other threads have released the session.  The
-  # caller _MUST_ release the session lock before the HTTP request
-  # handling returns, or the next access to the session will hang.
   def _getSession(self, name):
+    """Check NAME is valid and a known session.  If yes, returns the
+    session data, otherwise None.  Locks the session before returning
+    it, making sure all other threads have released the session.  The
+    caller _MUST_ release the session lock before the HTTP request
+    handling returns, or the next access to the session will hang."""
     s = None
     if re.match("^[-A-Za-z0-9_]+$", name):
       self.lock.acquire()
@@ -317,8 +376,8 @@ class Server:
 	  s = None
     return s
 
-  # Save the SESSION state.
   def _saveSession(self, session):
+    """Save the SESSION state."""
     self.lock.acquire()
     session['core.stamp'] = time.time()
     self.sessions[session['core.name']] = session
@@ -327,13 +386,13 @@ class Server:
                                  for k in session.keys()
                                  if k != 'core.lock'))
 
-  # Release the SESSION for use by other threads.
   def _releaseSession(self, session):
+    """Release the SESSION for use by other threads."""
     session['core.lock'].release()
 
-  # Create and initialise a new session with some default workspace.
-  # This just initialises a session; it will not become locked.
   def _newSession(self, workspace):
+    """Create and initialise a new session with some default workspace.
+    This just initialises a session; it will not become locked."""
     # Before creating a new one, purge from memory sessions that have
     # not been used for 15 minutes, to avoid building up memory use.
     self.lock.acquire()
@@ -388,8 +447,8 @@ class Server:
     # Return the final component of the session path.
     return sessionid
 
-  # Tell the client browser the URL is invalid.
   def _invalidURL(self):
+    """Tell the client browser the URL is invalid."""
     return self._templatePage("invalid", {
 	'TITLE'		 : re.sub(r"\&\#821[12];", "-", self.title),
 	'HEADING'	 : self.title,
@@ -399,9 +458,9 @@ class Server:
 	'HOSTNAME'	 : gethostname(),
       })
 
-  # Get the workspace object corresponding to NAME.  If no such
-  # workspace exists, returns the first (= default) workspace.
   def _workspace(self, name):
+    """Get the workspace object corresponding to NAME.  If no such
+    workspace exists, returns the first (= default) workspace."""
     name = name.lower()
     for w in self.workspaces:
       if w.name.lower() == name:
@@ -411,50 +470,50 @@ class Server:
   # -----------------------------------------------------------------
   # Server access points.
 
-  # Main root index address: the landing address.  Create a new
-  # session and redirect the client there.
   @expose
   def index(self):
+    """Main root index address: the landing address.  Create a new
+    session and redirect the client there."""
     return self.start(workspace = self.workspaces[0].name);
 
-  # Access our own static content.
   @expose
   def static(self, *args, **kwargs):
+    """Access our own static content."""
     if len(args) != 1 or not re.match(r"^[-a-z]+\.(png|gif)$", args[0]):
       return self._invalidURL()
     return serve_file(self.contentpath + '/images/' + args[0])
 
-  # Access YUI static content.
   @expose
   def yui(self, *args, **kwargs):
+    """Access YUI static content."""
     path = "/".join(args)
     if not re.match(r"^[-a-z_/]+\.(png|gif)$", path):
       return self._invalidURL()
     return serve_file(self._yui + '/' + path)
 
-  # Access ExtJS static content.
   @expose
   def extjs(self, *args, **kwargs):
+    """Access ExtJS static content."""
     path = "/".join(args)
     if not (self._extjs and re.match(r"^[-a-z_/]+\.(png|gif)$", path)):
       return self._invalidURL()
     return serve_file(self._extjs + '/' + path)
 
   # -----------------------------------------------------------------
-  # Jump to some content.  This creates and configures a new session with
-  # the desired content, as if a sequence of actions was carried out.
-  #
-  # In the end, redirects the client browser to a new session URL.  We
-  # send a HTML page with JavaScript to change the page "location",
-  # rather than raise a HTTPRedirect.  The main reason is HTTPRedirect
-  # results in HTTP 303 response and web browsers remember the
-  # original address not the new one we send to them.  If the user
-  # would then reload the page, they would not be sent back to their
-  # session but back to the root address which would create them again
-  # another session.  The second and minor reason is that we can
-  # verify that JavaScript is enabled in the client browser.
   @expose
   def start(self, *args, **kwargs):
+    """Jump to some content.  This creates and configures a new session with
+    the desired content, as if a sequence of actions was carried out.
+
+    In the end, redirects the client browser to a new session URL.  We
+    send a HTML page with JavaScript to change the page "location",
+    rather than raise a HTTPRedirect.  The main reason is HTTPRedirect
+    results in HTTP 303 response and web browsers remember the
+    original address not the new one we send to them.  If the user
+    would then reload the page, they would not be sent back to their
+    session but back to the root address which would create them again
+    another session.  The second and minor reason is that we can
+    verify that JavaScript is enabled in the client browser."""
     if len(args) != 0:
       return self._invalidURL()
     workspace = self._workspace(kwargs.get("workspace", self.workspaces[0].name))
@@ -465,24 +524,24 @@ class Server:
     self._releaseSession(session)
     return _SESSION_REDIRECT % (self.baseUrl + "/session/" + sessionid)
 
-  # Backward compatible version of 'start' which understands one
-  # parameter, the name of the workspace to begin in.  Note that
-  # within a session the sessionWorkspace method is used to switch
-  # between workspaces.
   @expose
   def workspace(self, *args, **kwargs):
+    """Backward compatible version of 'start' which understands one
+    parameter, the name of the workspace to begin in.  Note that
+    within a session the sessionWorkspace method is used to switch
+    between workspaces."""
     if len(args) == 1:
       return self.start(workspace = self._workspace(args[0]).name)
     else:
       return self.start(workspace = self.workspaces[0].name)
 
   # -----------------------------------------------------------------
-  # General session-independent access path for dynamic images.
-  # The first subdirectory argument contains the name of the
-  # "source plot hook" able to handle the plotting request.
-  # The rest of the processing is given over to the hook.
   @expose
   def plotfairy(self, *args, **kwargs):
+    """General session-independent access path for dynamic images.
+    The first subdirectory argument contains the name of the
+    "source plot hook" able to handle the plotting request.
+    The rest of the processing is given over to the hook."""
     try:
       if len(args) >= 1:
         for s in self.sources:
@@ -506,9 +565,9 @@ class Server:
                       content_type = "image/png")
 
   # -----------------------------------------------------------------
-  # Report code running in this server.
   @expose
   def digest(self, *args, **kwargs):
+    """Report code running in this server."""
     maxsize = max(len(str(i['srclen'])) for i in self.checksums) + 1
     maxlen = max(len(str(i['module'])) for i in self.checksums) + 2
     fmt = "%(srclen)-" + str(maxsize) \
@@ -524,25 +583,25 @@ class Server:
     return summary
 
   # -----------------------------------------------------------------
-  # A hook for authenticating users.  We don't actually authenticate
-  # anyone here, all the authentication is done in the front-end
-  # reverse proxy servers.  But do provide a URL authentication can
-  # use to retrieve the required proxy cookies.
   @expose
   def authenticate(self, *args, **kwargs):
+    """A hook for authenticating users.  We don't actually authenticate
+    anyone here, all the authentication is done in the front-end
+    reverse proxy servers.  But do provide a URL authentication can
+    use to retrieve the required proxy cookies."""
     response.headers['Content-Type'] = "text/plain"
     return "Authenticated"
 
   # -----------------------------------------------------------------
-  # Main session address.  All AJAX calls to the session land here.
-  # The URL is of the form "[/ROOT]/session/ID[/METHOD].  We check
-  # the session ID is valid for this user, and the METHOD is one we
-  # support.  A METHOD "foo" results in call to "sessionFoo()" in
-  # this class.  If no METHOD is given, default to "index": generate
-  # the main GUI page. All other METHODs are AJAX calls from the
-  # client, which normally just return a JSON result object.
   @expose
   def session(self, *args, **kwargs):
+    """Main session address.  All AJAX calls to the session land here.
+    The URL is of the form "[/ROOT]/session/ID[/METHOD].  We check
+    the session ID is valid for this user, and the METHOD is one we
+    support.  A METHOD "foo" results in call to "sessionFoo()" in
+    this class.  If no METHOD is given, default to "index": generate
+    the main GUI page. All other METHODs are AJAX calls from the
+    client, which normally just return a JSON result object."""
     # If the URL has been truncated, just start a new session.
     if len(args) < 1:
       return self.start(workspace = self.workspaces[0].name)
@@ -581,10 +640,10 @@ class Server:
     finally:
       self._releaseSession(session)
 
-  # Generate top level session index.  This produces the main GUI web
-  # page, with practically no content in it; the client will contact
-  # us for the content using AJAX calls.
   def sessionIndex(self, session, *args ,**kwargs):
+    """Generate top level session index.  This produces the main GUI web
+    page, with practically no content in it; the client will contact
+    us for the content using AJAX calls."""
     return self._templatePage("index", {
 	'TITLE'		 : re.sub(r"\&\#821[12];", "-", self.title),
 	'HEADING'	 : self.title,
@@ -596,8 +655,8 @@ class Server:
 	'ROOTPATH'	 : self.baseUrl
       });
 
-  # Switch session to another workspace.
   def sessionWorkspace(self, session, *args, **kwargs):
+    """Switch session to another workspace."""
     workspace = self._workspace(kwargs.get('name', session['core.workspace']))
     session['core.workspace'] = workspace.name
     workspace.initialiseSession(session)
@@ -605,9 +664,9 @@ class Server:
     return workspace.sessionState(session)
 
   # -----------------------------------------------------------------
-  # Drop a profile dump if running under profiler and the current
-  # workspace has a suitable extension (aka igprof native call).
   def sessionProfileSnapshot(self, session, *args, **kwargs):
+    """Drop a profile dump if running under profiler and the current
+    workspace has a suitable extension (aka igprof native call)."""
     if self.instrument and self.instrument.startswith("igprof "):
       snapshot = None
       workspace = session['core.workspace']
@@ -617,10 +676,10 @@ class Server:
         snapshot()
     return "OK"
 
-  # Return JSON object for the current session state.  This method is
-  # invoked when the GUI session page is loaded, which occurs either
-  # when a completely new session has been started, the "reload"
-  # button is pushed or the session URL was copied between browser
-  # windows, or the session wants a period refresh.
   def sessionState(self, session, *args, **kwargs):
+    """Return JSON object for the current session state.  This method is
+    invoked when the GUI session page is loaded, which occurs either
+    when a completely new session has been started, the "reload"
+    button is pushed or the session URL was copied between browser
+    windows, or the session wants a period refresh."""
     raise HTTPError(500, "Internal implementation error")
