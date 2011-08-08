@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+import os, time, sys, shutil
+from glob import glob
+from datetime import datetime
+from traceback import print_exc
+from socket import gethostname
+from subprocess import Popen,PIPE
+from fcntl import lockf, LOCK_EX, LOCK_UN
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+# Command line parameters
+DROPBOX = sys.argv[1]		# DROPBOX for partial indexes
+INDEX = sys.argv[2]		# GUI's index location
+
+# ImportDaemon Dropbox, this parameter is used to determine the time
+# the IndexMergeDaemon will sleep before continuing with its work,
+# this allows synchronization between the ImportDaemon and
+# IndexMergeDaemon, living the latter ample time to keep up with
+# single file registration
+IMPORTDBX = ""
+if len(sys.argv) == 4:
+  IMPORTDBX = sys.argv[3]
+
+# Global Constants
+WAITTIME = 3600 * 1 # Sleep time for merges
+WAITTIME2 = 10 # Sleep time between cicles
+AVGITIME = 4 * 60 # Average Time to register a run
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+def runme(cmd, *args, **keys):
+  try:
+    fcmd = cmd % args
+    scall = Popen(fcmd.split(" "), stdout=PIPE,stderr=PIPE)
+    (sc_stdout, sc_stderr) = scall.communicate()
+    retcodes = "retcodes" in keys and keys["retcodes"] or (0, )
+    assert scall.returncode in retcodes
+
+  except AssertionError, e:
+    logme("ERROR: Command execution failed ('%s') with error message: %s",
+                fcmd, sc_stderr.replace('\n',"\016"))
+
+  return (scall.returncode, sc_stdout, sc_stderr)
+
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
+# --------------------------------------------------------------------
+while True:
+  try:
+    indexes = {}
+
+    # Get list of indexes from the drop box
+    for cd, subs, files in os.walk(DROPBOX):
+      for i in subs:
+        path = "%s/%s" % (DROPBOX,i)
+        indexes.setdefault(path, os.path.realpath(path))
+
+    # Start merging
+    for i in sorted(indexes.keys()):
+      try:
+        lFile=open("%s/lock" % INDEX ,"w+")
+        lockf(lFile,LOCK_EX)
+        lFile.write(str(os.getpid()))
+
+        # Print a small diagnostic
+        logme('INFO: Starting merge of index %s', i)
+        rc, so, se = runme("visDQMIndex merge %s %s", INDEX, indexes[i])
+        if rc != 0:
+          logme('command failed with exit code %d', rc)
+          assert False, "%s\n%s" % (so,se)
+
+        logme('INFO: Finished merging index %s', i )
+
+      finally:
+        #Clean up, if something fails we do not want to try and  merge
+        #the same index
+        lockf(lFile,LOCK_UN)
+        lFile.close()
+        os.remove(i)
+
+      #shutil.rmtree(indexes[i])
+      if not IMPORTDBX:
+        continue
+
+      sleepTime = min(len(glob("%s/*.dqminfo" % IMPORTDBX)) * AVGITIME,
+                      WAITTIME )
+      time.sleep(sleepTime)
+
+  except KeyboardInterrupt, e:
+    sys.exit(0)
+
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
+
+  time.sleep(WAITTIME2)
