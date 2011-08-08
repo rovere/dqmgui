@@ -50,6 +50,11 @@ def runme(cmd, *args, **keys):
 
   return (scall.returncode, sc_stdout, sc_stderr)
 
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
 # --------------------------------------------------------------------
 
 # Create a persistent directory to store the file information over
@@ -65,6 +70,7 @@ def runme(cmd, *args, **keys):
 #
 # We assume that the zinfo file does not change between cycles.
 new = {}
+myumask = current_umask()
 
 # Process files forever.
 while True:
@@ -200,7 +206,7 @@ while True:
         (fd, tmp) = mkstemp(dir=dname)
         os.write(fd, "%s\n" % info)
         os.close(fd)
-        os.chmod(tmp, 0644)
+        os.chmod(tmp, 0666 & ~myumask)
         os.rename(tmp, zinfopath)
 
         # Print a small diagnostic

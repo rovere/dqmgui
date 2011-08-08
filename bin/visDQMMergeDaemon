@@ -29,7 +29,14 @@ def orderFiles(a, b):
   if diff: return diff
   return cmp(a['dataset'], b['dataset'])
 
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
 # --------------------------------------------------------------------
+myumask = current_umask()
+
 # Process files forever.
 while True:
   try:
@@ -111,7 +118,7 @@ while True:
         (fd, tmp) = mkstemp(dir=dname)
         os.write(fd, "%s\n" % finfo)
         os.close(fd)
-        os.chmod(tmp, 0644)
+        os.chmod(tmp, 0666 & ~myumask)
         os.remove("%s.dqminfo" % fname)
         os.rename(tmp, "%s.dqminfo" % fname)
 
@@ -122,7 +129,7 @@ while True:
       (fd, tmp) = mkstemp(dir=dname)
       os.write(fd, "%s\n" % info['info'])
       os.close(fd)
-      os.chmod(tmp, 0644)
+      os.chmod(tmp, 0666 & ~myumask)
       os.rename(tmp, minfo)
 
       # Make the result merged file a task in the next drop box.

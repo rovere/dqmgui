@@ -30,7 +30,14 @@ def orderFiles(a, b):
   if diff: return diff
   return cmp(a['dataset'], b['dataset'])
 
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
 # --------------------------------------------------------------------
+myumask = current_umask()
+
 # Process files forever.
 while True:
   try:
@@ -134,7 +141,7 @@ while True:
         del dqminfo['infofile']
         os.write(fd, "%s\n" % dqminfo)
         os.close(fd)
-        os.chmod(tmp, 0644)
+        os.chmod(tmp, 0666 & ~myumask)
         os.remove(finfo)
         os.rename(tmp, finfo)
 
@@ -148,7 +155,7 @@ while True:
       (fd, tmp) = mkstemp(dir=dname)
       os.write(fd, "%s\n" % info['zinfo'])
       os.close(fd)
-      os.chmod(tmp, 0644)
+      os.chmod(tmp, 0666 & ~myumask)
       if os.path.exists(zfinfo):
         os.remove(zfinfo)
       os.rename(tmp, zfinfo)

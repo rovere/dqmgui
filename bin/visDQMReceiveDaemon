@@ -55,6 +55,11 @@ def warnPath(info, path, msg):
     try: os.rename(info['origin'], "%s.bad" % info['origin'])
     except: pass
 
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
 # --------------------------------------------------------------------
 # Pre-classify a file into main category based on file name structure.
 def classifyDQMFile(path, origin):
@@ -387,7 +392,7 @@ def finaliseOneFile(info):
   (fd, tmp) = mkstemp(dir=dname)
   os.write(fd, "%s\n" % info)
   os.close(fd)
-  os.chmod(tmp, 0644)
+  os.chmod(tmp, 0666 & ~myumask)
   os.rename(tmp, finfo)
   os.rename(info['import'], fname)
   os.remove("%s.origin" % info['import'])
@@ -403,6 +408,7 @@ def finaliseOneFile(info):
 
 # --------------------------------------------------------------------
 # Process files forever.
+myumask = current_umask()
 while True:
   try:
     # Find new complete files. Compute repository destination for

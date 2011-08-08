@@ -19,9 +19,16 @@ def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
   print datetime.now(), procid, msg % args
 
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
 # --------------------------------------------------------------------
-# Process files forever.
+myumask = current_umask()
 regex = re.compile(r"_S([0-9]{4})\.zip\.zinfo$")
+
+# Process files forever.
 while True:
   try:
     # Find new zip files.
@@ -79,7 +86,7 @@ while True:
       (fd, tmp) = mkstemp(dir=dname)
       os.write(fd, "%s\n" % info)
       os.close(fd)
-      os.chmod(tmp, 0644)
+      os.chmod(tmp, 0666 & ~myumask)
       os.rename(tmp, zinfopath)
 
       # Print a little diagnostic.
