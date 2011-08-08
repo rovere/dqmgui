@@ -28,11 +28,11 @@ SENDMAIL = "/usr/sbin/sendmail" # sendmail location
 
 # Number of times that we will try to find out if the file is
 # transferred to tape before reporting it.
-RETRIES = 3
+RETRIES = 7
 
 # We want to have different length time intervals between retries, for
 # this purpose we calculate the actual maximum number of retries a
-# file will go trough before marking it as a bad file.
+# file will go trough before we start reporting problems.
 MAXTRIES = ((RETRIES / 2) * (RETRIES + 1))
 
 # --------------------------------------------------------------------
@@ -71,7 +71,6 @@ def current_umask():
   return val
 
 # --------------------------------------------------------------------
-
 # Create a persistent directory to store the file information over
 # RETRIES process loops.
 #
@@ -87,12 +86,22 @@ def current_umask():
 #
 # We assume that the zinfo file does not change between cycles.
 new = {}
+WARNINGS = {}
 myumask = current_umask()
+last_warnings_flush = time.time()
 
 # Process files forever.
 while True:
   try:
     now=time.time()
+    if len(WARNINGS) > 0  and now - last_warnings_flush > 2 * 3600: #24 * 3600:
+      msg = "I got %d messages in the past 24 hours\n\n\n" %  len(WARNINGS)
+      msg += "# of Occurrences: Message\n"
+      msg += "\n".join(["%4d: %s" % (y,x) for x , y in WARNINGS.items() ])
+      sendmail(msg)
+      WARNINGS = {}
+      last_warnings_flush = now
+
     for zf in glob("%s/*.zip.zinfo" % DROPBOX):
       if zf in new:
         # To get a variable length time period between retries we only
@@ -122,10 +131,7 @@ while True:
 
     # Verify if the file has been copied to tape after MIGRTIME
     # hours have passed. If the check fails, try to determine the file
-    # status and try again later. If there's something odd with the
-    # status mark the file as bad by appending the extension .bad to
-    # the file name.  This will prevent the agent from picking it up
-    # again, and then, the operator can solve the conflict by hand.
+    # status and try again later.
     #
     # Report back to the operator if we have checked the file RETRIES
     # times and the status is unchanged.
@@ -138,26 +144,18 @@ while True:
       lname = "%s/%s" % (ZIPREPO, info['zpath'])
       try:
         (rc, so, se) = runme("nsls -T %s", cname)
-        if rc != 0:
-          (rc1, so1, se1) = runme("rfdir %s", cname)
-          assert rc1 == 0
-          (rc1, so1, se1) = runme("nsls %s", cname)
-          assert rc1 == 0
-          (rc1, so1, se1) = runme("stager_qry -M %s", cname)
-          assert rc1 == 0
-          continue
+        if not rc == 0:
+          assert False, "WARNING: %s: nsls -T failed with following error:[%d,'%s']" % \
+                (cname,rc,so,se)
 
         if so == "":
           (rc, so, se) = runme("stager_qry -M %s", cname)
           if "CANBEMIGR" not in so and "STAGED" not in so:
-            logme("ERROR: Unexpected stager state: %s", so)
-            assert False
-          elif "CANBEMIGR" in so:
-            if info["vtries"] >= MAXTRIES:
-              logme("WARNING: %s: Is still on CANBEMIGR state please verify" % cname)
-              sendmail("%s: Is still on CANBEMIGR state please verify" % cname)
-              assert False
-            continue
+            assert False, "WARNING: %s: unexpected stager state: %s" % (cname, so)
+          elif "CANBEMIGR" in so and info["vtries"] > MAXTRIES:
+            assert False, "WARNING: %s: still in CANBEMIGR state" % cname
+
+          continue
 
         # Store time of the operation. Remove the 'Process' key
         # because it is an internal value for the agent and there is
@@ -190,10 +188,10 @@ while True:
 
       except AssertionError, e:
         info['process'] = False
-        if info["vtries"] >= MAXTRIES:
-          os.rename(f,"%s.bad" % f)
-          del new[f]
-          continue
+        msg = str(e)
+        WARNINGS[msg] = WARNINGS.setdefault(msg, 0) + 1
+        logme(msg)
+        continue
 
   # If anything bad happened, barf but keep going.
   except KeyboardInterrupt, e:
