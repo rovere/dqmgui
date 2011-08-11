@@ -8,7 +8,8 @@ DQM GUI release notes
   commands. Rewrite online synchronisation agent in python using the
   request pump. Add sphinx-generated documentation. Improve CPU
   performance of visDQMRootFileQuotaControl agent. Add
-  visDQMIndexMergeDaemon agent.
+  visDQMIndexMergeDaemon agent. Add dynamic layout injection feature
+  to the server.  Add visDQMUploadLayout to perform layout injection.
 
 6.0.6
 

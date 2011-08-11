@@ -2842,6 +2842,34 @@ public:
 	}
       }
     }
+
+  void addLayout(py::list filenames)
+    {
+      // Implement add/overwrite logic. If a layout is uploaded to the
+      // server, its name is checked against the ones loaded at
+      // startup time: if an exact match is found, the one uploaded
+      // from the web takes precedence, basically overwriting the old
+      // one. All previously defined layouts corresponding to the old
+      // entry are wiped out also from data_.
+      pthread_mutex_init(&lock_, 0);
+      py::stl_input_iterator<std::string> begin(filenames), end;
+      bool layoutIncluded = false;
+      for (; begin != end; ++begin)
+      {
+	layoutIncluded = false;
+	for (FileNameList::iterator i = files_.begin(), e = files_.end(); i != e; ++i)
+	  if (i->nondirectory() == Filename(*begin).nondirectory())
+	  {
+	    files_.insert(i, Filename(*begin));
+	    if (data_.find(*i) != data_.end())
+	      data_.erase(data_.find(*i));
+	    i = files_.erase(i);
+	    layoutIncluded = true;
+	  }
+	if (! layoutIncluded)
+	  files_.push_back(Filename(*begin));
+      }
+    }
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -6141,7 +6169,8 @@ BOOST_PYTHON_MODULE(Accelerator)
 
   py::class_<VisDQMLayoutSource, shared_ptr<VisDQMLayoutSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
-    ("DQMLayoutSource", py::init<py::list>());
+    ("DQMLayoutSource", py::init<py::list>())
+    .def("_addLayout", &VisDQMLayoutSource::addLayout);
 
   py::class_<VisDQMWorkspace, shared_ptr<VisDQMWorkspace>, boost::noncopyable>
     ("DQMWorkspace", py::no_init)

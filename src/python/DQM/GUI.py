@@ -263,6 +263,168 @@ class DQMFileAccess:
       return serve_file(pathname, content_type="application/octet-stream")
 
 # --------------------------------------------------------------------
+# DQM extension to manage DQM layout uploads.
+class DQMLayoutAccess:
+  STATUS_OK                   = 100 # Requested operation succeeded
+  STATUS_BAD_REQUEST          = 200 # The request is malformed
+  STATUS_ERROR_PARAMETER      = 300 # Request parameter value is unacceptable.
+  STATUS_ERROR_EXISTS         = 301 # Cannot overwrite an existing object.
+  STATUS_ERROR_NOT_EXISTS     = 302 # Requested file does not exist.
+  STATUS_FAIL_EXECUTE         = 400 # Failed to execute the request.
+  STATUS_ERROR_NOT_AUTHORIZED = 401 # Unauthorized, user is not allowed to submit layouts
+
+  def refresh(self, *args): pass
+  def __init__(self, server, aclfile, uploads, allowedUsers):
+    self.lock = Lock()
+    self.server = server
+    self.uploads = uploads
+    self.allowedUsers = allowedUsers
+    if uploads and not os.path.exists(uploads):
+      os.makedirs(uploads)
+    tree.mount(self, script_name=server.baseUrl + "/layout",
+               config={"/": {'request.show_tracebacks': False}})
+
+  # Set response headers to indicate our status data.
+  def _status(self, code, message, detail=None):
+    response.headers['dqm-status-code'] = str(code)
+    response.headers['dqm-status-message'] = message
+    response.headers['dqm-status-detail'] = detail
+
+  # Set response headers to indicate an error, then get out.
+  def _error(self, code, message, detail=None):
+    _logerr("code=%d, message=%s, detail=%s" % (code, message, detail))
+    self._status(code, message, detail)
+    raise HTTPError(500, message)
+
+  # Check that a required parameter has been given just once,
+  # and the value matches the given regular expression.
+  def _check(self, name, arg, rx):
+    if not arg or not isinstance(arg, str):
+      self._error(self.STATUS_BAD_REQUEST,
+                  "Incorrect or missing %s parameter" % name,
+                  "Must provide single argument")
+    if not re.match(rx, arg):
+      self._error(self.STATUS_BAD_REQUEST,
+                  "Malformed %s argument" % name,
+                  "Argument must match regular expression '%s'" % rx)
+
+  # Check the current request is into a directory, and if not,
+  # redirect to add a trailing slash.
+  def _prepdir(self, time):
+    pi = request.path_info
+    if not pi.endswith('/'):
+      raise HTTPRedirect(url(pi + '/', request.query_string))
+    request.is_index = True
+    response.headers['Content-Type'] = 'text/html'
+    response.headers['Last-Modified'] = http.HTTPDate(time)
+    cptools.validate_since()
+
+  # ------------------------------------------------------------------
+  # Store a file to the server.  Validates all the parameters, then
+  # attempts to save the file safely.  Sets headers in the response
+  # to indicate what happened, either an error or success.
+  @expose
+  def put(self,
+          size = None,
+          checksum = None,
+          file = None,
+          *args,
+          **kwargs):
+    # Bail out if upload is not supported or authorized.
+    if not self.uploads:
+      raise HTTPError(404, "Not found")
+
+    # Authenticate user against the list of authorized users specified
+    # in the server configuration.
+    if request.headers.get("CMS-Auth-Cert", "-") not in self.allowedUsers:
+      raise HTTPError(self.STATUS_ERROR_NOT_AUTHORIZED, "You are not allowed to upload layouts.")
+
+    # Argument validation.
+    if file == None \
+       or not getattr(file, "file", None) \
+       or not getattr(file, "filename", None):
+      self._error(self.STATUS_BAD_REQUEST,
+                  "Incorrect or missing file argument",
+                  "Must provide a single file-type argument")
+
+    self._check("size",     size,          r"^\d+$")
+    self._check("checksum", checksum,      r"^(md5:[A-Za-z0-9]+|crc32:\d+)$")
+    self._check("filename", file.filename, r"^[-A-Za-z0-9_]+\.json$")
+
+    size = int(size)
+
+    try:
+      self.lock.acquire()
+      dir = "%s" % (self.uploads)
+      fname = "%s/%s" % (dir, file.filename.replace('.json', '.py'))
+      # Try saving the file safely.  If anything goes wrong,
+      # clean up so the upload can be re-attempted later.
+      if not os.path.exists(dir):
+        os.makedirs(dir)
+      (fd, tmp) = tempfile.mkstemp(".upload", "", dir)
+      nsaved = 0
+      first = ""
+      while True:
+        data = file.file.read(8*1024*1024)
+        if not data:
+          break
+	if len(first) < 5:
+	  first += data[0:5]
+        os.write(fd, data)
+        nsaved += len(data)
+      os.close(fd)
+      os.chmod(tmp, 0644)
+      if nsaved != size:
+        self._error(self.STATUS_FAIL_EXECUTE,
+                    "Failed to save file data",
+                    "Wrote %d bytes, expected to write %d" % (nsaved, size))
+
+      # Reads in the uploaded JSON file that describes the layout,
+      # decodes it as python object and writes it back as a properly
+      # formatted layout file.
+      a = eval(open(tmp,'r').read())
+      outfile = open(fname, 'w')
+      outfile.write("def baselayout(i, p, *rows): i[p] = DQMItem(layout=rows)\n")
+      for key in a:
+        outfile.write("baselayout(dqmitems, '%s', " % key)
+        for item in a[key]:
+          outfile.write("  %s, " % item)
+        outfile.write(")\n")
+
+      # Remove temporary file and put download original info in
+      # .origin file. FIXME can we get rid of this file?
+      os.remove(tmp)
+      open(fname + ".origin", "w").write("%s %d %s\n" % (checksum, size, fname))
+      self.lock.release()
+
+    except Exception, e:
+      self.lock.release()
+      if os.path.exists(fname):
+        os.remove(fname)
+      if os.path.exists(fname + ".origin"):
+        os.remove(fname + ".origin")
+      if tmp and os.path.exists(tmp):
+        os.remove(tmp)
+      if isinstance(e, HTTPError):
+        raise e
+      self._error(self.STATUS_FAIL_EXECUTE,
+                  "Failed to save file data",
+                  str(e).replace("\n", "; "))
+
+    # Indicate success.
+    self._status(self.STATUS_OK, "File saved", "Wrote %d bytes" % nsaved)
+    _loginfo("saved file %s size %d checksum %s" % (fname, size, checksum))
+
+    # Now inject the layout into the server via the registered
+    # visDQMLayoutSource, if any.
+    files = []
+    files.append(fname)
+    for ext in self.server.sources:
+      if isinstance(ext, DQMLayoutSource):
+        ext._addLayout(files)
+    return "Thanks.\n"
+
+# --------------------------------------------------------------------
 # DQM extension to manage DQM file uploads.
 class DQMToJSON(Accelerator.DQMToJSON):
   def refresh(self, *args): pass
