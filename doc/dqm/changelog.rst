@@ -6,7 +6,9 @@ DQM GUI release notes
   Fix JSON syntax errors and TGraph Y range in strip charts. Add X509
   and curl based request pump objects, plus example ``ls`` and ``grep``
   commands. Rewrite online synchronisation agent in python using the
-  request pump. Add sphinx-generated documentation.
+  request pump. Add sphinx-generated documentation. Improve CPU
+  performance of visDQMRootFileQuotaControl agent. Add
+  visDQMIndexMergeDaemon agent.
 
 6.0.6
 

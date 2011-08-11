@@ -15,16 +15,17 @@ FILEREPO = sys.argv[3]		# Final file repository of original DQM files.
 QUOTASFILE = sys.argv[4]	# File that contains QUOTAS information
 
 # Global Constants
-WAITTIME = 30			# Daemon cycle time.
+WAITTIME = 4 * 60			# Daemon cycle time.
 REFRESHINTERVAL = 2 * 24 * 3600	# Time between full cache refreshing.
 LOWERBOUNDARY = 0.95		# Percentage of QUOTAS to reach when deleting files
 FIFORX = re.compile("^DQM_V(\d+)_.*root$")
 
 
 # Global Variables
-FIFOQUEUES = {}
+FILEDICTIONARY = {}
 QUEUESIZES = {}
 QUOTAS = {}
+FIFOQUEUES = {}
 
 # Control Variables
 refreshQueues = True
@@ -34,6 +35,50 @@ lastRefresh = time.time()
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
   print datetime.now(), procid, msg % args
+
+def sortedInsert(d,i):
+  head=0
+  tail=len(d) - 1
+  safety=0
+  while True or safety >= len(d):
+    if not len(d):
+      d.append(i)
+      return 0
+
+    if d[head][0] > i[0]:
+      d.insert(head,i)
+      return head
+
+    if d[head][0] == i[0]:
+      d.insert(head+1,i)
+      return head+1
+
+    if d[tail][0] <= i[0]:
+      d.insert(tail+1,i)
+      return tail+1
+
+    if (head == tail and d[head][0] != i[0]) or \
+       (head == tail - 1 and d[head][0] != i and d[tail][0] != i[0]):
+      d.insert(head+1,i)
+      return head+1
+
+    m=head + int((tail-head+1)/2)
+    if d[m][0] == i[0]:
+      d.insert(m+1,i)
+      return m+1
+
+    if d[m][0] > i[0]:
+      tail = m-1
+
+    if d[m][0] < i[0]:
+      head = m+1
+
+    safety += 1
+
+  if safety >= len(d):
+    assert False, 'Could not insert value: %s ..., into list: %s' % \
+                        (str(i)[:15],str(d)[:15])
+
 
 # --------------------------------------------------------------------
 # The RootFileQuotaControl agent takes quotas assigned to the DQM file
@@ -59,8 +104,9 @@ except:
 while True:
   try:
     if refreshQueues:
-      FIFOQUEUES = {}
+      FILEDICTIONARY = {}
       QUEUESIZES = {}
+      FIFOQUEUES = {}
       filesNotInIndex = glob("%s/*.dqminfo" % IMPORTDROPBOX)
       for d,sd,fs in os.walk(FILEREPO):
         for f in fs:
@@ -76,14 +122,24 @@ while True:
             fSize = info['size']
             fMtime = info['time']
             fClass = info['class']
+            fName = f.replace("V%s" % rootFile.group(1),"V*")
             if "%s/%s.dqminfo" % (IMPORTDROPBOX, f) in filesNotInIndex:
               continue
 
-            qEntry = FIFOQUEUES.setdefault(fClass, {}).setdefault(
-                      f.replace("V%s" % rootFile.group(1),"V*"),
-                      [fMtime, fSize, d])
-            QUEUESIZES.setdefault(fClass, 0)
-            QUEUESIZES[fClass] += fSize
+            qEntry = FILEDICTIONARY.setdefault(fClass, {}).setdefault(
+                                     fName,[fMtime,fSize,fName,d])
+
+            # Keep largest file size, and latest time of arrival
+            if qEntry[0] < fMtime: qEntry[0] = fMtime
+            if qEntry[1] < fSize:  qEntry[1] = fSize
+
+            queue = FIFOQUEUES.setdefault(fClass,[])
+            sortedInsert(queue,qEntry)
+
+      # Calculate QUEUESIZES
+      for c in FILEDICTIONARY.keys():
+        QUEUESIZES.setdefault(c, 0)
+        QUEUESIZES[c] = sum([x[1] for x in FIFOQUEUES[c]])
 
       refreshQueues = False
 
@@ -105,19 +161,19 @@ while True:
       d = os.path.dirname(ff)
       rootFile = FIFORX.match(f)
       fSize = info['size']
-      fMtime = info['time']
       fClass = info['class']
-      qEntry = FIFOQUEUES.setdefault(fClass, {}).setdefault(
-                  f.replace("V%s" % rootFile.group(1),"V*"), [])
-      if qEntry == []:
-        qEntry.extend([fMtime, fSize, d])
-        QUEUESIZES.setdefault(fClass, 0)
-        QUEUESIZES[fClass] += fSize
-      else:
-        QUEUESIZES[fClass] -= qEntry[1]
-        QUEUESIZES[fClass] += fSize
-        qEntry[0]=fMtime
+      fMtime = info['time']
+      fName = f.replace("V%s" % rootFile.group(1),"V*")
+      qEntry = FILEDICTIONARY.setdefault(fClass, {}).setdefault(
+                                     fName,[fMtime,0,fName,d])
+      queue = FIFOQUEUES.setdefault(fClass,[])
+      qSize = QUEUESIZES.setdefault(fClass, 0)
+      if qEntry[0] < fMtime: qEntry[0] = fMtime
+      if qEntry[1] < fSize:
+        QUEUESIZES[fClass] = qSize - qEntry[1] + fSize
         qEntry[1] = fSize
+
+      sortedInsert(queue,qEntry)
 
       # Clear out drop box
       os.remove(dqminfo)
@@ -125,24 +181,22 @@ while True:
     # Enforce QUEUES quotas
     for c in QUEUESIZES.keys():
       if QUOTAS[c] < QUEUESIZES[c]:
-        queue = sorted(FIFOQUEUES[c].keys(),
-                       cmp=lambda x,y: cmp(FIFOQUEUES[c][x][0],
-                                           FIFOQUEUES[c][y][0]),
-                       reverse=True)
+        queue = FIFOQUEUES[c]
         while QUEUESIZES[c] > LOWERBOUNDARY * QUOTAS[c]:
-          try:
-            fPat = queue.pop()
-            fList = glob("%s/%s" % (FIFOQUEUES[c][fPat][2],fPat))
-            for f in fList:
+          fPat = queue[0]
+          fList = glob("%s/%s" % (fPat[3],fPat[2]))
+          for f in fList:
+            try:
               os.remove(f)
               logme("INFO: Removed file %s",f)
+            except OSError,e:
+              if not e.errno == 2:
+                raise
 
-            QUEUESIZES[c] -= FIFOQUEUES[c][fPat][1]
-            del FIFOQUEUES[c][fPat]
-
-          except:
-            refreshQueues = True
-            break
+          QUEUESIZES[c] -= fPat[1]
+          del FILEDICTIONARY[c][fPat[2]]
+          del queue[0]
+          del fPat
 
     if time.time() > lastRefresh + REFRESHINTERVAL:
       refreshQueues = True
