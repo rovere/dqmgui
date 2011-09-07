@@ -94,10 +94,11 @@ last_warnings_flush = time.time()
 while True:
   try:
     now=time.time()
-    if len(WARNINGS) > 0  and now - last_warnings_flush > 2 * 3600: #24 * 3600:
+    if len(WARNINGS) > 0  and now - last_warnings_flush > 24 * 3600:
       msg = "I got %d messages in the past 24 hours\n\n\n" %  len(WARNINGS)
       msg += "# of Occurrences: Message\n"
       msg += "\n".join(["%4d: %s" % (y,x) for x , y in WARNINGS.items() ])
+      msg += "\n\nRegards\nZip Verify Daemon on %s" % gethostname()
       sendmail(msg)
       WARNINGS = {}
       last_warnings_flush = now
