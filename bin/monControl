@@ -54,6 +54,56 @@ def inpath(cmd):
       return fname
   return cmd
 
+# Verify that an up-to-date layout.json file has been created.
+# Recreate it if a newer python layout file is found.
+def buildlayouts(layouts, statedir):
+  import json
+  class DQMItem:
+    def __init__(self, layout=None):
+      self.layout = layout
+
+  class LayoutEncoder(json.JSONEncoder):
+    def default(self, obj):
+      if isinstance(obj, DQMItem):
+        return obj.layout
+      return json.JSONEncoder.default(self, obj)
+
+  setattr(__builtins__, 'DQMItem', DQMItem)
+  # Filter only existing files.
+  files = [f for f in layouts if os.path.exists(f)]
+
+  lastmtime = 0
+  forceReload = False
+  if not os.path.exists("%s/layouts.json" % statedir):
+    forceReload = True
+  else:
+    lastmtime = os.path.getmtime("%s/layouts.json" % statedir)
+
+  if not forceReload:
+    for layout in files:
+      if os.path.getmtime(layout) > lastmtime:
+        forceReload = True
+        break
+
+  if forceReload:
+    print 'Generating layout dictionary'
+    locals={}
+    locals["dqmitems"]={}
+    allLayouts={}
+    allLayouts["dqmitems"] = {}
+    output = open("%s/layouts.json" % statedir,'w')
+    for f in files:
+      try:
+        print 'Importing layout %s' % f
+        execfile(f, globals(), locals)
+        allLayouts["dqmitems"].update(locals["dqmitems"])
+      except Exception, e:
+        print 'Failed to load layout %s: %s' % (f,e)
+    output.write(json.dumps(allLayouts["dqmitems"], cls=LayoutEncoder, separators=(',',':')))
+    output.close()
+  else:
+    print 'Layout dictionary is up-to-date'
+
 # Verify that an up-to-date plug-in has been built. Delete old ones.
 def build(plugin):
   for path in plugin['old']:
@@ -90,9 +140,10 @@ action = sys.argv[1]
 object = sys.argv[2]
 cfgfile = sys.argv[4]
 
-if object != 'sources' and object != 'server' and object != 'plugins' and object != 'all':
+if object != 'sources' and object != 'server' and object != 'plugins' \
+    and object != 'all' and object != 'layouts':
   print >> sys.stderr, ("Unrecognised object '%s', expected one of:"
-			+ " sources, server, plugins, all")
+			+ " sources, server, plugins, layouts, all")
   sys.exit(1)
 
 if action not in ('stop', 'restart', 'start', 'rebuild', 'verify', 'show'):
@@ -102,7 +153,7 @@ if action not in ('stop', 'restart', 'start', 'rebuild', 'verify', 'show'):
 
 # Read and validate the configuration file.
 try:
-  x = { 'server': ServerDef(), 'envsetup': "", '__file__': cfgfile }
+  x = { 'server': ServerDef(), 'envsetup': "", '__file__': cfgfile, 'LAYOUTS': []}
   execfile(cfgfile, globals(), x)
   cfg = x['server']
   envsetup = x['envsetup']
@@ -167,6 +218,8 @@ if action == 'restart' or action == 'start':
   if object == 'sources' or object == 'plugins' or object == 'all':
     for plugin in cfg.plugins:
       build(plugin)
+  if object == 'layouts' or object == 'all':
+    buildlayouts(x['LAYOUTS'], cfg.serverDir)
 
   ports = {}
   if object == 'server' or object == 'all':
@@ -188,6 +241,8 @@ if action == 'rebuild':
   if object == 'sources' or object == 'plugins' or object == 'all':
     for plugin in cfg.plugins:
       build(plugin)
+  if object == 'layouts' or object == 'all':
+      buildlayouts(x['LAYOUTS'], cfg.serverDir)
 
 # Verification is equivalent to just loading the configuration.
 # (FIXME: check paths and such?)

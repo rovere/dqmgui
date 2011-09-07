@@ -2152,11 +2152,6 @@ public:
       fastrx(rxmatch, path);
       fastrx(rxlayout, "(^" + path + ").*");
 
-      // Give layout source (if defined) pre-scan warning so that it
-      // can do python stuff.
-      if (layoutsrc)
-	layoutsrc->prescan();
-
       {
 	PyReleaseInterpreterLock nogil;
 	src->json(sample, path, options.count("rootcontent") > 0, options.count("lumisect") > 0, result, stamp, "", dirs);
@@ -2675,123 +2670,17 @@ public:
 //////////////////////////////////////////////////////////////////////
 class VisDQMLayoutSource : public VisDQMSource
 {
-  struct FileData
-  {
-    Time		mtime;
-    VisDQMItems		items;
-  };
-
-  typedef std::map<Filename, FileData> FileDataMap;
-  typedef std::list<Filename> FileNameList;
-
   pthread_mutex_t	lock_;
-  FileDataMap		data_;
-  FileNameList		files_;
-
+  VisDQMItems           items_;
 public:
-  VisDQMLayoutSource(py::list filenames)
+
+  VisDQMLayoutSource()
     {
       pthread_mutex_init(&lock_, 0);
-      py::stl_input_iterator<std::string> begin(filenames), end;
-      files_.insert(files_.end(), begin, end);
     }
 
   ~VisDQMLayoutSource(void)
     {}
-
-  virtual void
-  prescan(void)
-    {
-      // Acquire lock on *both* python and the layout state.  Release
-      // python interpreter lock while trying to lock our core, the
-      // py::exec_file will need to be able to get back into python
-      // even if there are threads waiting on the prescan() call.
-
-      PyThreadState *pysave = PyEval_SaveThread();
-      Lock gate(&lock_);
-      PyEval_RestoreThread(pysave);
-
-      // Now process all the layout files.
-      for (FileNameList::iterator i = files_.begin(), e = files_.end(); i != e; ++i)
-      {
-	IOStatus st;
-	if (! st.fill(*i))
-	  data_.erase(*i);
-	else
-	{
-	  FileData &d = data_[*i];
-	  if (d.mtime != st.m_mtime)
-	  {
-	    d.mtime = st.m_mtime;
-	    d.items.clear();
-	    try
-	    {
-	      py::dict items;
-	      py::dict locals;
-	      locals["dqmitems"] = items;
-	      py::exec_file(i->name(), py::import("Monitoring.DQM.GUI").attr("__dict__"), locals);
-
-	      py::stl_input_iterator<std::string> ki(items), ke;
-	      for ( ; ki != ke; ++ki)
-	      {
-		shared_ptr<VisDQMItem> i(new VisDQMItem);
-		i->flags = 0;
-		i->version = st.m_mtime.ns();
-		i->name = StringAtom(&stree, *ki);
-		i->plotter = 0;
-		buildParentNames(i->parents, i->name);
-		d.items[i->name] = i;
-
-		i->layout.reset(new VisDQMLayoutRows);
-		py::object rows = py::extract<py::object>(items.get(*ki).attr("layout"));
-		py::stl_input_iterator<py::object> ri(rows), re;
-		for ( ; ri != re; ++ri)
-		{
-		  py::stl_input_iterator<py::object> ci(*ri), ce;
-		  shared_ptr<VisDQMLayoutRow> row(new VisDQMLayoutRow);
-		  for ( ; ci != ce; ++ci)
-		  {
-		    py::object pycol = *ci;
-		    py::extract<std::string> pycolstr(pycol);
-		    py::extract<py::dict> pycoldict(pycol);
-		    shared_ptr<VisDQMLayoutItem> col(new VisDQMLayoutItem);
-		    if (pycol.ptr() == Py_None)
-		      // None, leave name as empty.
-		      col->path = StringAtom(&stree, std::string());
-		    else if (pycolstr.check())
-		      // Basic string, use as a name.
-		      col->path = StringAtom(&stree, pycolstr());
-		    else if (pycoldict.check())
-		    {
-		      // Complete description, copy over.
-		      py::dict colobj = pycoldict();
-		      col->path = StringAtom(&stree, py::extract<std::string>(colobj.get("path")));
-		      col->desc = py::extract<std::string>(colobj.get("description", ""));
-		      if (colobj.has_key("draw"))
-			translateDrawOptions(py::extract<py::dict>(colobj.get("draw")), col->drawopts);
-		    }
-		    else
-		      logwarn()
-			<< "layout element " << i->name.string()
-			<< "[" << i->layout->size() << ", " << row->columns.size()
-			<< "] is neither 'None', string nor a dict!\n";
-
-		    row->columns.push_back(col);
-		  }
-
-		  i->layout->push_back(row);
-		}
-	      }
-	    }
-	    catch (const py::error_already_set &e)
-	    {
-	      logerr() << "failed to update layouts from " << *i << std::endl;
-	      PyErr_Print();
-	    }
-	  }
-	}
-      }
-    }
 
   virtual void
   scan(VisDQMItems &result,
@@ -2804,70 +2693,101 @@ public:
        VisDQMRegexp *rxlayout)
     {
       Lock gate(&lock_);
-      FileDataMap::iterator fi, fe;
       VisDQMItems::iterator oi, oe;
-      for (fi = data_.begin(), fe = data_.end(); fi != fe; ++fi)
+      result.resize(result.size() + items_.size());
+      for (oi = items_.begin(), oe = items_.end(); oi != oe; ++oi)
       {
-	FileData &fd = fi->second;
-	result.resize(result.size() + fd.items.size());
-	for (oi = fd.items.begin(), oe = fd.items.end(); oi != oe; ++oi)
+	VisDQMItem &o = *oi->second;
+
+	if (layoutroot && rxlayout && rxlayout->rx)
 	{
-	  VisDQMItem &o = *oi->second;
-
-	  if (layoutroot && rxlayout && rxlayout->rx)
+	  RegexpMatch m;
+	  if (rxlayout->rx->match(o.name.string(), 0, 0, &m))
 	  {
-	    RegexpMatch m;
-            if (rxlayout->rx->match(o.name.string(), 0, 0, &m))
-	    {
-	      std::string root = m.matchString(o.name.string(), 1);
-	      if (*layoutroot == root)
-		;
-	      else if (layoutroot->empty())
-		*layoutroot = root;
-	      else
-		layoutroot->clear();
-            }
-          }
-
-	  if (! fastmatch(rxmatch, o.name))
-	    continue;
-
-	  if (rxsearch && rxsearch->search(o.name.string()) < 0)
-	    continue;
-
-	  if (alarm && ((o.flags & VisDQMIndex::SUMMARY_PROP_REPORT_ALARM) != 0) != (*alarm == true))
-	    continue;
-
-	  result[o.name] = oi->second;
+	    std::string root = m.matchString(o.name.string(), 1);
+	    if (*layoutroot == root)
+	      ;
+	    else if (layoutroot->empty())
+	      *layoutroot = root;
+	    else
+	      layoutroot->clear();
+	  }
 	}
+
+	if (! fastmatch(rxmatch, o.name))
+	  continue;
+
+	if (rxsearch && rxsearch->search(o.name.string()) < 0)
+	  continue;
+
+	if (alarm && ((o.flags & VisDQMIndex::SUMMARY_PROP_REPORT_ALARM) != 0) != (*alarm == true))
+	  continue;
+
+	result[o.name] = oi->second;
       }
     }
 
-  void addLayout(py::list filenames)
+  void pushLayouts(py::dict layouts)
     {
-      // Implement add/overwrite logic. If a layout is uploaded to the
-      // server, its name is checked against the ones loaded at
-      // startup time: if an exact match is found, the one uploaded
-      // from the web takes precedence, basically overwriting the old
-      // one. All previously defined layouts corresponding to the old
-      // entry are wiped out also from data_.
-      pthread_mutex_init(&lock_, 0);
-      py::stl_input_iterator<std::string> begin(filenames), end;
-      bool layoutIncluded = false;
-      for (; begin != end; ++begin)
+      Lock gate(&lock_);
+      items_.clear();
+      // Now process all the layouts.
+      try
       {
-	layoutIncluded = false;
-	for (FileNameList::iterator i = files_.begin(), e = files_.end(); i != e; ++i)
-	  if (i->nondirectory() == Filename(*begin).nondirectory())
+	py::stl_input_iterator<std::string> ki(layouts), ke;
+	for ( ; ki != ke; ++ki)
+	{
+	  shared_ptr<VisDQMItem> i(new VisDQMItem);
+	  i->flags = 0;
+	  i->name = StringAtom(&stree, *ki);
+	  i->plotter = 0;
+	  buildParentNames(i->parents, i->name);
+	  items_[i->name] = i;
+
+	  i->layout.reset(new VisDQMLayoutRows);
+	  py::object rows = py::extract<py::object>(layouts.get(*ki));
+	  py::stl_input_iterator<py::object> ri(rows), re;
+	  for ( ; ri != re; ++ri)
 	  {
-	    files_.insert(i, Filename(*begin));
-	    if (data_.find(*i) != data_.end())
-	      data_.erase(data_.find(*i));
-	    i = files_.erase(i);
-	    layoutIncluded = true;
+	    py::stl_input_iterator<py::object> ci(*ri), ce;
+	    shared_ptr<VisDQMLayoutRow> row(new VisDQMLayoutRow);
+	    for ( ; ci != ce; ++ci)
+	    {
+	      py::object pycol = *ci;
+	      py::extract<std::string> pycolstr(pycol);
+	      py::extract<py::dict> pycoldict(pycol);
+	      shared_ptr<VisDQMLayoutItem> col(new VisDQMLayoutItem);
+	      if (pycol.ptr() == Py_None)
+		// None, leave name as empty.
+		col->path = StringAtom(&stree, std::string());
+	      else if (pycolstr.check())
+		// Basic string, use as a name.
+		col->path = StringAtom(&stree, pycolstr());
+	      else if (pycoldict.check())
+	      {
+		// Complete description, copy over.
+		py::dict colobj = pycoldict();
+		col->path = StringAtom(&stree, py::extract<std::string>(colobj.get("path")));
+		col->desc = py::extract<std::string>(colobj.get("description", ""));
+		if (colobj.has_key("draw"))
+		  translateDrawOptions(py::extract<py::dict>(colobj.get("draw")), col->drawopts);
+	      }
+	      else
+		logwarn()
+		  << "layout element " << i->name.string()
+		  << "[" << i->layout->size() << ", " << row->columns.size()
+		  << "] is neither 'None', string nor a dict!\n";
+
+	      row->columns.push_back(col);
+	    }
+	    i->layout->push_back(row);
 	  }
-	if (! layoutIncluded)
-	  files_.push_back(Filename(*begin));
+	}
+      }
+      catch (const py::error_already_set &e)
+      {
+	logerr() << "failed to update layouts." << std::endl;
+	PyErr_Print();
       }
     }
 };
@@ -6169,8 +6089,8 @@ BOOST_PYTHON_MODULE(Accelerator)
 
   py::class_<VisDQMLayoutSource, shared_ptr<VisDQMLayoutSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
-    ("DQMLayoutSource", py::init<py::list>())
-    .def("_addLayout", &VisDQMLayoutSource::addLayout);
+    ("DQMLayoutSource")
+    .def("_pushLayouts", &VisDQMLayoutSource::pushLayouts);
 
   py::class_<VisDQMWorkspace, shared_ptr<VisDQMWorkspace>, boost::noncopyable>
     ("DQMWorkspace", py::no_init)
