@@ -699,7 +699,7 @@ protected:
   // server is never connected to a network data source which it would
   // have to wait for.
   virtual void
-  releaseFromWait(Bucket *msg, WaitObject &w, Object *o)
+  releaseFromWait(Bucket * /* msg */, WaitObject & /* w */, Object * /* o */)
     {
       ASSERT(false);
     }

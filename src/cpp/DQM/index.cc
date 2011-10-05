@@ -217,7 +217,7 @@ roundup(uint32_t value, uint32_t unit)
     the DQM index, or ignored as uninteresting (e.g. ReleaseTag) or
     already handled (e.g. references). */
 static MEClass
-classifyMonitorElement(DQMStore &store,
+classifyMonitorElement(DQMStore & /* store */,
 		       MonitorElement &obj,
 		       MonitorElementInfo &info,
 		       VisDQMIndex::Sample &meta,
@@ -419,6 +419,9 @@ struct MEClassifyTask
   pthread_t				thread;
   size_t				begin;
   size_t				end;
+  MEClassifyTask(FileInfo &f, DQMStore &s, std::vector<MonitorElement*> &m)
+    : fi(f), store(s), mes(m)
+  {}
 };
 
 static void *
@@ -1077,10 +1080,10 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       // Extract monitor element information somewhat parallelised.
       static const size_t NUM_TASKS = 4;
       std::vector<MonitorElement *> mes = store.getAllContents("");
-      MEClassifyTask tasks[NUM_TASKS] = { { fi, store, mes },
-					  { fi, store, mes },
-					  { fi, store, mes },
-					  { fi, store, mes } };
+      MEClassifyTask tasks[NUM_TASKS] = { MEClassifyTask(fi, store, mes),
+					  MEClassifyTask(fi, store, mes),
+					  MEClassifyTask(fi, store, mes),
+					  MEClassifyTask(fi, store, mes) };
       size_t mesPerTask = (mes.size() + NUM_TASKS - 1) / NUM_TASKS;
 
       for (size_t i = 0; i < NUM_TASKS; ++i)
@@ -1164,10 +1167,9 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       {
 	// Extract next sample.  Stop when we hit other tables.
 	void *rdbegin, *rdend;
-	uint64_t key, hipart, lopart;
+	uint64_t key, hipart;
 	rdhead.get(&key, &rdbegin, &rdend);
 	hipart = key & 0xffffffff00000000ull;
-	lopart = key & 0x00000000ffffffffull;
 	if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  break;
 
@@ -1399,10 +1401,9 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
     {
       // Extract next sample.  Stop when we hit other tables.
       void *rdbegin, *rdend;
-      uint64_t key, hipart, lopart;
+      uint64_t key, hipart;
       rdhead.get(&key, &rdbegin, &rdend);
       hipart = key & 0xffffffff00000000ull;
-      lopart = key & 0x00000000ffffffffull;
       if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	break;
 
@@ -1774,10 +1775,9 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       {
 	// Extract next sample.  Stop when we hit other tables.
 	void *rdbegin, *rdend;
-	uint64_t key, hipart, lopart;
+	uint64_t key, hipart;
 	rdhead.get(&key, &rdbegin, &rdend);
 	hipart = key & 0xffffffff00000000ull;
-	lopart = key & 0x00000000ffffffffull;
 	if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  break;
 
@@ -1802,10 +1802,9 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       {
 	// Extract next sample.  Stop when we hit other tables.
 	void *rdbegin, *rdend;
-	uint64_t key, hipart, lopart;
+	uint64_t key, hipart;
 	rdhead.get(&key, &rdbegin, &rdend);
 	hipart = key & 0xffffffff00000000ull;
-	lopart = key & 0x00000000ffffffffull;
 	if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  break;
 
@@ -1951,11 +1950,9 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
     void *end;
     uint64_t key;
     uint64_t hipart;
-    uint64_t lopart;
 
     rdhead.get(&key, &begin, &end);
     hipart = key & 0xffffffff00000000ull;
-    lopart = key & 0x00000000ffffffffull;
     if (hipart == VisDQMIndex::MASTER_SAMPLE_RECORD)
       samples.push_back(*(const VisDQMIndex::Sample *)begin);
     else

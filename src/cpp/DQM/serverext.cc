@@ -57,6 +57,7 @@
 #include <ext/hash_map>
 #include <dlfcn.h>
 #include <math.h>
+#include <inttypes.h>
 
 #ifndef __GLIBC__
 #include <stdio.h>
@@ -429,6 +430,26 @@ struct VisDQMSample
   std::string			version;
   VisDQMSource			*origin;
   uint64_t			time;
+  VisDQMSample(VisDQMSampleType t, long r, const std::string & d)
+    : type(t),
+      runnr(r),
+      dataset(d),
+      version(""),
+      origin(0),
+      time(0)
+  {}
+  VisDQMSample(VisDQMSampleType t, long r)
+    : type(t),
+      runnr(r),
+      dataset(""),
+      version(""),
+      origin(0),
+      time(0)
+  {}
+  VisDQMSample()
+  {
+    VisDQMSample(SAMPLE_ANY, 0);
+  }
 };
 
 static const char *sampleTypeLabel[] =
@@ -1201,12 +1222,12 @@ public:
     }
 
   virtual void
-  prepareSession(py::dict session)
+  prepareSession(py::dict /* session */)
     {}
 
   virtual void
-  getdata(const VisDQMSample &sample,
-	  const std::string &path,
+  getdata(const VisDQMSample & /* sample */,
+	  const std::string & /* path */,
 	  std::string &streamers,
 	  DQMNet::Object &obj)
     {
@@ -1215,11 +1236,11 @@ public:
     }
 
   virtual void
-  getattr(const VisDQMSample &sample,
-	  const std::string &path,
+  getattr(const VisDQMSample & /* sample */,
+	  const std::string & /* path */,
 	  VisDQMIndex::Summary &attrs,
-	  std::string &xstreamers,
-	  DQMNet::Object &xobj)
+	  std::string & /* xstreamers */,
+	  DQMNet::Object & /* xobj */)
     {
       clearattr(attrs);
     }
@@ -1229,38 +1250,38 @@ public:
     {}
 
   virtual void
-  scan(VisDQMItems &result,
-       const VisDQMSample &sample,
-       VisDQMEventNum &current,
-       VisDQMRegexp *rxmatch,
-       Regexp *rxsearch,
-       bool *alarm,
-       std::string *layoutroot,
-       VisDQMRegexp *rxlayout)
+  scan(VisDQMItems & /* result */,
+       const VisDQMSample & /* sample */,
+       VisDQMEventNum & /* current */,
+       VisDQMRegexp * /* rxmatch */,
+       Regexp * /* rxsearch */,
+       bool * /* alarm */,
+       std::string * /* layoutroot */,
+       VisDQMRegexp * /* rxlayout */)
     {}
 
   virtual void
-  json(const VisDQMSample &sample,
-       const std::string &rootpath,
-       bool fulldata,
-       bool lumisect,
-       std::string &result,
-       double &stamp,
-       const std::string &name,
-       std::set<std::string> &dirs)
+  json(const VisDQMSample & /* sample */,
+       const std::string & /* rootpath */,
+       bool /* fulldata */,
+       bool /* lumisect */,
+       std::string & /* result */,
+       double & /* stamp */,
+       const std::string & /* name */,
+       std::set<std::string> & /* dirs */)
     {}
 
   virtual void
-  samples(VisDQMSamples &samples)
+  samples(VisDQMSamples & /* samples */)
     {}
 
   virtual void
-  getcert(VisDQMSample &sample,
-	  const std::string &path,
-	  const std::string &variableName,
-	  std::vector<VisDQMIndex::Summary> &attrs,
-	  std::vector<double> &axisvals,
-	  std::string &binlabels)
+  getcert(VisDQMSample & /* sample */,
+	  const std::string & /* path */,
+	  const std::string & /* variableName */,
+	  std::vector<VisDQMIndex::Summary> & /* attrs */,
+	  std::vector<double> & /* axisvals */,
+	  std::string & /* binlabels */)
     {}
 
 };
@@ -2231,7 +2252,7 @@ public:
        const std::string &path,
        py::dict opts)
     {
-      VisDQMSample sample = { SAMPLE_ANY, runnr, dataset };
+      VisDQMSample sample(SAMPLE_ANY, runnr, dataset);
       std::map<std::string, std::string> options;
       std::set<std::string> dirs;
       VisDQMItems    layoutResult;
@@ -2396,9 +2417,9 @@ public:
 	  continue;
 
 	VisDQMSource *xsrc = src();
-	VisDQMSample sample = { SAMPLE_ANY,
-			        py::extract<int>(item[1]),
-			        py::extract<std::string>(item[2]) };
+	VisDQMSample sample(SAMPLE_ANY,
+                            py::extract<long>(item[1]),
+                            py::extract<std::string>(item[2]));
 	std::string opath = py::extract<std::string>(item[3]);
 
         {
@@ -2469,7 +2490,7 @@ public:
   py::tuple
   plot(py::list pysources, py::object info, const std::string &path, py::dict opts)
     {
-      VisDQMSample cursample = { SAMPLE_ANY, -1 };
+      VisDQMSample cursample(SAMPLE_ANY, -1);
       std::map<std::string, std::string> options;
       bool imageok = false;
       std::string imagedata;
@@ -2695,7 +2716,7 @@ public:
   py::tuple
   plot(py::object info, const std::string &fullpath, const std::string &path, const std::string &variableName, py::dict opts)
     {
-      VisDQMSample cursample = { SAMPLE_ANY, -1 };
+      VisDQMSample cursample(SAMPLE_ANY, -1);
       std::map<std::string, std::string> options;
       bool imageok = false;
       std::string imagedata;
@@ -2715,7 +2736,6 @@ public:
 	  std::string binlabels;
 	  std::vector<double> axisvals;
 	  std::vector<VisDQMIndex::Summary> attrs;
-	  VisDQMIndex::Summary oneattr;
 	  // Extract run number and dataset name.  Remember both the
 	  // mutilated and original dataset names, former for relval
 	  // and the other for other sample matches.  At this stage we
@@ -2780,8 +2800,8 @@ public:
 
   virtual void
   scan(VisDQMItems &result,
-       const VisDQMSample &sample,
-       VisDQMEventNum &current,
+       const VisDQMSample & /* sample */,
+       VisDQMEventNum & /* current */,
        VisDQMRegexp *rxmatch,
        Regexp *rxsearch,
        bool *alarm,
@@ -3108,7 +3128,7 @@ public:
   void
   json(const std::string &rootpath,
        bool fulldata,
-       bool lumisect,
+       bool /* lumisect */,
        std::string &result,
        double &stamp,
        const std::string &mename,
@@ -3246,7 +3266,7 @@ class VisDQMLiveSource : public VisDQMSource
   VisDQMRenderLink *link_;
 
 public:
-  VisDQMLiveSource(py::object gui, py::dict opts)
+  VisDQMLiveSource(py::object /* gui */, py::dict opts)
     : mydataset_(py::extract<std::string>(opts["dataset"])),
       thread_(new VisDQMLiveThread(this,
 				   py::extract<bool>(opts["verbose"]),
@@ -3268,7 +3288,7 @@ public:
     }
 
   virtual void
-  getdata(const VisDQMSample &sample,
+  getdata(const VisDQMSample & /* sample */,
 	  const std::string &path,
 	  std::string &streamers,
 	  DQMNet::Object &obj)
@@ -3279,7 +3299,7 @@ public:
     }
 
   virtual void
-  getattr(const VisDQMSample &sample,
+  getattr(const VisDQMSample & /* sample */,
 	  const std::string &path,
 	  VisDQMIndex::Summary &attrs,
 	  std::string &xstreamers,
@@ -3292,7 +3312,7 @@ public:
   py::tuple
   plot(const std::string &path, py::dict opts)
     {
-      VisDQMSample sample = { SAMPLE_ANY, -1 };
+      VisDQMSample sample(SAMPLE_ANY, -1);
       std::map<std::string,std::string> options;
       bool imageok = false;
       std::string imagedata;
@@ -3547,11 +3567,9 @@ class VisDQMArchiveSource : public VisDQMSource
 	void *end;
 	uint64_t key;
 	uint64_t hipart;
-	uint64_t lopart;
 
 	rdhead.get(&key, &begin, &end);
 	hipart = key & 0xffffffff00000000ull;
-	lopart = key & 0x00000000ffffffffull;
 	if (hipart == VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  samples_.push_back(*(const VisDQMIndex::Sample *)begin);
 	else
@@ -3664,7 +3682,7 @@ class VisDQMArchiveSource : public VisDQMSource
     }
 
 public:
-  VisDQMArchiveSource(py::object gui, py::dict opts)
+  VisDQMArchiveSource(py::object /* gui */, py::dict opts)
     : rxonline_(py::extract<std::string>(opts["rxonline"])),
       retry_(false),
       path_(Filename(py::extract<std::string>(opts["index"]))),
@@ -3702,7 +3720,7 @@ public:
 
   static inline void makeBinLabel(char * buff, uint64_t value)
     {
-      sprintf(buff, "%ld", value);
+      sprintf(buff, "%" PRIu64, value);
     }
 
   virtual void
@@ -3802,8 +3820,8 @@ public:
   getattr(const VisDQMSample &sample,
 	  const std::string &path,
 	  VisDQMIndex::Summary &attrs,
-	  std::string &xstreamers,
-	  DQMNet::Object &xobj)
+	  std::string & /* xstreamers */,
+	  DQMNet::Object & /* xobj */)
     {
       clearattr(attrs);
 
@@ -3869,7 +3887,7 @@ public:
        const std::string &path,
        py::dict opts)
     {
-      VisDQMSample sample = { SAMPLE_ANY, runnr, dataset };
+      VisDQMSample sample(SAMPLE_ANY, runnr, dataset);
       std::map<std::string,std::string> options;
       bool imageok = false;
       std::string imagedata;
@@ -4020,7 +4038,7 @@ public:
 
 	  // Make sure we are up to date.
 	  VisDQMItems items;
-	  VisDQMSample sample = { SAMPLE_ONLINE_DATA, 0 };
+	  VisDQMSample sample(SAMPLE_ONLINE_DATA, 0);
 	  VisDQMEventNum current = { "", -1, -1, -1, -1 };
 	  update(items, sample, current, 0, 0, 0);
 
@@ -4273,7 +4291,6 @@ public:
 	  for ( ; ! rdinfo.isdone(); rdinfo.next())
 	  {
 	    uint64_t ikey;
-	    uint64_t dkey;
 	    void *begin;
 	    void *end;
 	    rdinfo.get(&ikey, &begin, &end);
@@ -4431,7 +4448,7 @@ public:
     {}
 
   virtual std::string
-  state(py::dict session)
+  state(py::dict /* session */)
     {
       return "{}";
     }
@@ -4839,11 +4856,6 @@ protected:
       empty.nleaves = 0;
       empty.nalarm = 0;
       empty.nlive = 0;
-
-      VisDQMStatus leaf;
-      leaf.nleaves = 1;
-      leaf.nalarm = 0;
-      leaf.nlive = 0;
 
       status[StringAtom(&stree, "")] = empty;
       status[StringAtom(&stree, "Quick collection")] = empty;
@@ -5707,7 +5719,7 @@ protected:
     }
 
   static std::string
-  shownDirToJSON(const VisDQMItems &contents,
+  shownDirToJSON(const VisDQMItems & /* contents */,
 		 const VisDQMStatusMap &status,
 		 const StringAtom &x)
     {
