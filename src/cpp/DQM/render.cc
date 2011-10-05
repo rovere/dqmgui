@@ -1468,7 +1468,7 @@ main(int argc, char **argv)
 
   // Re-capture signals from ROOT after ROOT has initialised.
   ROOT::GetROOT();
-  for (int sig = 1; sig < _NSIG; ++sig)
+  for (int sig = 1; sig < NSIG; ++sig)
     if (sig == SIGPIPE)
       Signal::ignore(sig);
     else

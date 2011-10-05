@@ -1,16 +1,21 @@
 include $(dir $(lastword $(MAKEFILE_LIST)))/makefile.ext
 
+PLATFORM    := $(shell uname)
 SRCDIR       = .
 CXX          = c++
-LDFLAGS      = -Wl,-z,defs -L. $(patsubst %,-L%,$(LIBRARY_DIRS))
-# -Werror
-CXXFLAGS     = -D_GNU_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
-	       -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \
+LDFLAGS_Darwin = -mmacosx-version-min=10.6
+LDFLAGS_Linux  = -Wl,-z,defs
+LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(patsubst %,-L%,$(LIBRARY_DIRS))
+
+CXXFLAGS     = -D_GNU_SOURCE -D_DARWIN_C_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
+	       -D__STDC_FORMAT_MACROS -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \
 	       -ansi -pedantic -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS))
-ROOTC_LIBS   = -lCint -lCore -lRIO -lNet -lHist -lMatrix -lThread -lTree
+ROOTC_LIBS   = -lCint -lCore -lRIO -lNet -lHist -lMatrix -lThread -lTree -lMathCore
 ROOTG_LIBS   = $(ROOTC_LIBS) -lTreePlayer -lGpad -lGraf3d -lGraf \
                -lPhysics -lPostscript -lASImage -ljpeg -lpng
-OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -lrt -ldl
+OTHER_LIBS_Darwin =
+OTHER_LIBS_Linux  = -lrt
+OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -ldl $(OTHER_LIBS_$(PLATFORM))
 PYTHON_LIBS  = -lboost_python -lpython2.6
 
 LIB_SRC      = DQM/DQMRenderPlugin.cc \

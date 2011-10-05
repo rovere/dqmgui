@@ -2257,7 +2257,7 @@ int main(int argc, char **argv)
 
   // Re-capture signals from ROOT after ROOT has initialised.
   ROOT::GetROOT();
-  for (int sig = 1; sig < _NSIG; ++sig) Signal::revert(sig);
+  for (int sig = 1; sig < NSIG; ++sig) Signal::revert(sig);
   Signal::handleFatal(argv[0], IOFD_INVALID, 0, 0, FATAL_OPTS);
 
   // Check and process arguments.

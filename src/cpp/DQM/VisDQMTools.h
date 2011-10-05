@@ -11,6 +11,7 @@
 #  include "TClass.h"
 # endif
 # include <iostream>
+# include <cstdio>
 
 /// Options on how we want fatal signals to be handled.
 static const int FATAL_OPTS = (lat::Signal::FATAL_DEFAULT

@@ -1,4 +1,3 @@
-#define __STDC_FORMAT_MACROS 1
 #include "DQM/VisDQMIndex.h"
 #include "DQM/VisDQMCache.h"
 #include "DQM/VisDQMFile.h"
@@ -12,6 +11,7 @@
 #include <memory>
 #include <cerrno>
 #include <cstdlib>
+#include <cstdio>
 #include <fcntl.h>
 #include <stdint.h>
 #include <inttypes.h>

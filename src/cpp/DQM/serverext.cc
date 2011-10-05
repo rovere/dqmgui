@@ -1,7 +1,7 @@
 // Shut up warning about _POSIX_C_SOURCE mismatch, caused by a
 // harmless conflict between _GNU_SOURCE and python header files.
 //#define NDEBUG 1
-#include <features.h>
+#include <unistd.h>
 #if _POSIX_C_SOURCE != 200112L
 # undef _POSIX_C_SOURCE
 # define _POSIX_C_SOURCE 200112L
@@ -57,6 +57,102 @@
 #include <ext/hash_map>
 #include <dlfcn.h>
 #include <math.h>
+
+#ifndef __GLIBC__
+#include <stdio.h>
+// Use unique buffer for read and write.
+struct membuf
+{
+  char *data;
+  char **addr;
+  size_t *len;
+  size_t size;
+  size_t pos;
+};
+
+int fmemread(void *cookie, char *into, int len)
+{
+  membuf *mbuf = (membuf *) cookie;
+  if (mbuf->pos > mbuf->size) return 0;
+  size_t nmax = std::min<size_t>(len, mbuf->size - mbuf->pos);
+  memcpy(into, mbuf->data + mbuf->pos, nmax);
+  mbuf->pos += nmax;
+  return nmax;
+}
+
+int fmemwrite(void *cookie, const char *from, int len)
+{
+  /* Copy content from from into cookie's internal buf for
+     len bytes. Allocate space in case it is needed. Keeps
+     allocating it just to the exact boundary.  Maybe a bulk
+     allocation could be more performing? Keep track of the
+     new allocated memory and save it back into the pointer
+     passed to open_memstream. */
+
+  membuf *mbuf = (membuf *) cookie;
+  if (mbuf->pos + len > mbuf->size)
+  {
+    if (! (mbuf->data = (char*)realloc((void *)mbuf->data,
+				       mbuf->pos + len - mbuf->size )))
+      return 0;
+    *mbuf->addr = mbuf->data;
+    mbuf->size  = mbuf->pos + len;
+  }
+  memcpy (&(mbuf->data[mbuf->pos]), from, len);
+  mbuf->pos += len;
+  *mbuf->len=mbuf->pos;
+  return len;
+}
+
+fpos_t fmemseek(void *cookie, fpos_t pos, int whence)
+{
+  membuf *mbuf = (membuf *) cookie;
+  if (whence == SEEK_SET)
+    mbuf->pos = pos;
+  else if (whence == SEEK_END)
+    mbuf->pos = mbuf->size;
+  else if (whence == SEEK_CUR)
+    mbuf->pos += pos;
+  return mbuf->pos;
+}
+
+int fmemclose(void *cookie)
+{
+  /* Demand deletion of allocated memory to the calling
+     function!! We basically delete the cookie but not
+     the allocated memory.  The pointer to the allocated
+     memory is passed back to the calling function in
+     write mode which is responsible to delete it. This
+     is to keep the same logic used with the open_memstream
+     function under linux. */
+  free(cookie);
+  return 0;
+}
+
+FILE *fmemopen(char *buf, size_t n, const char *)
+{
+  membuf *mbuf = (membuf*)malloc(sizeof(membuf));
+  mbuf->data = buf;
+  mbuf->size = n;
+  mbuf->pos = 0;
+
+  return funopen(mbuf, fmemread, 0, fmemseek, fmemclose);
+}
+
+FILE *open_memstream(char **buf, size_t *len, const char * = 0)
+{
+  membuf *mbuf = (membuf*)malloc(sizeof(membuf));
+  mbuf->data = (char*)malloc(1024*100); //100K default
+  mbuf->addr = buf;
+  *mbuf->addr = mbuf->data;
+  mbuf->size=1024*100;
+  mbuf->pos = 0;
+  mbuf->len = len;
+  *mbuf->len = mbuf->pos;
+  return funopen(mbuf, 0, fmemwrite, fmemseek, fmemclose);
+}
+#endif
+
 
 namespace boost { namespace gil {
   /** Kernel for sinc filter of radius 2.0.  NB: Some say sinc(x) is
@@ -963,7 +1059,7 @@ objectToJSON(const std::string &name,
 	 : type == DQMNet::DQM_PROP_TYPE_TPROF2D ? "TPROF2D"
 	 : type == DQMNet::DQM_PROP_TYPE_DATABLOB ? "DATABLOB"
 	 : "OTHER")
-    .arg(lumisect)
+    .arg((unsigned long)lumisect)
     .arg((report & DQMNet::DQM_PROP_REPORT_ALARM) ? 1 : 0)
     .arg((report & DQMNet::DQM_PROP_REPORT_ERROR) ? 1 : 0)
     .arg((report & DQMNet::DQM_PROP_REPORT_WARN) ? 1 : 0)
@@ -3356,7 +3452,14 @@ private:
       while (! stop_)
       {
         timespec delay;
+#if _POSIX_TIMERS > 0
 	clock_gettime(CLOCK_REALTIME, &delay);
+#else
+	timeval tv;
+        gettimeofday(&tv, 0);
+        delay.tv_sec = tv.tv_sec;
+        delay.tv_nsec = tv.tv_usec * 1000;
+#endif
 	delay.tv_sec += 30;
 	pthread_cond_timedwait(&stopsig_, &lock_, &delay);
 	if (! stop_)

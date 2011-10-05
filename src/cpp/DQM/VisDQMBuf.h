@@ -1,6 +1,7 @@
 #ifndef DQM_VISDQMBUF_H
 # define DQM_VISDQMBUF_H
 
+# include <stddef.h>
 # include <stdlib.h>
 # include <string.h>
 # include <algorithm>
