@@ -1,6 +1,15 @@
 DQM GUI release notes
 =====================
 
+6.1.1
+  Several improvements related to Mas OS X support. Fixed compilation
+  warnings. Add dqm-access utility to allow local download of ROOT
+  files/histograms through the DQMToJSON interface. Add Content-Lentgh
+  field in visDQMUpload script to speed up ROOT file uploads.
+
+6.1.0
+  New layout managment.
+
 6.0.7
 
   Fix JSON syntax errors and TGraph Y range in strip charts. Add X509
