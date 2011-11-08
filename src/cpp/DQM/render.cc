@@ -31,7 +31,9 @@
 #include "TStyle.h"
 #include "TGraphErrors.h"
 #include "TGraphAsymmErrors.h"
+#include "TPaveStats.h"
 #include <fstream>
+#include <sstream>
 #include <iostream>
 #include <iostream>
 #include <cassert>
@@ -1083,6 +1085,8 @@ private:
   bool
   doRender(VisDQMImgInfo &i, VisDQMObject *objs, size_t numobjs, DataBlob &imgdata)
     {
+      static int colors[] = {kGray, kAzure, kOrange+7, kRed+1,
+			     kMagenta+2, kGreen-3};
       VisDQMObject &o = objs[0];
       VisDQMRenderInfo ri = { i.drawOptions, (info_.blacklist.count(o.name) > 0) };
 
@@ -1282,6 +1286,10 @@ private:
 	    else if (i.zaxis.type == "log")
 	      c.SetLogz(1);
           }
+	  // Increase lineWidth in case there are other objects to
+	  // draw on top of the main one.
+	  if (numobjs > 1)
+	    h->SetLineWidth(2);
         }
 
         // Draw the main object on top.
@@ -1291,6 +1299,12 @@ private:
 	for (size_t n = 0; n < numobjs; ++n)
         {
 	  TObject *refobj = 0;
+	  TPaveStats * currentStat =0;
+	  // Compute colors array size on the fly and use it to loop
+	  // over defined colors in case the number of objects to
+	  // overlay is greater than the available colors
+	  // (n%colorIndex).
+	  int colorIndex = sizeof(colors)/sizeof(int);
 	  if (n == 0 && i.reference == DQM_REF_OVERLAY)
 	    refobj = o.reference;
 	  else if (n > 0)
@@ -1301,7 +1315,7 @@ private:
 	  TProfile *refp = dynamic_cast<TProfile *>(refobj);
 	  if (refp)
           {
-            refp->SetLineColor(40 + n);
+            refp->SetLineColor(colors[n%colorIndex]);
             refp->SetLineWidth(0);
             refp->GetListOfFunctions()->Delete();
             refp->Draw("same hist");
@@ -1311,7 +1325,7 @@ private:
 	    // Perform KS statistical test only on the first available
 	    // reference, excluding the (possible) default one
 	    // injected during the harvesting step.
-	    int color = 40 + n;
+	    int color = colors[n%colorIndex];
 	    double norm = 1.;
             if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
               norm = th1f->GetSumOfWeights();
@@ -1333,15 +1347,45 @@ private:
 		t.DrawTextNDC(0.45, 0.9, buffer);
 	      }
 
-            ref->SetLineColor(color);
-            ref->SetLineWidth(0);
-            ref->SetFillColor(color);
-            ref->SetFillStyle(3002);
+            ref->SetLineColor(color); ref->SetMarkerColor(color);
+            ref->SetMarkerStyle(kFullDotLarge);
             ref->GetListOfFunctions()->Delete();
             if (norm)
-              nukem.push_back(ref->DrawNormalized("same hist",norm));
+              nukem.push_back(ref->DrawNormalized("same e1 x0 p0",norm));
             else
-              ref->Draw("same hist");
+              ref->Draw("same e1 x0 p0");
+
+	    // Draw stats box for every additional ovelayed reference
+	    // object, appending latest at the bottom of the stats box
+	    // drawn last. FIXME: stats' coordinates are fixed, which
+	    // is ugly, but apparently we cannot have them back from
+	    // ROOT unless we use some public variable (gPad) which I
+	    // do not know if it is thread safe but which I know is
+	    // causing us problems.
+	    currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
+					 0.98, 0.835-n*0.16, "brNDC");
+	    if (currentStat)
+	    {
+	      currentStat->SetBorderSize(1);
+	      nukem.push_back(currentStat);
+	      std::stringstream ss;
+	      if (n==0)
+		currentStat->AddText("StandardRef");
+	      else
+	      {
+		ss << "Ref "<< n;
+		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+	      }
+	      ss << "Entries = " << ref->GetEntries();
+	      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+	      ss << "Mean  = " << ref->GetMean();
+	      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+	      ss << "RMS   = " << ref->GetRMS();
+	      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+	      currentStat->SetOptStat(1111);
+	      currentStat->SetOptFit(0);
+	      currentStat->Draw();
+	    }
           }
         }
       }
