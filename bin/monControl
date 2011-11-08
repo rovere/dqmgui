@@ -44,7 +44,10 @@ def syncenv(cmd):
 # and input from /dev/null.  The log file will get a "marker line" at
 # the time the process is started, using bourne shell's "-x" option.
 def start(cmd):
-  os.spawnvp(os.P_NOWAIT, 'setsid', ['setsid', 'sh', '-c', 'exec %s' % cmd])
+  if inpath('setsid') != 'setsid':
+    os.spawnvp(os.P_NOWAIT, 'setsid', ['setsid', 'sh', '-c', 'exec %s' % cmd])
+  else:
+    os.spawnvp(os.P_NOWAIT, 'sh', ['sh', '-c', 'exec %s' % cmd])
 
 # Find an executable in $PATH.
 def inpath(cmd):
