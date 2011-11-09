@@ -165,11 +165,11 @@ while True:
     # Broadcast new alarms
     if len(newAlarmsList):
       if len(newAlarmsList) > 1:
-        msg = "THERE ARE %d NEW DQM ALARMS!, please check %s histograms"
+        msg = "THERE ARE %d NEW DQM ALARMS!"
       else:
-        msg = "THERE IS %d NEW DQM ALARM!, please check %s histogram"
+        msg = "THERE IS %d NEW DQM ALARM!"
 
-      msg = msg % (len(newAlarmsList)," and ".join(newAlarmsList))
+      msg = msg % len(newAlarmsList)
       sendMsg(msg)
       for a in newAlarmsList:
         alarms[a]['lastBroadcast'] = now
@@ -184,11 +184,11 @@ while True:
 
     if now - lastGlobalReminder > REMINDERINTERVAL and len(alarmsToBroadcastList):
       if len(alarmsToBroadcastList) > 1:
-        msg = "THERE ARE %d DQM ALARMS!, please check %s histograms"
+        msg = "THERE ARE %d DQM ALARMS!"
       else:
-        msg = "THERE IS %d DQM ALARM!, please check %s histogram"
+        msg = "THERE IS %d DQM ALARM!"
 
-      msg = msg % (len(activeAlarmsList)," ,and ".join(alarmsToBroadcastList))
+      msg = msg % len(activeAlarmsList)
       sendMsg(msg)
       lastGlobalReminder = now
 
