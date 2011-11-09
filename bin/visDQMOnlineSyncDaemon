@@ -189,6 +189,7 @@ def process_task(c):
 
       ncopied += 1
       c.local_path = None
+      c.temp_path = None
       logme("INFO: downloaded %s", path)
     except Exception, e:
       logme("ERROR: downloading %s into %s failed: %s",
