@@ -257,6 +257,8 @@ function layout(type, container, item, obj, sz, ref, strip, focus, onclick, xsty
 	      xargs += ';ktest='+refdef.ktest;
           }
 	}
+	xargs += ';showstats='+ref.showstats;
+	xargs += ';showerrbars='+ref.showerrbars;
       }
 
       var showref = (overlay ? "overlay" : "object");

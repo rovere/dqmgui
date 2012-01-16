@@ -248,6 +248,8 @@ GUI.Plugin.DQMHeaderRow = new function() {
     // Set up actions for reference changes.
     $('subhead-ref-show').onchange
       = $('subhead-ref-position').onchange
+      = $('subhead-ref-stats').onchange
+      = $('subhead-ref-errbars').onchange
       = function(e) { _self.updateRefView(); };
 
     var refupdate = function(e) {
@@ -434,9 +436,11 @@ GUI.Plugin.DQMHeaderRow = new function() {
       Passes the request to server which will prompt for details. */
   this.updateRefView = function()
   {
-    _gui.makeCall(_url() + _("/setReference?show=${show};position=${pos}",
+    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos};showstats=${showstats};showerrbars=${errbars}",
 			     {show: $('subhead-ref-show').value,
-			      pos: $('subhead-ref-position').value}));
+			      pos: $('subhead-ref-position').value,
+			      showstats: $('subhead-ref-stats').value,
+			      errbars: $('subhead-ref-errbars').value}));
     return false;
   };
 

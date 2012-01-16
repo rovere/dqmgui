@@ -292,6 +292,8 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
   i.width = -1;
   i.height = -1;
   i.reference = DQM_REF_OBJECT;
+  i.showstats = 1;
+  i.showerrbars = 1;
   i.trend = DQM_TREND_OBJECT;
   i.ktest = NAN;
   i.xaxis.type = i.yaxis.type = i.zaxis.type = "def";
@@ -307,21 +309,23 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
 
     // Handle various keywords.
     error = "unexpected image parameter";
-    if (!    parseInt       (p, "w=",        2, i.width)
-	&& ! parseInt       (p, "h=",        2, i.height)
-	&& ! parseReference (p, "ref=",      4, i.reference)
-	&& ! parseStripChart(p, "trend=",    6, i.trend)
-	&& ! parseDouble    (p, "xmin=",     5, i.xaxis.min)
-	&& ! parseDouble    (p, "xmax=",     5, i.xaxis.max)
-	&& ! parseAxisType  (p, "xtype=",    6, i.xaxis.type)
-	&& ! parseDouble    (p, "ymin=",     5, i.yaxis.min)
-	&& ! parseDouble    (p, "ymax=",     5, i.yaxis.max)
-	&& ! parseAxisType  (p, "ytype=",    6, i.yaxis.type)
-	&& ! parseDouble    (p, "zmin=",     5, i.zaxis.min)
-	&& ! parseDouble    (p, "zmax=",     5, i.zaxis.max)
-	&& ! parseDouble    (p, "ktest=",    6, i.ktest)
-	&& ! parseAxisType  (p, "ztype=",    6, i.zaxis.type)
-	&& ! parseOption    (p, "drawopts=", 9, i.drawOptions))
+    if (!    parseInt       (p, "w=",            2, i.width)
+	&& ! parseInt       (p, "h=",            2, i.height)
+	&& ! parseReference (p, "ref=",          4, i.reference)
+	&& ! parseInt       (p, "showstats=",   10, i.showstats)
+	&& ! parseInt       (p, "showerrbars=", 12, i.showerrbars)
+	&& ! parseStripChart(p, "trend=",        6, i.trend)
+	&& ! parseDouble    (p, "xmin=",         5, i.xaxis.min)
+	&& ! parseDouble    (p, "xmax=",         5, i.xaxis.max)
+	&& ! parseAxisType  (p, "xtype=",        6, i.xaxis.type)
+	&& ! parseDouble    (p, "ymin=",         5, i.yaxis.min)
+	&& ! parseDouble    (p, "ymax=",         5, i.yaxis.max)
+	&& ! parseAxisType  (p, "ytype=",        6, i.yaxis.type)
+	&& ! parseDouble    (p, "zmin=",         5, i.zaxis.min)
+	&& ! parseDouble    (p, "zmax=",         5, i.zaxis.max)
+	&& ! parseDouble    (p, "ktest=",        6, i.ktest)
+	&& ! parseAxisType  (p, "ztype=",        6, i.zaxis.type)
+	&& ! parseOption    (p, "drawopts=",     9, i.drawOptions))
       return false;
 
     if (*p && *p != ';')
@@ -1087,6 +1091,7 @@ private:
     {
       static int colors[] = {kGray, kAzure, kOrange+7, kRed+1,
 			     kMagenta+2, kGreen-3};
+      std::string samePlotOptions("same p");
       VisDQMObject &o = objs[0];
       VisDQMRenderInfo ri = { i.drawOptions, (info_.blacklist.count(o.name) > 0) };
 
@@ -1348,43 +1353,48 @@ private:
 	      }
 
             ref->SetLineColor(color); ref->SetMarkerColor(color);
-            ref->SetMarkerStyle(kFullDotLarge);
+            ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
             ref->GetListOfFunctions()->Delete();
+	    if (i.showerrbars)
+	      samePlotOptions += " e1 x0";
             if (norm)
-              nukem.push_back(ref->DrawNormalized("same e1 x0 p0",norm));
+              nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
             else
-              ref->Draw("same e1 x0 p0");
+              ref->Draw(samePlotOptions.c_str());
 
-	    // Draw stats box for every additional ovelayed reference
-	    // object, appending latest at the bottom of the stats box
-	    // drawn last. FIXME: stats' coordinates are fixed, which
-	    // is ugly, but apparently we cannot have them back from
-	    // ROOT unless we use some public variable (gPad) which I
-	    // do not know if it is thread safe but which I know is
-	    // causing us problems.
-	    currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
-					 0.98, 0.835-n*0.16, "brNDC");
-	    if (currentStat)
+	    if (i.showstats)
 	    {
-	      currentStat->SetBorderSize(1);
-	      nukem.push_back(currentStat);
-	      std::stringstream ss;
-	      if (n==0)
-		currentStat->AddText("StandardRef");
-	      else
+	      // Draw stats box for every additional ovelayed reference
+	      // object, appending latest at the bottom of the stats box
+	      // drawn last. FIXME: stats' coordinates are fixed, which
+	      // is ugly, but apparently we cannot have them back from
+	      // ROOT unless we use some public variable (gPad) which I
+	      // do not know if it is thread safe but which I know is
+	      // causing us problems.
+	      currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
+					   0.98, 0.835-n*0.16, "brNDC");
+	      if (currentStat)
 	      {
-		ss << "Ref "<< n;
+		currentStat->SetBorderSize(1);
+		nukem.push_back(currentStat);
+		std::stringstream ss;
+		if (n==0)
+		  currentStat->AddText("StandardRef");
+		else
+		{
+		  ss << "Ref "<< n;
+		  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+		}
+		ss << "Entries = " << ref->GetEntries();
 		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+		ss << "Mean  = " << ref->GetMean();
+		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+		ss << "RMS   = " << ref->GetRMS();
+		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+		currentStat->SetOptStat(1111);
+		currentStat->SetOptFit(0);
+		currentStat->Draw();
 	      }
-	      ss << "Entries = " << ref->GetEntries();
-	      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-	      ss << "Mean  = " << ref->GetMean();
-	      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-	      ss << "RMS   = " << ref->GetRMS();
-	      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-	      currentStat->SetOptStat(1111);
-	      currentStat->SetOptFit(0);
-	      currentStat->Draw();
 	    }
           }
         }

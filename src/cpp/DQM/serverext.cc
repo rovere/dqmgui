@@ -1298,21 +1298,23 @@ static Regexp RX_OPT_AXISTYPE("^(def|lin|log)$");
 static Regexp RX_OPT_TREND_TYPE("^(num-(entries|bins|bytes)|value|"
 				"[xyz]-(min|max|bins|mean(-rms|-min-max)?))$");
 static IMGOPT STDIMGOPTS[] = {
-  { "w",	RX_OPT_INT },
-  { "h",	RX_OPT_INT },
-  { "drawopts",	RX_OPT_DRAWOPT },
-  { "ref",	RX_OPT_REFTYPE },
-  { "xtype",	RX_OPT_AXISTYPE },
-  { "xmin",	RX_OPT_FLOAT },
-  { "xmax",	RX_OPT_FLOAT },
-  { "ytype",	RX_OPT_AXISTYPE },
-  { "ymin",	RX_OPT_FLOAT },
-  { "ymax",	RX_OPT_FLOAT },
-  { "ztype",	RX_OPT_AXISTYPE },
-  { "zmin",	RX_OPT_FLOAT },
-  { "zmax",	RX_OPT_FLOAT },
-  { "ktest",	RX_OPT_FLOAT },
-  { "",		RX_OPT_INT }
+  { "w",	   RX_OPT_INT },
+  { "h",	   RX_OPT_INT },
+  { "drawopts",	   RX_OPT_DRAWOPT },
+  { "ref",	   RX_OPT_REFTYPE },
+  { "showstats",   RX_OPT_INT },
+  { "showerrbars", RX_OPT_INT },
+  { "xtype",	   RX_OPT_AXISTYPE },
+  { "xmin",	   RX_OPT_FLOAT },
+  { "xmax",	   RX_OPT_FLOAT },
+  { "ytype",	   RX_OPT_AXISTYPE },
+  { "ymin",	   RX_OPT_FLOAT },
+  { "ymax",	   RX_OPT_FLOAT },
+  { "ztype",	   RX_OPT_AXISTYPE },
+  { "zmin",	   RX_OPT_FLOAT },
+  { "zmax",	   RX_OPT_FLOAT },
+  { "ktest",	   RX_OPT_FLOAT },
+  { "",		   RX_OPT_INT }
 
 };
 
@@ -4628,9 +4630,13 @@ protected:
       std::string ref2(sessionReferenceOne(py::extract<py::dict>(refspec[1])));
       std::string ref3(sessionReferenceOne(py::extract<py::dict>(refspec[2])));
       std::string ref4(sessionReferenceOne(py::extract<py::dict>(refspec[3])));
-      return StringFormat("{'position':'%1', 'show':'%2', 'param':[%3,%4,%5,%6]}")
-        .arg(py::extract<std::string>(refdict.get("position"))) // overlay, on-side
-	.arg(py::extract<std::string>(refdict.get("show")))     // all, none, custom
+      return StringFormat("{'position':'%1', 'show':'%2', \
+                            'showstats':'%3', 'showerrbars':'%4', \
+                            'param':[%5,%6,%7,%8]}")
+        .arg(py::extract<std::string>(refdict.get("position")))    // overlay, on-side
+	.arg(py::extract<std::string>(refdict.get("show")))        // all, none, custom
+	.arg(py::extract<std::string>(refdict.get("showstats")))   // 0, 1
+	.arg(py::extract<std::string>(refdict.get("showerrbars"))) // 0, 1
 	.arg(ref1).arg(ref2).arg(ref3).arg(ref4);
     }
 
