@@ -1357,7 +1357,11 @@ private:
             ref->GetListOfFunctions()->Delete();
 	    if (i.showerrbars)
 	      samePlotOptions += " e1 x0";
-            if (norm)
+	    // Check if the original plot has been flagged as an
+	    // efficieny plot at production time: if this is the case,
+	    // then avoid any kind of normalization that introduces
+	    // fake effects.
+            if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
               nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
             else
               ref->Draw(samePlotOptions.c_str());

@@ -324,6 +324,9 @@ classifyMonitorElement(DQMStore & /* store */,
   if (obj.hasOtherReport())
     info.flags |= VisDQMIndex::SUMMARY_PROP_REPORT_OTHER;
 
+  if (obj.isEfficiency())
+    info.flags |= VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT;
+
   // Extract the actual object value and fill in type flag in
   // properties.  Save scalar value as a string - just the value not
   // the decorations normally added by DQMStore or MonitorElement -
@@ -453,7 +456,7 @@ classifyMonitorElementRange(void *arg)
 
     case ME_CLASS_KEEP:
       DEBUG(3, ""
-	    << "flags=0x" << std::hex << info.flags << std::dec
+	    << "flags=" << std::hex << info.flags << std::dec
 	    << " tag=" << info.tag
 	    << " object[0]=" << (void *) info.object[0]
 	    << " object[1]=" << (void *) info.object[1]
@@ -2087,6 +2090,7 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	      << ((report & VisDQMIndex::SUMMARY_PROP_REPORT_ERROR) ? ", ERROR" : "")
 	      << ((report & VisDQMIndex::SUMMARY_PROP_REPORT_WARN) ? ", WARN" : "")
 	      << ((report & VisDQMIndex::SUMMARY_PROP_REPORT_OTHER) ? ", OTHER" : "")
+	      << ((s->properties & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT) ? ", EFF" : "")
 	      << ((s->properties & VisDQMIndex::SUMMARY_PROP_HAS_REFERENCE)
 		  ? ", HAS-REFERENCE" : "")
 	      << ((s->properties & VisDQMIndex::SUMMARY_PROP_TAGGED)

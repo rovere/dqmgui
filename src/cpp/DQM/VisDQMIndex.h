@@ -215,6 +215,7 @@ public:
   static const uint32_t SUMMARY_PROP_NEW           = 0x00010000;
   static const uint32_t SUMMARY_PROP_RECEIVED      = 0x00020000;
   static const uint32_t SUMMARY_PROP_DEAD          = 0x00080000;
+  static const uint32_t SUMMARY_PROP_EFFICIENCY_PLOT = 0x00200000;
 
   static const unsigned STATS_X                    = 0;
   static const unsigned STATS_Y                    = 1;

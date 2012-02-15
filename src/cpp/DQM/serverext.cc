@@ -1058,10 +1058,10 @@ objectToJSON(const std::string &name,
   result += StringFormat("{\"obj\": %1, \"properties\": {\"kind\": \"%2\","
 			 " \"type\": \"%3\", \"lumisect\": \"%4\", \"report\": { \"alarm\": %5,"
 			 " \"error\": %6, \"warn\": %7, \"other\": %8 },"
-			 " \"hasref\": %9, \"tagged\": %10 },\"tag\": %11,"
-			 " \"qresults\": [%12], \"nentries\": %13,"
-			 " \"stats\": { \"x\": %14, \"y\": %15, \"z\": %16 },"
-			 " \"%17\": \"%18\"}\n")
+			 " \"hasref\": %9, \"isEff\": %10, \"tagged\": %11 },\"tag\": %12,"
+			 " \"qresults\": [%13], \"nentries\": %14,"
+			 " \"stats\": { \"x\": %15, \"y\": %16, \"z\": %17 },"
+			 " \"%18\": \"%19\"}\n")
     .arg(stringToJSON(name))
     .arg(type == DQMNet::DQM_PROP_TYPE_INVALID ? "INVALID"
 	 : type <= DQMNet::DQM_PROP_TYPE_SCALAR ? "SCALAR"
@@ -1088,6 +1088,7 @@ objectToJSON(const std::string &name,
     .arg((report & DQMNet::DQM_PROP_REPORT_WARN) ? 1 : 0)
     .arg((report & DQMNet::DQM_PROP_REPORT_OTHER) ? 1 : 0)
     .arg((flags & DQMNet::DQM_PROP_HAS_REFERENCE) ? 1 : 0)
+    .arg((flags & DQMNet::DQM_PROP_EFFICIENCY_PLOT) ? 1 : 0)
     .arg((flags & DQMNet::DQM_PROP_TAGGED) ? 1 : 0)
     .arg(tag)
     .arg(qstr)
