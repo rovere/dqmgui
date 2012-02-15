@@ -937,8 +937,9 @@ orderSamplesByDataset(const VisDQMSample &a, const VisDQMSample &b)
   else if (natcmpstr(a.version, b.version))
     return false;
 
-  // Should not come here, but give deterministic order.
-  return &a < &b;
+  // Should not come here, unless the samples are indeed identical, in
+  // which case we return false
+  return false;
 }
 
 inline bool
@@ -968,8 +969,9 @@ orderSamplesByRun(const VisDQMSample &a, const VisDQMSample &b)
   else if (natcmpstr(b.dataset, a.dataset))
     return false;
 
-  // Should not come here, but give deterministic order.
-  return &a < &b;
+  // Should not come here, unless the samples are indeed identical, in
+  // which case we return false
+  return false;
 }
 
 static std::string
