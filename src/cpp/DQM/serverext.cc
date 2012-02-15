@@ -2804,7 +2804,7 @@ public:
   scan(VisDQMItems &result,
        const VisDQMSample & /* sample */,
        VisDQMEventNum & /* current */,
-       VisDQMRegexp *rxmatch,
+       VisDQMRegexp * /* rxmatch */,
        Regexp *rxsearch,
        bool *alarm,
        std::string *layoutroot,
@@ -2830,10 +2830,9 @@ public:
 	    else
 	      layoutroot->clear();
 	  }
+	  else
+	    continue;
 	}
-
-	if (! fastmatch(rxmatch, o.name))
-	  continue;
 
 	if (rxsearch && rxsearch->search(o.name.string()) < 0)
 	  continue;
@@ -5900,14 +5899,19 @@ class VisDQMContentWorkspace : public VisDQMWorkspace, public VisDQMLayoutTools
 public:
   VisDQMContentWorkspace(py::object gui,
 			 const std::string &name,
-			 const std::string &match)
+			 const std::string &match,
+			 const std::string &layouts)
     : VisDQMWorkspace(gui, name)
     {
       if (! match.empty() && match != "^")
       {
         fastrx(rxmatch_, match);
-	fastrx(rxlayout_, "(" + match + "Layouts)/.*");
+        if (layouts.empty())
+          fastrx(rxlayout_, "(" + match + "Layouts)/.*");
       }
+      if (! layouts.empty() && layouts !="^")
+        fastrx(rxlayout_, "(" + layouts + ")/.*");
+
     }
 
   virtual ~VisDQMContentWorkspace(void)
@@ -6240,7 +6244,7 @@ BOOST_PYTHON_MODULE(Accelerator)
 
   py::class_<VisDQMContentWorkspace, shared_ptr<VisDQMContentWorkspace>,
 	     py::bases<VisDQMWorkspace>, boost::noncopyable>
-    ("DQMContentWorkspace", py::init<py::object, std::string, std::string>())
+    ("DQMContentWorkspace", py::init<py::object, std::string, std::string, std::string>())
     .def("_state", &VisDQMContentWorkspace::state);
 
   py::class_<VisDQMPlayWorkspace, shared_ptr<VisDQMPlayWorkspace>,

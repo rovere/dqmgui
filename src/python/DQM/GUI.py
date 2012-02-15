@@ -1184,8 +1184,8 @@ class DQMQualityWorkspace(Accelerator.DQMQualityWorkspace, DQMWorkspace):
 
 # --------------------------------------------------------------------
 class DQMContentWorkspace(Accelerator.DQMContentWorkspace, DQMWorkspace):
-  def __init__(self, gui, rank, category, name, match, *content):
-    Accelerator.DQMContentWorkspace.__init__(self, gui, name, match)
+  def __init__(self, gui, rank, category, name, match, layout, *content):
+    Accelerator.DQMContentWorkspace.__init__(self, gui, name, match, layout)
     DQMWorkspace.__init__(self, gui, rank, category, name)
     self.content = content
 
@@ -1257,7 +1257,7 @@ class DQMShiftWorkspace(DQMContentWorkspace):
   SHIFT_ROOT = "00 Shift"
 
   def __init__(self, gui, rank, category, name):
-    DQMContentWorkspace.__init__(self, gui, rank, category, name, "^")
+    DQMContentWorkspace.__init__(self, gui, rank, category, name, "^", "^00 Shift")
 
   # Initialise a new session.
   def initialiseSession(self, session):
