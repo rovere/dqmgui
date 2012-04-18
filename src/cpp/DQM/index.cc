@@ -31,10 +31,13 @@ int debug = 0;
 #include <cstdlib>
 #include <cfloat>
 #include <iostream>
+#include <fstream>
 #include <list>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <float.h>
 
 using namespace lat;
 
@@ -46,7 +49,8 @@ enum TaskType
   TASK_ADD,		 //< Add data to an index.
   TASK_REMOVE,		 //< Remove data from the index.
   TASK_MERGE,            //< Merge an index to another.
-  TASK_DUMP		 //< Dump the index contents.
+  TASK_DUMP,		 //< Dump the index contents.
+  TASK_STREAM		 //< Stream a sample from the index into an intermediate .dat file.
 };
 
 /** Things user can choose to dump out. */
@@ -105,6 +109,10 @@ struct MonitorElementInfo
 
   /** Pointer to the ROOT object and a reference if any. */
   TObject       *object[2];
+
+  /** Index in the StringAtomTree holding the ROOT information to be
+      stored in the index */
+  size_t    	streamidx;
 
   /** DQM sample sub-catagory: 0 for run, 1 for lumi section range summary.
       Used to create a part of the 64-bit key in the index. */
@@ -167,6 +175,7 @@ struct MonitorElementInfo
   uint32_t	ndata;
 };
 
+
 /** Comparison operator for arranging monitor elements by their output
     order in the file, mainly by the name index in the table. */
 class OrderByNameIndex
@@ -184,21 +193,26 @@ public:
 /// Name of this program for diagnostic messages.
 Filename app;
 
+/// Regular expression to recognise a stream file.
+Regexp rxstreamfile(".*\\.dat$$");
+
 /// Regular expression to recognise valid dataset names.
 Regexp rxdataset("^(/[-A-Za-z0-9_]+){3}$");
 
 /// Regular expression to recognise valid online "real data" DQM files.
 /// The first capture is the run number string.
-Regexp rxonline("^(?:.*/)?DQM_V\\d+(?:_[A-Za-z0-9]+)?_R(\\d+)\\.root$");
+Regexp rxonline("^(?:.*/)?DQM_V\\d+(?:_[A-Za-z0-9]+)?_R(\\d+)\\.(dat|root)$");
 
 /// Regular expression to recognise valid offline DQM data files.  The
 /// first capture is the run number, the second mangled dataset name.
-Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.root$");
+Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.(dat|root)$");
 
 /// Regular expression to recognise release validation dataset names.
 /// The first capture is the CMSSW release string.
-Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*$");
+Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*\\.(dat|root)$");
 
+static const std::string MEINFOBOUNDARY("____MEINFOBOUNDARY____");
+static const std::string MEROOTBOUNDARY("____MEROOTBOUNDARY____");
 static const size_t ALL_SAMPLES = ~(size_t)0;
 
 // ----------------------------------------------------------------------
@@ -207,6 +221,29 @@ static inline uint32_t
 roundup(uint32_t value, uint32_t unit)
 {
   return (value + unit - 1) / unit * unit;
+}
+
+static bool isStreamFile(const char* filename)
+{
+  return rxstreamfile.exactMatch(filename);
+}
+
+/** Utility function to read a double from a stream. */
+static inline void readDouble(ifstream &iread, double *into)
+{
+  std::string tmp;
+  iread >> tmp;
+  *into = strtod(tmp.c_str(), 0);
+}
+
+/** Utility function to write a double into a stream. */
+static inline void writeDouble(ofstream &iwrite,
+			       const char *prefix,
+			       double val)
+{
+  char buf[64];
+  snprintf(buf, sizeof(buf), "%s%.*g", prefix, DBL_DIG+2, val);
+  iwrite << buf;
 }
 
 // ----------------------------------------------------------------------
@@ -225,6 +262,7 @@ classifyMonitorElement(DQMStore & /* store */,
 {
   info.flags = 0;
   info.tag = 0;
+  info.streamidx = 0;
   info.object[0] = 0;
   info.object[1] = 0;
   info.category = 0;
@@ -864,7 +902,9 @@ extend(VisDQMIndex &ix,
        std::vector<MonitorElementInfo> &minfo,
        StringAtomTree &objnames,
        std::list<Filename> &oldfiles,
-       std::list<Filename> &newfiles)
+       std::list<Filename> &newfiles,
+       bool streamFile,
+       StringAtomTree & rootobjs)
 {
   // Produce monitor element permutation by their output ordering.
   // This is mainly by name, but see VisDQMIndex of how the full
@@ -929,28 +969,55 @@ extend(VisDQMIndex &ix,
 	MonitorElementInfo &info = minfo[minfoix[ix]];
 	if (kind == 1)
 	{
-	  // Serialise and write out the ROOT objects, if any.  Note
-	  // that this step is done first, and fills in the statistics
-	  // of how large a binary blob we wrote out.
-	  if (! (info.object[0] || info.object[1]))
-	    info.ndata = 0;
+	  if (! streamFile)
+	  {
+	    // Serialise and write out the ROOT objects, if any.  Note
+	    // that this step is done first, and fills in the statistics
+	    // of how large a binary blob we wrote out.
+	    if (! (info.object[0] || info.object[1]))
+	      info.ndata = 0;
+	    else
+	    {
+	      TBufferFile buffer(TBufferFile::kWrite);
+	      for (int i = 0; i < 2; ++i)
+		if (info.object[i])
+		  buffer.WriteObject(info.object[i]);
+		else
+		  buffer.WriteObjectAny(0, 0);
+
+	      info.ndata = buffer.Length();
+	      DEBUG(3, (rkey == info.nameidx ? "updating" : "inserting")
+		    << " data for " << ix << ':'
+		    << std::hex << info.nameidx << std::dec
+		    << " ('" << info.name << "'): "
+		    << info.ndata << " bytes\n");
+	      wrhead.allocate(info.nameidx, info.ndata, &wstart, &wend);
+	      memcpy(wstart, buffer.Buffer(), info.ndata);
+	    }
+	  }
 	  else
 	  {
-	    TBufferFile buffer(TBufferFile::kWrite);
-	    for (int i = 0; i < 2; ++i)
-	      if (info.object[i])
-		buffer.WriteObject(info.object[i]);
-	      else
-		buffer.WriteObjectAny(0, 0);
+	    switch (info.flags & DQMNet::DQM_PROP_TYPE_MASK)
+	    {
+	    case MonitorElement::DQM_KIND_TH1F:
+	    case MonitorElement::DQM_KIND_TH1S:
+	    case MonitorElement::DQM_KIND_TH1D:
+	    case MonitorElement::DQM_KIND_TH2F:
+	    case MonitorElement::DQM_KIND_TH2S:
+	    case MonitorElement::DQM_KIND_TH2D:
+	    case MonitorElement::DQM_KIND_TH3F:
+	    case MonitorElement::DQM_KIND_TPROFILE:
+	    case MonitorElement::DQM_KIND_TPROFILE2D:
 
-	    info.ndata = buffer.Length();
-	    DEBUG(3, (rkey == info.nameidx ? "updating" : "inserting")
-		  << " data for " << ix << ':'
-		  << std::hex << info.nameidx << std::dec
-		  << " ('" << info.name << "'): "
-		  << info.ndata << " bytes\n");
-	    wrhead.allocate(info.nameidx, info.ndata, &wstart, &wend);
-	    memcpy(wstart, buffer.Buffer(), info.ndata);
+	      DEBUG(3, (rkey == info.nameidx ? "updating" : "inserting")
+		    << " data for " << ix << ':'
+		    << std::hex << info.nameidx << std::dec
+		    << " ('" << info.name << "'): "
+		    << info.ndata << " bytes\n");
+	      wrhead.allocate(info.nameidx, info.ndata, &wstart, &wend);
+	      memcpy(wstart, rootobjs.key(info.streamidx).data(), info.ndata);
+	      break;
+	    }
 	  }
 	}
 	else
@@ -958,6 +1025,19 @@ extend(VisDQMIndex &ix,
 	  // Write out the monitor element summary description.
 	  size_t datalen = info.data.size() ? info.data.size()+1 : 0;
 	  size_t qreplen = info.qreports.size() ? info.qreports.size()+1 : 0;
+
+	  // Important: while indexing a streamed .dat file, there is
+	  // no need to add the extra null character and the end of
+	  // data and qreports, since it has already been added and
+	  // read back while producing the .dat file. In other words
+	  // the size of the strings already includes the null at the
+	  // end.
+
+	  if (streamFile)
+	  {
+	    datalen = datalen ? datalen-1 : datalen;
+	    qreplen = qreplen ? qreplen-1 : qreplen;
+	  }
 	  DEBUG(3, (rkey == info.nameidx ? "updating" : "inserting")
 		<< " summary for " << ix << ':'
 		<< std::hex << info.nameidx << std::dec
@@ -1029,14 +1109,154 @@ extend(VisDQMIndex &ix,
   }
 }
 
+/** Read a file streamed out of the index. */
+static void
+readFileStream(FileInfo &fi,
+	       std::string &streamerinfo,
+	       size_t &numObjs,
+	       uint64_t &numEvents,
+	       uint64_t &numLumiSections,
+	       uint64_t &processedTime,
+	       uint64_t &runStartTime,
+	       std::vector<MonitorElementInfo> &minfo,
+	       StringAtomTree &rootobjs)
+{
+  // Now scan the file.
+  SampleInfo &si = *fi.sample;
+  std::string dummy;
+  VisDQMIndex::Sample sr;
+
+  // Read in the file.
+  std::ifstream iread(fi.path.name(), std::ios::in);
+  if (!iread)
+    throw VisDQMError(0, fi.path.name(),
+		      StringFormat("failed to read file #%1")
+		      .arg(fi.path.name()));
+  iread
+    >> sr.runNumber
+    >> sr.numObjects
+    >> numEvents
+    >> numLumiSections
+    >> runStartTime
+    >> processedTime
+    >> dummy;
+  numObjs = sr.numObjects;
+  streamerinfo = unhexlify(dummy);
+  ASSERT(dummy == hexlify(streamerinfo));
+  ASSERT(sr.runNumber == si.runnr);
+  iread >> dummy;
+  ASSERT(dummy == MEINFOBOUNDARY);
+  minfo.reserve(sr.numObjects);
+  // Keep on reading up to next boundary
+  MonitorElementInfo cur;
+  size_t datalen=0;
+  size_t qreplen=0;
+  std::string data, qt;
+  while (true)
+  {
+    ASSERT(iread);
+    cur.data.clear();
+    cur.qreports.clear();
+    // Be aware that the >> operator does not read the '\n' from the
+    // previous line. Hence do a double read here: it's a horrible
+    // hack, but it's not a mistake.
+    getline(iread, dummy);
+    getline(iread, cur.name);
+    if (cur.name == MEROOTBOUNDARY)
+      break;
+    iread
+      >> cur.category
+      >> cur.lumibegin
+      >> cur.flags
+      >> datalen
+      >> qreplen
+      >> cur.ndata
+      >> cur.tag
+      >> dummy;
+    cur.lumiend = cur.lumibegin;
+    cur.nentries = strtod(dummy.data(), 0);
+    iread >> cur.nbins[0];
+    readDouble(iread, &cur.mean[0]);
+    readDouble(iread, &cur.rms[0]);
+    readDouble(iread, &cur.bounds[0][0]);
+    readDouble(iread, &cur.bounds[0][1]);
+    iread >> cur.nbins[1];
+    readDouble(iread, &cur.mean[1]);
+    readDouble(iread, &cur.rms[1]);
+    readDouble(iread, &cur.bounds[1][0]);
+    readDouble(iread, &cur.bounds[1][1]);
+    iread >> cur.nbins[2];
+    readDouble(iread, &cur.mean[2]);
+    readDouble(iread, &cur.rms[2]);
+    readDouble(iread, &cur.bounds[2][0]);
+    readDouble(iread, &cur.bounds[2][1]);
+    if (datalen)
+    {
+      iread >> dummy;
+      ASSERT(dummy == "data:");
+      iread >> dummy;
+      cur.data = unhexlify(dummy);
+      ASSERT(cur.data.size() == datalen);
+    }
+    if (qreplen)
+    {
+      iread >> dummy;
+      ASSERT(dummy == "qt:");
+      iread >> dummy;
+      cur.qreports = unhexlify(dummy);
+      ASSERT(cur.qreports.size() == qreplen);
+    }
+    minfo.push_back(cur);
+  } // end of loop over ME Summary part
+
+  // Now extract the real ROOT object(s), put them in a dedicated
+  // StringAtomTree and fill in the streamidx field of the appropriate
+  // monitorElementInfo. We deeply rely on the fact that the order in
+  // which we stream ROOT hexlified buffers is the same in which we
+  // streamed the VisDQMSummary part. This is guaranteed by the
+  // strictly increasing ordering used while populating the index in
+  // the first place.
+
+  std::vector<MonitorElementInfo>::iterator mi = minfo.begin();
+  std::vector<MonitorElementInfo>::iterator me = minfo.end();
+  for (; mi != me; ++mi)
+  {
+    switch (mi->flags & DQMNet::DQM_PROP_TYPE_MASK)
+    {
+    case MonitorElement::DQM_KIND_INT:
+    case MonitorElement::DQM_KIND_REAL:
+    case MonitorElement::DQM_KIND_STRING:
+      break;
+    case MonitorElement::DQM_KIND_TH1F:
+    case MonitorElement::DQM_KIND_TH1S:
+    case MonitorElement::DQM_KIND_TH1D:
+    case MonitorElement::DQM_KIND_TH2F:
+    case MonitorElement::DQM_KIND_TH2S:
+    case MonitorElement::DQM_KIND_TH2D:
+    case MonitorElement::DQM_KIND_TH3F:
+    case MonitorElement::DQM_KIND_TPROFILE:
+    case MonitorElement::DQM_KIND_TPROFILE2D:
+      /* This assert was used to debug the .dat format.
+	 iread >> key;
+	 std::cout << "key: " << key << " nameidx: " << mi->nameidx << " flags: " << mi->flags << std::endl;
+	 assert(key == mi->nameidx);
+      */
+      iread >> dummy;
+      mi->streamidx = StringAtom(&rootobjs, unhexlify(dummy)).index();
+    }
+    mi->nameidx=0;
+  } // Finish reading a single file.
+}
+
 /** Add files to a DQM GUI index. */
 static int
 addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 {
   // Grab streamer info before we've opened any ROOT files.
-  std::string streamerinfo;
-  buildStreamerInfo(streamerinfo);
-  DEBUG(2, streamerinfo.size() << " bytes of streamer info captured\n");
+  std::string streamerinfoFromRoot;
+  std::string streamerinfoFromStream;
+  buildStreamerInfo(streamerinfoFromRoot);
+  DEBUG(2, streamerinfoFromRoot.size() << " bytes of streamer info captured\n");
 
   // Prepare but do not yet open the index.  Remember the time when we
   // started importing samples to the index; use a single time for all
@@ -1062,6 +1282,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
     SampleInfo &si = *fi.sample;
     std::list<Filename> newfiles;
     std::list<Filename> oldfiles;
+    bool streamFile = isStreamFile(fi.path.name());
     DEBUG(1, "importing " << fi.path.name()
 	  << ": sample [#" << si.index
 	  << ", type '"
@@ -1080,56 +1301,75 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       ix.beginUpdate(master, newmaster);
       newfiles.push_back(newmaster->path());
 
-      // Read in the file.
-      store.open(fi.fullpath.name());
-
-      // Extract monitor element information somewhat parallelised.
-      static const size_t NUM_TASKS = 4;
-      std::vector<MonitorElement *> mes = store.getAllContents("");
-      MEClassifyTask tasks[NUM_TASKS] = { MEClassifyTask(fi, store, mes),
-					  MEClassifyTask(fi, store, mes),
-					  MEClassifyTask(fi, store, mes),
-					  MEClassifyTask(fi, store, mes) };
-      size_t mesPerTask = (mes.size() + NUM_TASKS - 1) / NUM_TASKS;
-
-      for (size_t i = 0; i < NUM_TASKS; ++i)
-      {
-	tasks[i].begin = std::min(i * mesPerTask, mes.size());
-	tasks[i].end = std::min((i+1) * mesPerTask, mes.size());
-	tasks[i].minfo.reserve(tasks[i].end - tasks[i].begin);
-	memset(&tasks[i].meta, 0, sizeof(tasks[i].meta));
-	tasks[i].nerrors = 0;
-	if (pthread_create(&tasks[i].thread, 0, &classifyMonitorElementRange, &tasks[i]))
-	  throw VisDQMError(0, fi.path.name(),
-			    StringFormat("failed to create classification thread #%1")
-			    .arg(i));
-      }
-
+      // Read in the file with appropriate format.
       std::vector<MonitorElementInfo> minfo;
-      minfo.reserve(mes.size());
-      for (size_t i = 0; i < NUM_TASKS; ++i)
+      StringAtomTree rootobjs(1500000);
+      size_t    numObjs = 0;
+      uint64_t 	numEvents = 0;
+      uint64_t 	numLumiSections = 0;
+      uint64_t 	runStartTime = 0;
+      uint64_t 	processedTime = 0;
+      if (!streamFile)
       {
-	if (pthread_join(tasks[i].thread, 0))
-	  throw VisDQMError(0, fi.path.name(),
-			    StringFormat("failed to join classification thread #%1")
-			    .arg(i));
+	store.open(fi.fullpath.name());
 
-	tasks[0].meta.numEvents
-	  = std::max(tasks[0].meta.numEvents,
-		     tasks[i].meta.numEvents);
-	tasks[0].meta.numLumiSections
-	  = std::max(tasks[0].meta.numLumiSections,
-		     tasks[i].meta.numLumiSections);
-	tasks[0].meta.processedTime
-	  = std::max(tasks[0].meta.processedTime,
-		     tasks[i].meta.processedTime);
-	tasks[0].meta.runStartTime
-	  = std::max(tasks[0].meta.runStartTime,
-		     tasks[i].meta.runStartTime);
+	// Extract monitor element information somewhat parallelised.
+	static const size_t NUM_TASKS = 4;
+	std::vector<MonitorElement *> mes = store.getAllContents("");
+	numObjs = mes.size();
+	MEClassifyTask tasks[NUM_TASKS] = { MEClassifyTask(fi, store, mes),
+					    MEClassifyTask(fi, store, mes),
+					    MEClassifyTask(fi, store, mes),
+					    MEClassifyTask(fi, store, mes) };
+	size_t mesPerTask = (mes.size() + NUM_TASKS - 1) / NUM_TASKS;
 
-	minfo.insert(minfo.end(), tasks[i].minfo.begin(), tasks[i].minfo.end());
-	tasks[i].minfo.resize(0);
+	for (size_t i = 0; i < NUM_TASKS; ++i)
+	{
+	  tasks[i].begin = std::min(i * mesPerTask, mes.size());
+	  tasks[i].end = std::min((i+1) * mesPerTask, mes.size());
+	  tasks[i].minfo.reserve(tasks[i].end - tasks[i].begin);
+	  memset(&tasks[i].meta, 0, sizeof(tasks[i].meta));
+	  tasks[i].nerrors = 0;
+	  if (pthread_create(&tasks[i].thread, 0, &classifyMonitorElementRange, &tasks[i]))
+	    throw VisDQMError(0, fi.path.name(),
+			      StringFormat("failed to create classification thread #%1")
+			      .arg(i));
+	}
+
+	minfo.reserve(mes.size());
+	for (size_t i = 0; i < NUM_TASKS; ++i)
+	{
+	  if (pthread_join(tasks[i].thread, 0))
+	    throw VisDQMError(0, fi.path.name(),
+			      StringFormat("failed to join classification thread #%1")
+			      .arg(i));
+
+	  tasks[0].meta.numEvents
+	    = std::max(tasks[0].meta.numEvents,
+		       tasks[i].meta.numEvents);
+	  tasks[0].meta.numLumiSections
+	    = std::max(tasks[0].meta.numLumiSections,
+		       tasks[i].meta.numLumiSections);
+	  tasks[0].meta.processedTime
+	    = std::max(tasks[0].meta.processedTime,
+		       tasks[i].meta.processedTime);
+	  tasks[0].meta.runStartTime
+	    = std::max(tasks[0].meta.runStartTime,
+		       tasks[i].meta.runStartTime);
+
+	  minfo.insert(minfo.end(), tasks[i].minfo.begin(), tasks[i].minfo.end());
+	  tasks[i].minfo.resize(0);
+	}
+	numEvents = tasks[0].meta.numEvents;
+	numLumiSections = tasks[0].meta.numLumiSections;
+	processedTime = tasks[0].meta.processedTime;
+	runStartTime =  tasks[0].meta.runStartTime;
       }
+      else
+	readFileStream(fi, streamerinfoFromStream, numObjs,
+		       numEvents, numLumiSections,
+		       processedTime, runStartTime,
+		       minfo, rootobjs);
 
       // Grab various strings tables from the master file.
       DEBUG(1, "reading string tables\n");
@@ -1163,7 +1403,27 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       StringAtom sadataset(&dsnames, si.dataset);
       StringAtom saversion(&vnames, si.version);
       StringAtom sapath(&pathnames, fi.path.name());
-      StringAtom sastreamer(&streamers, streamerinfo);
+
+      // Streamerinfo handling from ROOT is kind of tricky. If we have
+      // to index in the same job multiple .root and .dat files, we
+      // should really be using:
+      // for ROOT files: the original streamerinfo bundled to the ROOT
+      // release that comes with the current GUI's release, captured
+      // before opening any ROOT files.
+      // for STREAM files: the original streamerinfo used to stream
+      // the ROOT objects.
+
+      size_t sastreamerIndex = 0;
+      if (!streamFile)
+      {
+	StringAtom sastreamer(&streamers, streamerinfoFromRoot);
+	sastreamerIndex = sastreamer.index();
+      }
+      else
+      {
+	StringAtom sastreamer(&streamers, streamerinfoFromStream);
+	sastreamerIndex = sastreamer.index();
+      }
       std::vector<VisDQMIndex::Sample> samples;
       samples.reserve(10000);
 
@@ -1204,20 +1464,20 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 	  if (found)
 	  {
 	    DEBUG(2, "sample matches current one, updating\n");
-	    if (s.streamerInfoIdx != sastreamer.index())
+	    if (s.streamerInfoIdx != sastreamerIndex)
 	      throw VisDQMError(0, fi.path.name(),
 				StringFormat("cannot update sample because"
 					     " streamer info has changed"
 					     ", previous streamer info #%1"
 					     ", new is #%2")
 				.arg(s.streamerInfoIdx)
-				.arg(sastreamer.index()));
+				.arg(sastreamerIndex));
 
 	    s.lastImportTime = now;
 	    s.sourceFileIdx = sapath.index();
 	    s.importVersion++;
 	    extend(ix, s, samples.size()-1, minfo,
-		   objnames, oldfiles, newfiles);
+		   objnames, oldfiles, newfiles, streamFile, rootobjs);
 	    datafile[0] = s.files[0];
 	    datafile[1] = s.files[1];
 	  }
@@ -1260,16 +1520,16 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 	s.files[1] = datafile[1];
 	s.sourceFileIdx = sapath.index();
 	s.datasetNameIdx = sadataset.index();
-	s.streamerInfoIdx = sastreamer.index();
+	s.streamerInfoIdx = sastreamerIndex;
 	s.cmsswVersion = saversion.index();
 	s.runNumber = si.runnr;
-	s.numObjects = mes.size();
-	s.numEvents = tasks[0].meta.numEvents;
-	s.numLumiSections = tasks[0].meta.numLumiSections;
-	s.runStartTime = tasks[0].meta.runStartTime;
-	s.processedTime = tasks[0].meta.processedTime;
+	s.numObjects = numObjs;
+	s.numEvents = numEvents;
+	s.numLumiSections = numLumiSections;
+	s.runStartTime = runStartTime;
+	s.processedTime = processedTime;
 	extend(ix, s, samples.size()-1, minfo,
-	       objnames, oldfiles, newfiles);
+	       objnames, oldfiles, newfiles, streamFile, rootobjs);
 	datafile[0] = s.files[0];
 	datafile[1] = s.files[1];
       }
@@ -2237,6 +2497,208 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 }
 
 // ----------------------------------------------------------------------
+/** Stream a single sample from the DQM GUI Index into an intermediate
+    file that can be used to populate the index again. Avoid any
+    intersection with ROOT to go parallel. The output file name will
+    be identical to the input filename used to originally import the
+    sample, with the extension replaced by .dat.  */
+static int
+streamout(const Filename &indexdir, size_t sampleid)
+{
+  VisDQMFile *master;
+  VisDQMIndex ix(indexdir);
+  std::list<VisDQMIndex::Sample> samples;
+  StringAtomTree pathnames(1000000);
+  StringAtomTree objnames(1500000);
+  StringAtomTree streamers(100);
+  DQMNet::QReports qreports;
+
+  // no way in dumping more than one sample at a time, for the moment.
+  ASSERT(sampleid != ALL_SAMPLES);
+
+  // Read the master catalogue. We need all the info anyway.
+  DEBUG(1, "starting index read\n");
+  ix.beginRead(master);
+  for (VisDQMFile::ReadHead rdhead(master, 0); ! rdhead.isdone(); rdhead.next())
+  {
+    void *begin;
+    void *end;
+    uint64_t key;
+    uint64_t hipart;
+
+    rdhead.get(&key, &begin, &end);
+    hipart = key & 0xffffffff00000000ull;
+    if (hipart == VisDQMIndex::MASTER_SAMPLE_RECORD)
+      samples.push_back(*(const VisDQMIndex::Sample *)begin);
+    else
+      break;
+  }
+
+  readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
+  readStrings(objnames, master, VisDQMIndex::MASTER_OBJECT_NAME);
+  readStrings(streamers, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+
+  // Now output the selected parts, walking over one sample at a time.
+  std::list<VisDQMIndex::Sample>::iterator si;
+  std::list<VisDQMIndex::Sample>::iterator se;
+
+  si = samples.begin();
+  se = samples.end();
+  for (size_t n = 0; si != se; ++si, ++n)
+  {
+    if (n != sampleid)
+      continue;
+    size_t delim;
+    std::string fname;
+    delim = pathnames.key(si->sourceFileIdx).rfind("/");
+    if (delim != std::string::npos)
+      fname = pathnames.key(si->sourceFileIdx).substr(delim+1);
+    else
+      fname = pathnames.key(si->sourceFileIdx).substr(0, std::string::npos);
+    delim = fname.rfind(".");
+    // Change whatever file extension was used to register the file
+    // into .dat
+    if (delim != std::string::npos)
+      fname.replace(delim, fname.size()-delim, ".dat");
+
+    std::ofstream out(fname.c_str(), std::ios::out);
+    if (!out)
+      throw VisDQMError(0, fname,
+                        StringFormat("failed to open file #%1")
+                        .arg(fname));
+
+    out
+      << si->runNumber
+      << " " << si->numObjects
+      << " " << si->numEvents
+      << " " << si->numLumiSections
+      << " " << si->runStartTime
+      << " " << si->processedTime
+      << " " << hexlify(streamers.key(si->streamerInfoIdx));
+    out << "\n" << MEINFOBOUNDARY << "\n";
+    VisDQMFile * f = ix.open(VisDQMIndex::MASTER_FILE_INFO,
+                             si->files[VisDQMIndex::MASTER_FILE_INFO] >> 16,
+                             si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff,
+                             VisDQMFile::OPEN_READ);
+    VisDQMFile * ff = ix.open(VisDQMIndex::MASTER_FILE_DATA,
+                              si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16,
+                              si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff,
+                              VisDQMFile::OPEN_READ);
+    if (f)
+    {
+      for (VisDQMFile::ReadHead rdhead(f, (uint64_t) n << 44);
+           ! rdhead.isdone(); rdhead.next())
+      {
+        uint64_t key;
+        void *begin;
+        void *end;
+        DQMNet::DataBlob rawdata;
+
+        rdhead.get(&key, &begin, &end);
+        uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
+                                 (key >> 20) & 0xfffff, key & 0xfffff };
+        if (keyparts[0] == n)
+        {
+          VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
+          const char *data = (s->dataLength ? (const char *) (s+1) : "");
+          const char *qdata
+            = (s->qtestLength ? ((const char *) (s+1) + s->dataLength) : "");
+
+          out
+            << objnames.key(keyparts[3]) << "\n"
+	    << keyparts[1]
+            << " " << keyparts[2]
+            << " " << s->properties
+            << " " << s->dataLength
+            << " " << s->qtestLength
+            << " " << s->objectLength
+            << " " << s->tag
+            << " " << s->nentries
+            << " " << s->nbins[0];
+	  writeDouble(out, " ", s->mean[0]);
+	  writeDouble(out, " ", s->rms[0]);
+	  writeDouble(out, " ", s->bounds[0][0]);
+	  writeDouble(out, " ", s->bounds[0][1]);
+	  out << " " << s->nbins[1];
+	  writeDouble(out, " ", s->mean[1]);
+	  writeDouble(out, " ", s->rms[1]);
+	  writeDouble(out, " ", s->bounds[1][0]);
+	  writeDouble(out, " ", s->bounds[1][1]);
+	  out  << " " << s->nbins[2];
+	  writeDouble(out, " ", s->mean[2]);
+	  writeDouble(out, " ", s->rms[2]);
+	  writeDouble(out, " ", s->bounds[2][0]);
+	  writeDouble(out, " ", s->bounds[2][1]);
+          if (s->dataLength)
+	  {
+            std::string sdata;
+            sdata.reserve(s->dataLength);
+            sdata.append(data, s->dataLength);
+            out << " data: " << hexlify(sdata);
+	  }
+          if (s->qtestLength)
+          {
+            std::string qt;
+            qt.reserve(s->qtestLength);
+            qt.append(qdata, s->qtestLength);
+            out << " qt: " << hexlify(qt);
+          }
+          out << std::endl;
+        }
+        else
+          break;
+      }
+      delete f;
+    }
+    else
+    {
+      std::cout << "WARNING: data file ["
+                << (si->files[VisDQMIndex::MASTER_FILE_INFO] >> 16) << ':'
+                << (si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff)
+                << " disappeared before it could be read\n";
+    }
+
+    if (ff)
+    {
+      out << MEROOTBOUNDARY << "\n";
+      for (VisDQMFile::ReadHead rddata(ff, (uint64_t) n << 44);
+           ! rddata.isdone(); rddata.next())
+      {
+        uint64_t key;
+        void *begin;
+        void *end;
+        DQMNet::DataBlob rawdata;
+
+        rddata.get(&key, &begin, &end);
+        uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
+                                 (key >> 20) & 0xfffff, key & 0xfffff };
+        if (keyparts[0] == n)
+        {
+	  rawdata.clear();
+	  rawdata.insert(rawdata.end(),
+			 (unsigned char *) begin,
+			 (unsigned char *) end);
+	  out << hexlify(rawdata);
+	  out << std::endl;
+	}
+	else
+	  break;
+      }
+      delete ff;
+    }
+    else
+    {
+      std::cout << "WARNING: data file ["
+		<< (si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16) << ':'
+		<< (si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff)
+		<< " disappeared before it could be read\n";
+    }
+  }
+  ix.finishRead();
+  return EXIT_SUCCESS;
+}
+
+// ----------------------------------------------------------------------
 /** Show a message on how to use this program. */
 static int
 showusage(void)
@@ -2244,10 +2706,11 @@ showusage(void)
   std::cerr << "Usage: " << app.name()
 	    << " [--[no-]debug] TASK OPTIONS\n\n  "
 	    << app.name() << " [OPTIONS] create INDEX-DIRECTORY\n  "
-	    << app.name() << " [OPTIONS] add [--dataset DATASET-NAME] INDEX-DIRECTORY [FILE...]\n  "
+	    << app.name() << " [OPTIONS] add [--dataset DATASET-NAME] INDEX-DIRECTORY [ROOT|DAT FILE...]\n  "
 	    << app.name() << " [OPTIONS] remove --dataset DATASET-NAME --run RUNNR INDEX-DIRECTORY\n  "
 	    << app.name() << " [OPTIONS] merge INDEX-DIRECTORY [IMPORT-INDEX-DIRECTORY...]\n  "
-	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n";
+	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n  "
+	    << app.name() << " [OPTIONS] stream --sample SAMPLE-ID INDEX-DIRECTORY\n";
   return EXIT_FAILURE;
 }
 
@@ -2312,6 +2775,8 @@ int main(int argc, char **argv)
       ++arg, task = TASK_MERGE;
     else if (! strcmp(argv[arg], "dump"))
       ++arg, task = TASK_DUMP;
+    else if (! strcmp(argv[arg], "stream"))
+      ++arg, task = TASK_STREAM;
     else
     {
       std::cerr << app.name() << ": unrecognised task parameter '"
@@ -2413,6 +2878,30 @@ int main(int argc, char **argv)
       }
       else
 	break;
+  }
+  else if (task == TASK_STREAM)
+  {
+    for ( ; arg < argc; ++arg)
+    {
+      if (! strcmp(argv[arg], "--sample"))
+      {
+	char *end = 0;
+	if (arg < argc-1)
+	  sampleid = strtoul(argv[++arg], &end, 10);
+	else
+	{
+	  std::cerr << app.name() << ": --sample option requires a value\n";
+	  return showusage();
+	}
+	arg++;
+	break;
+      }
+      else
+      {
+	std::cerr << app.name() << ": --sample option is mandatory when streaming a sample\n";
+	return showusage();
+      }
+    }
   }
 
   // Next option should be the index directory.
@@ -2646,6 +3135,20 @@ int main(int argc, char **argv)
       }
     }
   }
+  else if (task == TASK_STREAM)
+  {
+    if (! indexdir.exists())
+    {
+      std::cerr << indexdir.name() << ": no such directory\n";
+      return EXIT_FAILURE;
+    }
+
+    if (! indexdir.isDirectory())
+    {
+      std::cerr << indexdir.name() << ": not a directory\n";
+      return EXIT_FAILURE;
+    }
+  }
   else
   {
     std::cerr << app.name() << ": internal error at line " << __LINE__ << '\n';
@@ -2665,6 +3168,8 @@ int main(int argc, char **argv)
       return mergeIndexes(indexdir, mergeix);
     else if (task == TASK_DUMP)
       return dumpIndex(indexdir, dumpwhat, sampleid);
+    else if (task == TASK_STREAM)
+      return streamout(indexdir, sampleid);
     else
     {
       std::cerr << app.name() << ": internal error, unknown task\n";
