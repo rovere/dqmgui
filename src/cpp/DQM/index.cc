@@ -1016,7 +1016,10 @@ extend(VisDQMIndex &ix,
     {
       oldfiles.push_back(rfile->path());
       rfile->close();
-      s.files[kind]++;
+
+      // Increment LSB 16, wrapping overflow within those bits.
+      s.files[kind] = (s.files[kind] & 0xffff0000)
+		      | ((s.files[kind]+1) & 0x0000ffff);
     }
 
     newfiles.push_back(wfile->path());
