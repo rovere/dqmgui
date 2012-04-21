@@ -18,7 +18,6 @@ nreq = 0
 found = []
 
 #-------------------------------------------------------------------------------
-
 class filter:
   type = FILE
   recurse = False
@@ -30,7 +29,6 @@ class filter:
       % (self.pattern, self.type, self.recurse)
 
 #-------------------------------------------------------------------------------
-
 def pattern_to_filter(pattern):
   """Converts a search pattern into a search filter.
 
@@ -87,12 +85,15 @@ def pattern_to_filter(pattern):
       f.pattern = "^%s$" % f.pattern
     f.rx = re.compile(f.pattern)
 
+  last = filters[-1]
+  if last.type == FILE and not last.recurse and last.pattern == "^$":
+    filters.pop()
+
   print filters
 
   return filters
 
 #-------------------------------------------------------------------------------
-
 def should_process_sample(s, expr):
   """Evaluate sample predicate expression `expr` against sample `s`.
   Returns True if the sample should be processed, False otherwise."""
@@ -106,7 +107,6 @@ def should_process_sample(s, expr):
     return False
 
 #-------------------------------------------------------------------------------
-
 def find_matching_samples(options):
   """Generator which returns all samples at target sever which
   match the requested predicate expression."""
@@ -138,10 +138,8 @@ def find_matching_samples(options):
         yield sample
 
 #-------------------------------------------------------------------------------
-
-def fetch_tstreamerinfo_literal(options,dataset):
-
-  topdir={}
+def fetch_tstreamerinfo(options, dataset):
+  topdir = {}
 
   def req_error(c, url, errmsg, errno):
     print >> sys.stderr, "%s: failed to retrieve TStreamerInfo: %s (%d)" \
@@ -151,7 +149,6 @@ def fetch_tstreamerinfo_literal(options,dataset):
   def req_done(c):
     topdir["contents"] = cjson.decode(c.buffer.getvalue())['contents']
 
-
   reqman = RequestManager(ssl_opts = ssl_opts,
                           user_agent = ident,
                           request_respond = req_done,
@@ -160,14 +157,10 @@ def fetch_tstreamerinfo_literal(options,dataset):
   reqman.put((options.server + "/archive/" + dataset + "?rootcontent=1",))
   reqman.process()
 
-  tstreamerinfo_literal= topdir["contents"][0]["streamerinfo"]
-
-  return tstreamerinfo_literal
-
+  return topdir["contents"][0]["streamerinfo"]
 
 #-------------------------------------------------------------------------------
-
-def request_init(c, options, sample, filters, pos, path):
+def request_init(c, options, sample, path, filterspec):
   sample.update(path = path)
   c.url = options.server + urllib.quote(url_content % sample)
   if options.fetch_root:
@@ -177,12 +170,10 @@ def request_init(c, options, sample, filters, pos, path):
     print c.url
 
 #-------------------------------------------------------------------------------
-
 def report_error(c, task, errmsg, errno):
   print >> sys.stderr, "FAILED to retrieve %s: %s (%d)" % (task, errmsg, errno)
 
 #-------------------------------------------------------------------------------
-
 def match_filters(item, filters, poslist):
   newposlist = []
   descend = False
@@ -196,9 +187,8 @@ def match_filters(item, filters, poslist):
     if 'subdir' in item \
        and (f.type == DIR or f.type == ANY) \
        and f.rx.match(item['subdir']):
-      # descend = fmatched = True
-      # DP here I changed in order to see also directories in the list
-      matched = descend = fmatched = True
+      descend = (idx < len(filters)-1)
+      fmatched = True
       name = item['subdir']
     elif 'obj' in item \
          and (f.type == FILE or f.type == ANY) \
@@ -217,10 +207,9 @@ def match_filters(item, filters, poslist):
   return name, matched, descend, newposlist
 
 #-------------------------------------------------------------------------------
-
 def process(c):
   global found, nreq
-  options, sample, filters, pos, path = c.task
+  options, sample, path, filterspec = c.task
 
   nreq += 1
   if options.verbose and nreq % 10 == 0:
@@ -236,19 +225,22 @@ def process(c):
   reply = re.sub(r'("(?:mean|rms|min|max|nentries)":) -inf,', r'\1 "-float(\'inf\')",', reply)
   reply = cjson.decode(reply)
 
-  seen = set()
+  newreq = {}
   for item in reply['contents']:
-    name, match, descend, newpos = match_filters(item, filters, pos)
-    if match:
-      found.append((path + name, item))
-    if descend and name not in seen:
-      reqman.put((options, sample, filters, newpos, path + name + "/"))
-    seen.update((name,))
+    for filters, pos in filterspec:
+      name, match, descend, newpos = match_filters(item, filters, pos)
+      if match and (not found or found[-1][0] != path + name):
+        found.append((path + name, item))
+      if descend:
+        newpath = path + name + "/"
+        if newpath not in newreq:
+          newreq[newpath] = []
+        newreq[newpath].append((filters, newpos))
+
+  for path, filterspec in newreq.iteritems():
+    reqman.put((options, sample, path, filterspec))
 
 #-------------------------------------------------------------------------------
-
-
-
 op = OptionParser()
 op.add_option("-v", "--verbose", dest = "verbose",
               action = "store_true", default = False,
@@ -275,8 +267,8 @@ op.add_option("-s", "--server", dest = "server",
 op.add_option("-e", "--samples", dest = "sample_expr", metavar = "EXPR",
               help = "Evaluate EXPR to decide which samples to scan")
 op.add_option("-f", "--filter", dest = "glob",
-              type = "string", action = "store", metavar = "GLOB",
-              default = "/*/EventInfo/*Summary",
+              type = "string", action = "append", metavar = "GLOB",
+              default = [],
               help = "Filter monitor elements matching GLOB pattern")
 options, args = op.parse_args()
 if args:
@@ -286,7 +278,7 @@ if not options.sample_expr:
   print >> sys.stderr, "Sample predicate expression required"
   sys.exit(1)
 if not options.glob:
-  print >> sys.stderr, "Monitor element filter expression required"
+  print >> sys.stderr, "Monitor element filter expression(s) required"
   sys.exit(1)
 if not options.server:
   print >> sys.stderr, "Server contact string required"
@@ -294,10 +286,10 @@ if not options.server:
 
 # Adjust options
 if options.debug:
-  options.verbose=True
+  options.verbose = True
 
 if options.write:
-  options.fetch_root=True
+  options.fetch_root = True
   from ROOT import TFile
   from Monitoring.DQM.ROOTData import *
 
@@ -307,8 +299,8 @@ if options.verbose:
   print "Using SSL private key", ssl_opts.key_file
   print "Using SSL public key", ssl_opts.cert_file
 
-# Convert glob pattern into a filter expression.
-filters = pattern_to_filter(options.glob)
+# Convert each glob pattern into a filter expression.
+filter_sets = map(lambda glob: pattern_to_filter(glob), options.glob)
 
 # Start a request manager.
 reqman = RequestManager(num_connections = options.connections,
@@ -323,66 +315,58 @@ ntotreq = 0
 nfound = 0
 start = time()
 for sample in find_matching_samples(options):
-
-  # Place for the TStreamerinfo
-  tstreamerinfo=None
+  tstreamerinfo = None
   if options.write:
-    run_dataset="%(run)d%(dataset)s" % sample
-    tstreamerinfo_literal = fetch_tstreamerinfo_literal(options,run_dataset)
-    tstreamerinfo = literal2root(tstreamerinfo_literal,"TStreamerInfo")
+    tstreamerinfo = fetch_tstreamerinfo(options, "%(run)d%(dataset)s" % sample)
+    tstreamerinfo = literal2root(tstreamerinfo, "TStreamerInfo")
 
   nreq = 0
   found = []
   sample['section'] = 'archive'
   if options.verbose:
     print "Scanning %s" % sample
-  reqman.put((options, sample, filters, [0], "/"))
+  reqman.put((options, sample, "/", map(lambda f: (f, [0]), filter_sets)))
   reqman.process()
   if options.verbose:
     print
   if found:
     print "%(section)s/%(run)d%(dataset)s:" % sample
-    # Place for the Rootfile (if necessary)
-    ofile=None
+    found.sort()
+    cwd = None
+
+    # If writing, create output file with directories
+    ofile = None
     if options.write:
-      #prepare output file
-      ofilename="%(dataset)s__run%(run)s.root" %sample
-      ofilename=ofilename[1:].replace("/","__")
-      ofile = TFile(ofilename,"RECREATE")
+      fname = ("%(dataset)s__run%(run)s.root" % sample)[1:].replace("/", "__")
+      ofile = TFile(fname, "RECREATE")
       ofile.cd()
 
-    found.sort()
     for path, item in found:
       # We are treating a directory
       if 'subdir' in item:
-        subdir_string=  " %s/" % path
-        if options.long_listing:
-          subdir_string += " = directory"
-        print subdir_string
-        if options.write:
-          tfile_cd(path,ofile)
+        print " %s/%s" % (path, (options.long_listing and " = directory") or "")
 
       # We are treating an int/double/string
       elif 'value' in item:
-        value_string = " %s" % (path)
-        if options.long_listing:
-          value_string += " = %s" % item['value']
-        print value_string
+        print " %s%s" % (path, (options.long_listing and " = %s" % item['value']) or "")
 
-      # We have a TObject: histo, graph, profile..
+      # We have a TObject: histo, graph, profile...; maybe write to a file.
       else:
-        object_string = " %s" % path
+        message = " %s" % path
         if options.long_listing:
-          object_string += " = [%s # %d]" % (item['properties']['type'], item['nentries'])
+          message += " = [%s # %d]" % (item['properties']['type'], item['nentries'])
         if options.debug:
-          object_string += " %s" % item['rootobj']
-        print object_string
-        # write to file
+          message += " %s" % item['rootobj']
+        print message
         if options.write:
-          obj = literal2root(item['rootobj'],item['properties']['type'],tstreamerinfo)
+          indir = path.rsplit("/", 1)[0]
+          if cwd != indir:
+            tfile_cd(indir, ofile)
+            cwd = indir
+          obj = literal2root(item['rootobj'], item['properties']['type'], tstreamerinfo)
           obj.Write()
-    # we ended looping on entries, we close the file
-    if options.write and ofile!=None:
+
+    if options.write and ofile:
       ofile.Close()
 
   nfound += len(found)
@@ -391,4 +375,3 @@ end = time()
 
 if options.verbose:
   print "\nFound %d objects in %d directories in %.3f seconds" % (nfound, ntotreq, end - start)
-
