@@ -82,13 +82,16 @@ def myumask():
 def need_to_copy(path, size, date):
   """Check if a remote file needs to be (re)copied to local repository.
   If the file exists, and has the same size and mtime, no copy is needed.
+  Also, if file is missing but its dqminfo file exists asume it has been
+  archived, therefore, no copy is needed ether.
   Otherwise requests the file to be copied."""
   try:
     info = os.stat(path)
     if int(info.st_mtime) == date and info.st_size == size:
       return False
   except:
-    pass
+    if os.path.exists("%s.dqminfo" % path):
+      return False
 
   return True
 

@@ -22,8 +22,7 @@ REBROADCAST = int(sys.argv[5]) # Number of times the same alarm is breoadcasted
 EFLOCATION = "00 Shift/Errors"
 
 # Body of the XML message that is sent to CMS-WOW
-MSGBODY = "<CommandSequence source=\"DQM\"><play file=\"starwars_Esqueese_me.wav\"" \
-          " source=\"DQM\"/><talk source=\"DQM\">%s</talk></CommandSequence>"
+MSGBODY = "<CommandSequence source=\"DQM\"><talk source=\"DQM\">%s</talk></CommandSequence>"
 SESSIONLIFE = 24 * 3600 # Session life time in seconds
 WAITTIME = 30
 
@@ -113,6 +112,7 @@ while True:
       url = "%s/session/%s/setRoot?n=00%%20Shift%%2FErrors" %  (BASEURL,session)
       page1 = opener1.open(url)
       page1.read()
+      lastSessionRenew = now
 
     url = "%s/session/%s/state" %  (BASEURL,session)
     page1 = opener1.open(url)
@@ -128,6 +128,7 @@ while True:
       noRun = False
 
     if noRun:
+      time.sleep(WAITTIME)
       continue
 
     # Find new alarm histos, and update alarm states

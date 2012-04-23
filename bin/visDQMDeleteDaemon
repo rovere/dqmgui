@@ -90,6 +90,12 @@ def str2time(dateStr):
            tstruct.tm_hour, tstruct.tm_min, 0,
            tstruct.tm_wday, now.tm_yday, now.tm_isdst)
       except ValueError:
+        try:
+          tstruct=time.strptime(dateStr.replace(',',' %d,' % now.tm_year),"%a %b %d %Y, %H:%M")
+          t=(now.tm_year, tstruct.tm_mon, tstruct.tm_mday,
+             tstruct.tm_hour, tstruct.tm_min, 0,
+             tstruct.tm_wday, now.tm_yday, now.tm_isdst)
+        except ValueError:
           tstruct=time.strptime(dateStr,"%a %b %d '%y, %H:%M")
           t=(tstruct.tm_year, tstruct.tm_mon, tstruct.tm_mday,
              tstruct.tm_hour, tstruct.tm_min, 0,

@@ -64,7 +64,11 @@ def upload(url, args, files):
   datareq.add_header('Accept-encoding', 'gzip')
   datareq.add_header('User-agent', ident)
   marshall(args, files, datareq)
-  result = urllib2.build_opener(HTTPSCertAuthenticate()).open(datareq)
+  if 'https://' in url:
+    result = urllib2.build_opener(HTTPSCertAuthenticate()).open(datareq)
+  else:
+    result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
+
   data = result.read()
   if result.headers.get ('Content-encoding', '') == 'gzip':
     data = gzip.GzipFile (fileobj=StringIO(data)).read ()
@@ -94,11 +98,11 @@ if not ssl_cert_file:
   if os.path.exists(x509_path):
     ssl_cert_file = x509_path
 
-if not ssl_key_file or not os.path.exists(ssl_key_file):
+if 'https://' in sys.argv[1] and (not ssl_key_file or not os.path.exists(ssl_key_file)):
   print >>sys.stderr, "no certificate private key file found"
   sys.exit(1)
 
-if not ssl_cert_file or not os.path.exists(ssl_cert_file):
+if 'https://' in sys.argv[1] and (not ssl_cert_file or not os.path.exists(ssl_cert_file)):
   print >>sys.stderr, "no certificate public key file found"
   sys.exit(1)
 
