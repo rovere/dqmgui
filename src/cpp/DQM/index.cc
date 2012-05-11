@@ -209,7 +209,7 @@ Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.(dat|roo
 
 /// Regular expression to recognise release validation dataset names.
 /// The first capture is the CMSSW release string.
-Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*\\.(dat|root)$");
+Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*$");
 
 static const std::string MEINFOBOUNDARY("____MEINFOBOUNDARY____");
 static const std::string MEROOTBOUNDARY("____MEROOTBOUNDARY____");
