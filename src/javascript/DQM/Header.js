@@ -317,9 +317,17 @@ GUI.Plugin.DQMHeaderRow = new function() {
       and clears closure references for garbage collection. */
   this.detach = function()
   {
+    // Recent YUI upgrade changed the logic with which dynamic
+    // components are added to the widget. In particular it is not
+    // guaranteed any longer that those are stacked at the end of the
+    // DOM chain. We have to loop over all children and get rid of all
+    // but necessary stuff, i.e. hd(header), bd(body) and ft(footer).
     $('header').replaceChild(_toolsgroup, _toolsgroup.parentNode);
-    while (_toolsgroup.childNodes.length > 3)
-      _toolsgroup.removeChild(_toolsgroup.lastChild);
+    for (i=0; i<_toolsgroup.childNodes.length; i++)
+      if (_toolsgroup.childNodes[i].className != 'hd' &&
+	  _toolsgroup.childNodes[i].className != 'bd' &&
+	  _toolsgroup.childNodes[i].className != 'ft' )
+	_toolsgroup.removeChild(_toolsgroup.childNodes[i]);
 
     // Remove all 'heading' elements we added.
     for (var m, n = _header.firstChild; n; n = m)
