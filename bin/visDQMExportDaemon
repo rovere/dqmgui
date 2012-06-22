@@ -1,0 +1,273 @@
+#!/usr/bin/env python
+
+import os, os.path, sys
+from time import strftime, localtime, sleep, time
+from tempfile import mkstemp
+from glob import glob
+from threading import Thread, Lock, active_count
+import commands, re
+import cPickle as pickle
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+INDEX = sys.argv[1]     # Location of the DQM GUI index from which we export samples.
+WORKDIR = sys.argv[2]   # Working directory of the current agent where cache and temporary files are stored.
+FILEREPO = sys.argv[3]  # Main file repository where all finished .dat files will be moved.
+NEXT = sys.argv[4:]     # Directory for the next agent in chain.
+WAITTIME = 5            # Daemon cycle time.
+MAXEXPORTTHREADS = 5    # Maximum number of concurrent thread to run to export sample out of the index
+MAXDATFILES = 50        # Maximum number of .dat files that can be present in the EXPORTDIR before pausing the streaming threads
+MINDATFILES = 10        # Number of .dat files that must be present in the EXPORTDIR before resuming the streaming threads
+RXSAMPLEMATCH = '^SAMPLE\s+#(\d+).*src-file=#\d+.*?(DQM_V\d+_R\d+[A-Za-z0-9_-]*.root).*dataset-name=#\d+/((?:/[-A-Za-z0-9_]+){3}).*runnr=(\d+).*num-objects=(\d+)'
+CACHEFILE = '%s/exportedSamples.dat' % WORKDIR
+EXPORTDIR = '%s/Exported' % FILEREPO
+OWNNAME = __file__.rsplit("/", 1)[-1]
+MAXINDEXTIME = 60*60    # Maximum number of seconds that are given to following agents to cope with their pending jobs, besides .dat.dqminfo ones.
+IDXESTIMATETIME = 2*60  # Average number of seconds of a typical indexing job on a standard root file.
+MAXDATTIME = 60*60      # Maximum number of seconds that concurrent parallel stream jobs can run w/o pausing to process .root files.
+
+# --------------------------------------------------------------------
+def logme(msg, *args):
+  procid = "[%s/%d]" % (OWNNAME, os.getpid())
+  sys.stdout.write("[%s/%s]" % (OWNNAME, os.getpid()) \
+                   + strftime("%b %d %H:%M:%S ", localtime(time())) \
+                   + "".join(msg % args) + "\n")
+
+class Sample:
+  """Information cached for each sample:
+
+  id: this is the SAMPLE progressive number in the index whose content is
+      exported.
+
+  dataset name: the dataset name as registered in the index at indexing time.
+
+  run number: the run number registerd in the index at indexing time.
+
+  linked objects: the number of MEs that have been linked to the current
+                  sample. It is used to remove deleted sample in the master
+                  index.
+  """
+
+  id = 0
+  dataset = ''
+  runNumber = 0
+  numObjects = 0
+  datFile = ''
+  done = False
+
+  def toInfo(self):
+    """Format the information cached for each sample in a reduced info-file
+    format to ease the handling of the .dat files by subsequent agents. """
+    info = {}
+    info['dataset'] = self.dataset
+    info['runnr'] = self.runNumber
+    info['version'] = 1
+    info['path'] = 'Exported/%s' % self.datFile
+    info['class'] = 'offline_data'
+    return info
+
+class Exporter(Thread):
+  """ Class responsible for exporting a sample. Each export operation
+  will happen in a separate thread to improve performance. The maximum
+  allowed number of concurrent threads is fixed to
+  MAXEXPORTTHREADS. Each thread will first stream the assigned sample
+  in a temporary area. Once the streaming is succesfully completed,
+  the sample is moved into the central repository (EXPORTDIR). If the
+  moving is succesfull, a basic dqminfo file is produced in the
+  temporary directory and passed to the list of agents that follow the
+  current one.  If all the above succeed, the central cache is updated
+  and the current sample is marked as exported.  """
+
+  def __init__(self, sm, sample):
+    Thread.__init__(self)
+    self._sm = sm
+    self._sample = sample
+
+  def run(self):
+    """ Process a single sample out of the main index. It
+    dumps its full content in a dedicated .dat files, creates a
+    simplyfied info file and drops it in the next agents DROPBOX. """
+
+    logme("INFO: Processing sample %d" % self._sample.id)
+    (status, msg) = commands.getstatusoutput("cd %s && visDQMIndex stream --sample %d %s" % \
+                                             (WORKDIR, self._sample.id, INDEX))
+    if status == 0:
+      if self.moveSampleInPlace():
+        if self.writeSampleInfo():
+          self._sample.done = True
+          logme("INFO: Updating cache for sample %d to done",  self._sample.id)
+          self._sm.updateCache()
+        else:
+          logme("ERROR: Failing to write info file for sample %d [%s]",\
+            self._sample.id, self._sample.datFile)
+          if os.path.exists('%s/%s' %\
+                            (EXPORTDIR, self._sample.datFile)):
+            os.remove('%s/%s' %\
+                      (EXPORTDIR, self._sample.datFile))
+      else:
+        logme("ERROR: Failing to write .dat file for sample %d [%s]",\
+          self._sample.id, self._sample.datFile)
+    else:
+      logme("ERROR: Failing to stream sample %d [%s]", \
+            self._sample.id, self._sample.datFile)
+
+  def moveSampleInPlace(self):
+    try:
+      if os.path.exists('%s/%s' % (WORKDIR, self._sample.datFile)):
+        if not os.path.exists(EXPORTDIR):
+          os.makedirs(EXPORTDIR)
+        os.rename('%s/%s' % (WORKDIR, self._sample.datFile),\
+                  '%s/%s' % (EXPORTDIR, self._sample.datFile))
+        return True
+      else:
+        return False
+    except:
+      return False
+
+  def writeSampleInfo(self):
+    try:
+      if os.path.exists('%s/%s' % \
+                        (EXPORTDIR, self._sample.datFile)):
+        finfo = '%s/%s.dqminfo' % (EXPORTDIR, self._sample.datFile)
+        try:
+          (fd, tmp) = mkstemp(dir=EXPORTDIR)
+          os.write(fd, str(self._sample.toInfo()))
+          os.close(fd)
+          os.rename(tmp, finfo)
+          for n in NEXT:
+            if not os.path.exists(n):
+              os.makedirs(n)
+            ninfo = "%s/%s.dqminfo" % (n, self._sample.datFile)
+            if not os.path.exists(ninfo):
+              os.link(finfo, ninfo)
+          return True
+        except:
+          if os.path.exists(tmp):
+            os.remove(tmp)
+          return False
+      else:
+        logme("ERROR: %s/%s file not found.", EXPORTDIR, self._sample.datFile)
+        return False
+    except:
+      return False
+
+class SampleManager():
+  """Class responsible of the handling of all the samples that need to
+  be streamed out of the index. It has a private cache array which is
+  filled with Sample objects. The updating of the cache by the
+  streaming threads is controlled by the central lock variable held by
+  this class, so that no concurrent modification of the cache can
+  happen while it is written on disk."""
+
+  def __init__(self):
+    self._lock = Lock()
+    self.SAMPLES = []
+
+  def initialize(self):
+    if not self.readFromCache():
+      self.readFromIndex()
+
+  def readFromCache(self):
+    """Check for a cache file and, in case it is found, loads it into
+    memory. Return true if the cache file was found and correctly
+    loaded, False otherwise."""
+
+    if len(self.SAMPLES):
+      logme("ERROR: trying to load cache into a non-empty list of samples.")
+      sys.exit(1)
+    if not os.path.exists(CACHEFILE):
+      logme("WARNING: No cache found, generating one.")
+      return False
+    try:
+      self.SAMPLES = pickle.load(file(CACHEFILE, 'r'))
+      logme("INFO: Cache file loaded.")
+      return True
+    except:
+      return False
+
+  def readFromIndex(self):
+    """ Read the input index and prepare the list of samples that must
+    be exported. The same list is written into a cache file and
+    updated every time a file is correctly streamed. The agent will
+    first try to read the cache and, in case of failures, will process
+    the index. """
+
+    cmd = "visDQMIndex dump %s catalogue" % INDEX
+    samplesIndex = commands.getoutput(cmd).split('\n')
+    for sample in samplesIndex:
+      gr = re.match(RXSAMPLEMATCH, sample)
+      if gr:
+        s = Sample()
+        s.id, s.datFile, s.dataset, s.runNumber, s.numObjects = (int(gr.group(1)),\
+                                                                 gr.group(2).replace('.root', '.dat'),\
+                                                                 gr.group(3), int(gr.group(4)),\
+                                                                 int(gr.group(5)))
+        if s.numObjects == 0:
+          logme("WARNING: discarding empty sample %d, %s, %s", \
+                s.id, s.dataset, s.runNumber)
+        else:
+          # Insert samples in reverse order, so that they will be processed in the correct order,
+          # from more recent to oldest.
+          self.SAMPLES.insert(0,s)
+    self.updateCache()
+
+  def updateCache(self):
+    self._lock.acquire()
+    try:
+      (fd, tmp) = mkstemp(dir='./')
+      os.write(fd, pickle.dumps(self.SAMPLES))
+      os.close(fd)
+      os.rename(tmp, CACHEFILE)
+      self._lock.release()
+    except:
+      self._lock.release()
+
+  def maxNextPendingJobs(self):
+    result = 0
+    for n in NEXT:
+      result = max(result, len(glob("%s/*.root.dqminfo" % n)))
+    return result
+
+  def processSamples(self):
+
+    """Loops over all samples and export each one. Stops when all
+    samples have been streamed out. There are few conditions that are
+    allowed to stop the streaming process so that the subsequent
+    indexing job could cope with all the .dat files and usual .root
+    files. In particular if the number of .dat files in the EXPORTDIR
+    is greater than MAXDATFILES, the streaming threads are put on hold
+    until the number of .dat files drops below MINDATFILES. Once this
+    number of .dat files is reached in the EXPORTDIR, a check is done
+    on all the dropboxes that have been passed as input parameters to
+    this agents to see how many *.root.dqminfo files are present: if
+    there are no pending jobs the streaming threads are resumed; if
+    there are pending jobs, we stop the streaming threads taking the
+    minimum between 60min and the estimated time to process the
+    pending jobs."""
+
+    now = time()
+    for s in self.SAMPLES:
+      maxNextPendingJobs = 0
+      if s.done:
+        continue
+      if active_count() <= MAXEXPORTTHREADS:
+        a_thread = Exporter(self, s)
+        a_thread.start()
+      while active_count() > MAXEXPORTTHREADS:
+        sleep(2)
+      if len(glob('%s/*.dat' % EXPORTDIR)) > MAXDATFILES:
+        logme("INFO: Pausing streaming threads due to dat files quota exceeded.")
+        while len(glob('%s/*.dat' % EXPORTDIR)) > MINDATFILES:
+          sleep(5)
+        sleep(min(MAXINDEXTIME, IDXESTIMATETIME*self.maxNextPendingJobs()))
+        now = time()
+      if time()-now > MAXDATTIME:
+        logme("INFO: Pausing streaming threads due time quota exceeded.")
+        now = time()
+        sleep(min(MAXINDEXTIME, IDXESTIMATETIME*self.maxNextPendingJobs()))
+    logme("INFO: Finished processing all files")
+
+sm = SampleManager()
+sm.initialize()
+sm.processSamples()
+
