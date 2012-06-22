@@ -31,12 +31,23 @@ def logme(msg, *args):
   print datetime.now(), procid, msg % args
 
 # Order input files so we process them in a sane order:
+# - process .dat.dmqinfo files first
 # - descending by run
 # - ascending by version
 # - descending by dataset
 def orderFiles(a, b):
+  diff = 0
   classOrder = ['online_data', 'offline_data', 'simulated',
                 'relval_data', 'relval_mc']
+  if a['infofile'].endswith('.dat.dqminfo'):
+    if b['infofile'].endswith('.dat.dqminfo'):
+      diff = 0
+    else:
+      diff = -1
+  else:
+    if b['infofile'].endswith('.dat.dqminfo'):
+      diff = 1
+  if diff: return diff
   diff = classOrder.index(a['class']) - classOrder.index(b['class'])
   if diff: return diff
   diff = a['runnr'] - b['runnr']
@@ -64,7 +75,10 @@ while True:
 
     # Find new input files.
     new = []
-    for path in glob("%s/*.root.dqminfo" % DROPBOX):
+    files = []
+    files.extend(glob("%s/*.root.dqminfo" % DROPBOX))
+    files.extend(glob("%s/*.dat.dqminfo" % DROPBOX))
+    for path in files:
       # Read in the file info.
       try:
 	info = eval(file(path).read())
@@ -96,6 +110,10 @@ while True:
       # If we've already registered the file, skip it.
       if fname in existing or (MODE == 'Offline' and not isNewest(info)):
 	os.remove(info['infofile'])
+        # Remove hanging .dat files from the master repository, since
+        # they are meant to be temporary.
+        if fname.endswith('.dat'):
+          os.remove(fname)
 	continue
 
       # If we've registered too many files, skip it.
@@ -124,6 +142,9 @@ while True:
 	logme('command failed with exit code %d', rc)
 	finfobad = "%s.bad" % info['infofile']
 	os.rename(info['infofile'], finfobad)
+        if fname.endswith('.dat'):
+          if os.path.exists(fname):
+            os.remove(fname)
 	continue
 
       else:
@@ -136,6 +157,10 @@ while True:
           if not os.path.exists(ninfo):
             os.link(finfo, ninfo)
 	os.remove(info['infofile'])
+
+      if fname.endswith('.dat'):
+        if os.path.exists(fname):
+          os.remove(fname)
 
   # If anything bad happened, barf but keep going.
   except KeyboardInterrupt, e:

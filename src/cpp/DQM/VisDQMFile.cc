@@ -429,7 +429,7 @@ VisDQMFile::ReadHead::move(void)
 	 rdhead.next();
        }
     @endcode */
-VisDQMFile::ReadHead::ReadHead(VisDQMFile *file, uint64_t key)
+VisDQMFile::ReadHead::ReadHead(VisDQMFile *file, IndexKey key)
   : file_(file),
     page_(0),
     index_(0),
@@ -439,7 +439,7 @@ VisDQMFile::ReadHead::ReadHead(VisDQMFile *file, uint64_t key)
 {
   if (file)
   {
-    uint64_t boundary = 0;
+    IndexKey boundary;
     pthread_rwlock_rdlock(&file->lock_);
 
     index_ = file->indexBegin_;
@@ -502,7 +502,7 @@ VisDQMFile::ReadHead::finish(void)
 
     This method can only be called if #isdone() returns false. */
 void
-VisDQMFile::ReadHead::get(uint64_t *key, void **start, void **end)
+VisDQMFile::ReadHead::get(IndexKey *key, void **start, void **end)
 {
   if (move_ != MOVE_NONE)
     move();
@@ -676,7 +676,7 @@ VisDQMFile::ReadHead::pagein(const Address &addr)
     uint32_t *end = (uint32_t *)(&pg->bytes[0] + pg->bytes.size());
     pg->nobjs = end[-1];
     pg->objlocs = &end[-2];
-    pg->objkeys = ((uint64_t *)&pg->objlocs[-pg->nobjs]) - 1;
+    pg->objkeys = ((IndexKey *)&pg->objlocs[-pg->nobjs]) - 1;
     pg->ndata = pg->objlocs[-pg->nobjs];
     pg->first = &pg->bytes[0] + pg->objlocs[0];
 
@@ -936,7 +936,7 @@ VisDQMFile::WriteHead::flush(uint32_t flags)
   // Compact the page.  Write keys and locations immediately after the
   // data on the page, shrinking the page to minimum required size.
   uint32_t offset = roundup(page_.ndata, sizeof(uint64_t));
-  uint64_t *keys = (uint64_t *) (&page_.bytes[0] + offset);
+  IndexKey *keys = (IndexKey *) (&page_.bytes[0] + offset);
   uint32_t *locs = (uint32_t *) (keys + page_.nobjs);
   *locs++ = page_.ndata;
   for (int32_t i = page_.nobjs-1; i >= 0; --i)
@@ -1045,7 +1045,7 @@ VisDQMFile::WriteHead::~WriteHead(void)
     amount.  The @a start and @a end will point to the object storage
     and one byte past the end, respectively.  */
 void
-VisDQMFile::WriteHead::allocate(uint64_t key,
+VisDQMFile::WriteHead::allocate(IndexKey key,
 				uint32_t amount,
 				void **start,
 				void **end)
@@ -1055,14 +1055,14 @@ VisDQMFile::WriteHead::allocate(uint64_t key,
   // start a new page.  If even then there isn't enough space, make
   // the page bigger to fit the requested object (rounded to 128kB).
   size_t needed = roundup(page_.ndata + amount, sizeof(uint64_t))
-		  + (page_.nobjs+1) * sizeof(uint64_t)
+		  + (page_.nobjs+1) * sizeof(IndexKey)
 		  + (page_.nobjs+3) * sizeof(uint32_t);
 
   if (page_.bytes.size() < needed)
     flush(OPT_PAGE_FILLED_FULL);
 
   needed = roundup(page_.ndata + amount, sizeof(uint64_t))
-	   + (page_.nobjs+1) * sizeof(uint64_t)
+	   + (page_.nobjs+1) * sizeof(IndexKey)
 	   + (page_.nobjs+3) * sizeof(uint32_t);
 
   if (page_.bytes.size() < needed)
@@ -1106,8 +1106,8 @@ VisDQMFile::WriteHead::allocate(uint64_t key,
     and re-compressed. */
 void
 VisDQMFile::WriteHead::xfer(ReadHead &from,
-			    uint64_t until,
-			    uint64_t *key,
+			    IndexKey until,
+			    IndexKey *key,
 			    void **start,
 			    void **end)
 {

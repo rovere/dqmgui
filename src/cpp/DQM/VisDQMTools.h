@@ -35,24 +35,20 @@ onAssertFail(const char *message)
     into @a tree.  The full string contents are stored as is, without
     a terminating null character, so binary data blobs are also ok. */
 inline void
-readStrings(StringAtomTree &tree, VisDQMFile *f, uint64_t idx)
+readStrings(StringAtomTree &tree, VisDQMFile *f, IndexKey idx)
 {
   void *begin;
   void *end;
-  uint64_t key;
-  uint64_t hipart;
-  uint64_t lopart;
+  IndexKey key;
 
   for (VisDQMFile::ReadHead rdhead(f, idx); ! rdhead.isdone(); rdhead.next())
   {
     rdhead.get(&key, &begin, &end);
-    hipart = key & 0xffffffff00000000ull;
-    lopart = key & 0x00000000ffffffffull;
-    if (hipart != idx)
+    if (key.catalogIndex() != idx.catalogIndex())
       break;
 
     std::string data((const char *) begin, (const char *) end);
-    VERIFY(tree.insert(data) == lopart);
+    VERIFY(tree.insert(data) == key.objectIndex());
   }
 }
 
@@ -63,7 +59,7 @@ readStrings(StringAtomTree &tree, VisDQMFile *f, uint64_t idx)
     is given, strings are written starting from that index, otherwise
     starting from index 1. */
 inline void
-writeStrings(VisDQMFile::WriteHead &wrhead, StringAtomTree &tree, uint64_t idx, size_t base = 1)
+writeStrings(VisDQMFile::WriteHead &wrhead, StringAtomTree &tree, IndexKey idx, size_t base = 1)
 {
   for (size_t i = base, e = tree.size(); i < e; ++i)
   {
@@ -122,6 +118,15 @@ static std::string unhexlify(const std::string& s)
     result += (top << 4) + bot;
   }
   return result;
+}
+
+std::ostream &operator<<(std::ostream &out, IndexKey c)
+{
+  out << std::hex << (c.sampleAndType >> 4) << "-"
+      << (c.sampleAndType & 0xf) << ":";
+  out << std::hex << (c.lumiAndObjname >> 32) << "-"
+      << (c.lumiAndObjname & 0xffffffff) << std::dec;
+  return out;
 }
 
 #if !VISDQM_NO_ROOT

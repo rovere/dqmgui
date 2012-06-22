@@ -11,6 +11,120 @@
 # include <vector>
 # include <map>
 
+/** Key format used all over in the index. It is built on top 128 bits
+    organized in 2 64-bit variables, whose interpretation is flexible,
+    depending on the kind of data we want to access. The
+    implementation and the needed bit assignements and manipulations
+    are contained in the structure itself, to ease the process of
+    migration, in case schema evolutions will be needed in future.
+
+    For anything except the btree tables, the meaning of the bits in
+    both variables is the following:
+
+    sampleAndType: the highest 60 bits are used to store the sample's
+    index, the lowest 4 to store the category of the object we want to
+    read(save) in(from) the index.
+
+    lumiAndObjname: the highest 32 bits are used to store the
+    endlumi of the current object, in case it is a lumi object (0
+    otherwise), the lowest 32 bits are used to store the index in the
+    B-tree of the name of the current object.
+
+    Keys for the string tables only use the lowest 64-bits of the
+    total 128 available, to keep the required changes for the schema
+    evolution at a minimum. The special methods stringCatalog and
+    btreeStringIdx are centrally provided to hide the internal bits
+    assignment/partition. These method are only meant to be used to
+    operate on the string tables.
+*/
+
+struct IndexKey
+{
+  /** Stores sample index (index of this sample in the master
+      catalogue) in the upper 60 bits, followed by 4-bit type
+      identifier. */
+  uint64_t sampleAndType;
+
+  /** Stores in the upper 32-bits the end of the luminository range
+      for which the data is valid for lumi-type objects, followed by
+      32-bits for the object name index in the master catalogue table
+      of names. */
+  uint64_t lumiAndObjname;
+
+  IndexKey()
+    : sampleAndType(0),
+      lumiAndObjname(0)
+    {}
+  IndexKey(uint64_t high, uint64_t low)
+    : sampleAndType(high),
+      lumiAndObjname(low)
+    {}
+
+  IndexKey(uint64_t sampleidx,
+	   uint64_t type,
+	   uint64_t lumiend,
+	   uint64_t objnameidx)
+    {
+      sampleAndType  = (sampleidx << 4) | (type & 0xf);
+      lumiAndObjname = (lumiend << 32)  | (objnameidx & 0x00000000ffffffffull);
+    }
+
+  uint64_t catalogIndex() { return lumiAndObjname & 0xffffffff00000000ull; }
+  uint64_t objectIndex() { return lumiAndObjname & 0x00000000ffffffffull; }
+  uint64_t sampleidx() { return (sampleAndType >> 4) & 0xfffffffffffffff; }
+  uint64_t type() { return sampleAndType & 0xf; }
+  uint64_t lumiend() { return (lumiAndObjname >> 32) & 0xffffffff; }
+  uint64_t objnameidx() { return lumiAndObjname  & 0xffffffff; }
+
+  //Operators overloading
+
+  bool operator<(const IndexKey &rhs) const
+    {
+      return (sampleAndType < rhs.sampleAndType ? true :
+              (sampleAndType == rhs.sampleAndType ?
+               (lumiAndObjname < rhs.lumiAndObjname ? true : false) : false));
+    }
+
+  bool operator>(const IndexKey &rhs) const
+    {
+      return (sampleAndType > rhs.sampleAndType ? true :
+              (sampleAndType == rhs.sampleAndType ?
+               (lumiAndObjname > rhs.lumiAndObjname ? true : false) : false));
+    }
+
+  // If it is not "more than" it must be "less than|equal".
+  bool operator<=(const IndexKey &rhs) const
+    {
+      return !(this->operator>(rhs));
+    }
+
+  bool operator>=(const IndexKey &rhs) const
+    {
+      return !(this->operator<(rhs));
+    }
+
+  bool operator==(const IndexKey &rhs) const
+    {
+      return ((sampleAndType == rhs.sampleAndType)
+              && (lumiAndObjname == rhs.lumiAndObjname));
+    }
+
+  const IndexKey operator+(const int other) const
+    {
+      IndexKey result(*this);
+      result.lumiAndObjname += other;
+      return result;
+    }
+
+  bool operator() (const std::pair<IndexKey, IndexKey> &lhs,
+                   const std::pair<IndexKey, IndexKey> &rhs) const
+    {
+      return (lhs.first < rhs.first ? true :
+              (lhs.first == rhs.first ?
+               (lhs.second < rhs.second ? true :false) : false));
+    }
+};
+
 class VisDQMCache;
 class VisDQMError;
 
@@ -53,7 +167,7 @@ class VisDQMFile
 public:
   // ------------------------------------------------------------
   static const uint64_t MAGIC = 0x54494e595354524dULL; //'TINYSTRM'
-  static const uint64_t VINFO = 0x1234567800000000ULL; // byte order, v0
+  static const uint64_t VINFO = 0x1234567800000001ULL; // byte order, v1
 
   static const uint32_t OPT_COMPRESSION_MASK     = 0x0000000f;
   static const uint32_t OPT_COMPRESSION_NONE     = 0x00000000;
@@ -99,7 +213,7 @@ public:
   typedef std::vector<unsigned char> DataBytes;
 
   /** Temporary container used to hold keys when building pages. */
-  typedef std::vector<uint64_t> KeyVector;
+  typedef std::vector<IndexKey> KeyVector;
 
   /** An individual data page.  This both holds the actual page data,
       extracted meta information, a page lock and a last use stamp.
@@ -132,7 +246,7 @@ public:
     uint64_t		offset;		//< File offset, for caching.
     VisDQMBuf		bytes;		//< Actual page data.
     unsigned char	*first;		//< Pointer to first object.
-    uint64_t		*objkeys;	//< Pointer to object key table.
+    IndexKey		*objkeys;	//< Pointer to object key table.
     uint32_t		*objlocs;	//< Pointer to object offset table.
     uint32_t		ndata;		//< Amount of data filled in.
     int32_t		nobjs;		//< Number of obj* table entries.
@@ -151,7 +265,7 @@ public:
   struct IndexEntry
   {
     Address		address;
-    uint64_t		key;
+    IndexKey		key;
   };
 
   /** Data file header.  Currently simplified because we know the file
@@ -210,10 +324,10 @@ public:
   class ReadHead
   {
   public:
-    ReadHead(VisDQMFile *file, uint64_t key);
+    ReadHead(VisDQMFile *file, IndexKey key);
     ~ReadHead(void);
 
-    void		get(uint64_t *key, void **start, void **end);
+    void		get(IndexKey *key, void **start, void **end);
     bool		isdone(void);
     void		next(void);
     void		finish(void);
@@ -225,7 +339,7 @@ public:
     VisDQMFile		*file_;
     DataPage		*page_;
     IndexEntry		*index_;
-    uint64_t		target_;
+    IndexKey		target_;
     int32_t		obj_;
     MoveMode		move_;
 
@@ -255,9 +369,9 @@ public:
     WriteHead(VisDQMFile *file, size_t pagesize = 0, size_t numkeys = 0);
     ~WriteHead(void);
 
-    void		allocate(uint64_t key, uint32_t amount, void **start, void **end);
-    void		xfer(ReadHead &from, uint64_t until,
-			     uint64_t *key, void **start, void **end);
+    void		allocate(IndexKey key, uint32_t amount, void **start, void **end);
+    void		xfer(ReadHead &from, IndexKey until,
+			     IndexKey *key, void **start, void **end);
     void		finish(void);
 
   private:

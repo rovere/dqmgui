@@ -3548,25 +3548,24 @@ class VisDQMArchiveSource : public VisDQMSource
       // open errors have occurred however.
       VisDQMFile *master = 0;
       index_.beginRead(master);
-      for (VisDQMFile::ReadHead rdhead(master, 0); ! rdhead.isdone(); rdhead.next())
+      for (VisDQMFile::ReadHead rdhead(master, IndexKey(0, 0));
+	   ! rdhead.isdone(); rdhead.next())
       {
 	void *begin;
 	void *end;
-	uint64_t key;
-	uint64_t hipart;
+	IndexKey key;
 
 	rdhead.get(&key, &begin, &end);
-	hipart = key & 0xffffffff00000000ull;
-	if (hipart == VisDQMIndex::MASTER_SAMPLE_RECORD)
+	if (key.catalogIndex() == VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  samples_.push_back(*(const VisDQMIndex::Sample *)begin);
 	else
 	  break;
       }
 
-      readStrings(dsnames_, master, VisDQMIndex::MASTER_DATASET_NAME);
-      readStrings(vnames_, master, VisDQMIndex::MASTER_CMSSW_VERSION);
-      readStrings(objnames_, master, VisDQMIndex::MASTER_OBJECT_NAME);
-      readStrings(streamers_, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+      readStrings(dsnames_, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+      readStrings(vnames_, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+      readStrings(objnames_, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+      readStrings(streamers_, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
       index_.finishRead();
     }
 
@@ -3739,8 +3738,8 @@ public:
 	  if (si != samples_.end() && objindex != 0)
 	  {
 	    // FIXME: handle keys other than run summary?
-	    uint64_t keyidx = (uint64_t(si - samples_.begin()) << 44) | objindex;
-	    uint64_t key;
+	    IndexKey keyidx(uint64_t(si - samples_.begin()), 0, 0, objindex);
+	    IndexKey key;
 	    void *begin;
 	    void *end;
 
@@ -3832,8 +3831,8 @@ public:
 	  if (si != samples_.end() && objindex != 0)
 	  {
 	    // FIXME: handle keys other than run summary?
-	    uint64_t keyidx = (uint64_t(si - samples_.begin()) << 44) | objindex;
-	    uint64_t key;
+	    IndexKey keyidx(uint64_t(si - samples_.begin()), 0, 0, objindex);
+	    IndexKey key;
 	    void *begin;
 	    void *end;
 
@@ -3940,18 +3939,20 @@ public:
 
 	  // Read the summary for the requested sample.
 	  VisDQMEventNumList eventnums;
-	  uint64_t keyidx = (si - samples_.begin());
-	  for (VisDQMFile::ReadHead rdhead(file.get(), keyidx << 44);
+	  IndexKey keyidx(uint64_t(si - samples_.begin()), 0, 0, 0);
+	  for (VisDQMFile::ReadHead rdhead(file.get(), keyidx);
 	       ! rdhead.isdone(); rdhead.next())
 	  {
-	    uint64_t key;
+	    IndexKey key;
 	    void *begin;
 	    void *end;
 	    rdhead.get(&key, &begin, &end);
 	    // FIXME: handle keys other than run summary?
-	    uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
-				     (key >> 20) & 0xfffff, key & 0xfffff };
-	    if (keyparts[0] != keyidx || keyparts[1] != 0)
+	    uint64_t keyparts[4] = { key.sampleidx(),
+				     key.type(),
+				     key.lumiend(),
+				     key.objnameidx() };
+	    if (keyparts[0] != keyidx.sampleidx() || keyparts[1] != 0)
 	      break;
 
 	    VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
@@ -4129,18 +4130,20 @@ public:
 	  std::string dir;
 
 	  // Read the summary for the requested sample.
-	  uint64_t keyidx = (si - samples_.begin());
-	  VisDQMFile::ReadHead rdinfo(info.get(), keyidx << 44);
+	  IndexKey keyidx(uint64_t(si - samples_.begin()), 0, 0, 0);
+	  VisDQMFile::ReadHead rdinfo(info.get(), keyidx);
 	  for ( ; ! rdinfo.isdone(); rdinfo.next())
 	  {
-	    uint64_t ikey;
-	    uint64_t dkey;
+	    IndexKey ikey;
+	    IndexKey dkey;
 	    void *begin;
 	    void *end;
 	    rdinfo.get(&ikey, &begin, &end);
-	    uint64_t keyparts[4] = { (ikey >> 44) & 0xfffff, (ikey >> 40) & 0xf,
-				     (ikey >> 20) & 0xfffff, ikey & 0xfffff };
-	    if (keyparts[0] != keyidx || (!lumisect && (keyparts[1] != 0)))
+	    uint64_t keyparts[4] = { ikey.sampleidx(),
+				     ikey.type(),
+				     ikey.lumiend(),
+				     ikey.objnameidx() };
+	    if (keyparts[0] != keyidx.sampleidx() || (!lumisect && (keyparts[1] != 0)))
 	      break;
 
 	    VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
@@ -4273,17 +4276,19 @@ public:
 	  std::string path;
 
 	  // Read the summary for the requested sample.
-	  uint64_t keyidx = (si - samples_.begin());
-	  VisDQMFile::ReadHead rdinfo(info.get(), keyidx << 44);
+	  IndexKey keyidx(uint64_t(si - samples_.begin()), 0, 0, 0);
+	  VisDQMFile::ReadHead rdinfo(info.get(), keyidx);
 	  for ( ; ! rdinfo.isdone(); rdinfo.next())
 	  {
-	    uint64_t ikey;
+	    IndexKey ikey;
 	    void *begin;
 	    void *end;
 	    rdinfo.get(&ikey, &begin, &end);
-	    uint64_t keyparts[4] = { (ikey >> 44) & 0xfffff, (ikey >> 40) & 0xf,
-				     (ikey >> 20) & 0xfffff, ikey & 0xfffff };
-	    if (keyparts[0] != keyidx)
+	    uint64_t keyparts[4] = { ikey.sampleidx(),
+				     ikey.type(),
+				     ikey.lumiend(),
+				     ikey.objnameidx() };
+	    if (keyparts[0] != keyidx.sampleidx())
 	      break;
 	    if (keyparts[1] == 0)
 	      continue;

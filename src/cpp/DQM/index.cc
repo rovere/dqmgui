@@ -131,7 +131,7 @@ struct MonitorElementInfo
       index, constructed as per documentation in #VisDQMIndex.  The
       value is filled in only when we are about to insert data into a
       file in the index. */
-  uint64_t	nameidx;
+  IndexKey	nameidx;
 
   /** Full path name of the monitor element, without the decorations
       added by #DQMStore when saving the objects in a ROOT file.  This
@@ -268,7 +268,7 @@ classifyMonitorElement(DQMStore & /* store */,
   info.category = 0;
   info.lumibegin = 0;
   info.lumiend = 0;
-  info.nameidx = 0;
+  info.nameidx = IndexKey();
   info.name.clear();
   info.data.clear();
   info.qreports.clear();
@@ -849,11 +849,11 @@ contract(VisDQMIndex &ix,
 	  << "]=" << (rfile ? rfile->path().name() : "(none)")
 	  << " out " << wfile->path() << '\n');
 
-    VisDQMFile::ReadHead rdhead(rfile, 0);
+    VisDQMFile::ReadHead rdhead(rfile, IndexKey(0, 0));
     VisDQMFile::WriteHead wrhead(wfile);
-    uint64_t begin = nsample << 44;
-    uint64_t end = (nsample+1) << 44;
-    uint64_t rkey;
+    IndexKey begin(nsample, 0, 0, 0);
+    IndexKey end(nsample+1, 0, 0, 0);
+    IndexKey rkey;
     void *rstart;
     void *rend;
 
@@ -872,7 +872,7 @@ contract(VisDQMIndex &ix,
 
     // OK, bulk transfer the rest.
     DEBUG(2, "transferring rest of original contents\n");
-    wrhead.xfer(rdhead, ~0ull, &rkey, &rstart, &rend);
+    wrhead.xfer(rdhead, IndexKey(~0, ~0), &rkey, &rstart, &rend);
     rdhead.finish();
     wrhead.finish();
 
@@ -912,11 +912,12 @@ extend(VisDQMIndex &ix,
   std::vector<uint32_t> minfoix(minfo.size(), 0);
   for (size_t i = 0, e = minfo.size(); i < e; ++i)
   {
+    IndexKey tmp(nsample,
+		 minfo[i].category,
+		 minfo[i].lumiend,
+		 StringAtom(&objnames, minfo[i].name).index());
     minfoix[i] = i;
-    minfo[i].nameidx = (nsample << 44)
-		       | (uint64_t(minfo[i].category) << 40)
-		       | (uint64_t(minfo[i].lumiend) << 20)
-		       | (StringAtom(&objnames, minfo[i].name).index());
+    minfo[i].nameidx = tmp;
   }
   std::sort(minfoix.begin(), minfoix.end(), OrderByNameIndex(minfo));
 
@@ -941,10 +942,10 @@ extend(VisDQMIndex &ix,
 	  << "]=" << (rfile ? rfile->path().name() : "(none)")
 	  << " out " << wfile->path() << '\n');
 
-    VisDQMFile::ReadHead rdhead(rfile, 0);
+    VisDQMFile::ReadHead rdhead(rfile, IndexKey(0, 0));
     VisDQMFile::WriteHead wrhead(wfile);
     uint64_t ix = 0;
-    uint64_t rkey;
+    IndexKey rkey;
     void *rstart;
     void *rend;
     void *wstart;
@@ -1085,7 +1086,7 @@ extend(VisDQMIndex &ix,
 
     // OK, we've written everything out, bulk transfer the rest.
     DEBUG(2, "transferring rest of original contents\n");
-    wrhead.xfer(rdhead, ~0ull, &rkey, &rstart, &rend);
+    wrhead.xfer(rdhead, IndexKey(~0, ~0), &rkey, &rstart, &rend);
     rdhead.finish();
     wrhead.finish();
 
@@ -1244,7 +1245,7 @@ readFileStream(FileInfo &fi,
       iread >> dummy;
       mi->streamidx = StringAtom(&rootobjs, unhexlify(dummy)).index();
     }
-    mi->nameidx=0;
+    mi->nameidx = IndexKey();
   } // Finish reading a single file.
 }
 
@@ -1379,11 +1380,11 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       StringAtomTree objnames(1500000);
       StringAtomTree streamers(100);
 
-      readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
-      readStrings(dsnames, master, VisDQMIndex::MASTER_DATASET_NAME);
-      readStrings(vnames, master, VisDQMIndex::MASTER_CMSSW_VERSION);
-      readStrings(objnames, master, VisDQMIndex::MASTER_OBJECT_NAME);
-      readStrings(streamers, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+      readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+      readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+      readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+      readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+      readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
       // Make sure the first CMSSW version is always empty string.
       if (StringAtom(&vnames, "").index() != 0)
@@ -1428,15 +1429,14 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       samples.reserve(10000);
 
       for (VisDQMFile::ReadHead rdhead
-	     (master, VisDQMIndex::MASTER_SAMPLE_RECORD);
+	     (master, IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD));
 	   ! rdhead.isdone(); rdhead.next())
       {
 	// Extract next sample.  Stop when we hit other tables.
 	void *rdbegin, *rdend;
-	uint64_t key, hipart;
+	IndexKey key;
 	rdhead.get(&key, &rdbegin, &rdend);
-	hipart = key & 0xffffffff00000000ull;
-	if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
+	if ((key.catalogIndex()) != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  break;
 
 	// Add the sample to a list so we can revise file id.
@@ -1546,25 +1546,25 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       for (size_t i = 0, e = samples.size(); i != e; ++i)
       {
 	void *wrbegin, *wrend;
-	wrhead.allocate(VisDQMIndex::MASTER_SAMPLE_RECORD + i,
+	wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD + i),
 			sizeof(VisDQMIndex::Sample), &wrbegin, &wrend);
 	memcpy(wrbegin, &samples[i], sizeof(VisDQMIndex::Sample));
       }
 
       DEBUG(1, "adding " << (pathnames.size()-1) << " path names\n");
-      writeStrings(wrhead, pathnames, VisDQMIndex::MASTER_SOURCE_PATHNAME);
+      writeStrings(wrhead, pathnames, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
 
       DEBUG(1, "adding " << (dsnames.size()-1) << " dataset names\n");
-      writeStrings(wrhead, dsnames, VisDQMIndex::MASTER_DATASET_NAME);
+      writeStrings(wrhead, dsnames, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
 
       DEBUG(1, "adding " << (vnames.size()-1) << " version names\n");
-      writeStrings(wrhead, vnames, VisDQMIndex::MASTER_CMSSW_VERSION, 0);
+      writeStrings(wrhead, vnames, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION), 0);
 
       DEBUG(1, "adding " << (objnames.size()-1) << " object names\n");
-      writeStrings(wrhead, objnames, VisDQMIndex::MASTER_OBJECT_NAME);
+      writeStrings(wrhead, objnames, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
 
       DEBUG(1, "adding " << (streamers.size()-1) << " streamers\n");
-      writeStrings(wrhead, streamers, VisDQMIndex::MASTER_TSTREAMERINFO);
+      writeStrings(wrhead, streamers, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
       DEBUG(1, "committing output\n");
       wrhead.finish();
@@ -1638,11 +1638,11 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
     StringAtomTree objnames(1500000);
     StringAtomTree streamers(100);
 
-    readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
-    readStrings(dsnames, master, VisDQMIndex::MASTER_DATASET_NAME);
-    readStrings(vnames, master, VisDQMIndex::MASTER_CMSSW_VERSION);
-    readStrings(objnames, master, VisDQMIndex::MASTER_OBJECT_NAME);
-    readStrings(streamers, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+    readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+    readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+    readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+    readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+    readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
     // Make sure the first CMSSW version is always empty string.
     if (StringAtom(&vnames, "").index() != 0)
@@ -1662,15 +1662,14 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
     samples.reserve(10000);
 
     for (VisDQMFile::ReadHead rdhead
-	   (master, VisDQMIndex::MASTER_SAMPLE_RECORD);
+	   (master, IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD));
 	 ! rdhead.isdone(); rdhead.next())
     {
       // Extract next sample.  Stop when we hit other tables.
       void *rdbegin, *rdend;
-      uint64_t key, hipart;
+      IndexKey key;
       rdhead.get(&key, &rdbegin, &rdend);
-      hipart = key & 0xffffffff00000000ull;
-      if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
+      if ((key.catalogIndex()) != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	break;
 
       // Add the sample to a list so we can revise file id.
@@ -1724,25 +1723,25 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
     for (size_t i = 0, e = samples.size(); i != e; ++i)
     {
       void *wrbegin, *wrend;
-      wrhead.allocate(VisDQMIndex::MASTER_SAMPLE_RECORD + i,
+      wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD + i),
 		      sizeof(VisDQMIndex::Sample), &wrbegin, &wrend);
       memcpy(wrbegin, &samples[i], sizeof(VisDQMIndex::Sample));
     }
 
     DEBUG(1, "adding " << (pathnames.size()-1) << " path names\n");
-    writeStrings(wrhead, pathnames, VisDQMIndex::MASTER_SOURCE_PATHNAME);
+    writeStrings(wrhead, pathnames, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
 
     DEBUG(1, "adding " << (dsnames.size()-1) << " dataset names\n");
-    writeStrings(wrhead, dsnames, VisDQMIndex::MASTER_DATASET_NAME);
+    writeStrings(wrhead, dsnames, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
 
     DEBUG(1, "adding " << (vnames.size()-1) << " version names\n");
-    writeStrings(wrhead, vnames, VisDQMIndex::MASTER_CMSSW_VERSION, 0);
+    writeStrings(wrhead, vnames, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION), 0);
 
     DEBUG(1, "adding " << (objnames.size()-1) << " object names\n");
-    writeStrings(wrhead, objnames, VisDQMIndex::MASTER_OBJECT_NAME);
+    writeStrings(wrhead, objnames, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
 
     DEBUG(1, "adding " << (streamers.size()-1) << " streamers\n");
-    writeStrings(wrhead, streamers, VisDQMIndex::MASTER_TSTREAMERINFO);
+    writeStrings(wrhead, streamers, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
     DEBUG(1, "committing output\n");
     wrhead.finish();
@@ -1806,11 +1805,11 @@ remapdata(VisDQMIndex &ix,
 				   s.files[kind] & 0xffff,
 				   VisDQMFile::OPEN_READ);
     VisDQMFile * oldfile = 0;
-    uint64_t rkey;
+    IndexKey rkey;
     void *rbegin, *rend;
     void *wbegin, *wend;
-    uint64_t begin = origsample << 44;
-    std::vector< std::pair<uint64_t, uint64_t> > remapping;
+    IndexKey begin(origsample, 0, 0, 0);
+    std::vector< std::pair<IndexKey, IndexKey> > remapping;
     remapping.reserve(s.numObjects);
 
     if (wfile[kind] == 0)
@@ -1832,8 +1831,8 @@ remapdata(VisDQMIndex &ix,
 				(datafile[kind] & 0xffff),
 				VisDQMFile::OPEN_WRITE);
 	  VisDQMFile::WriteHead wrhead(wfile[kind]);
-	  VisDQMFile::ReadHead rdold(oldfile, 0);
-	  wrhead.xfer(rdold, ~0ull, &rkey, &rbegin, &rend);
+	  VisDQMFile::ReadHead rdold(oldfile, IndexKey(0, 0));
+	  wrhead.xfer(rdold, IndexKey(~0, ~0), &rkey, &rbegin, &rend);
 	  wrhead.finish();
 	}
 	else
@@ -1892,15 +1891,13 @@ remapdata(VisDQMIndex &ix,
     {
       // Check if the next object is still for this sample.
       rdhead.get(&rkey, &rbegin, &rend);
-      uint64_t keyparts[4] = { (rkey >> 44) & 0xfffff, (rkey >> 40) & 0xf,
-			       (rkey >> 20) & 0xfffff, rkey & 0xfffff };
-      if (keyparts[0] != origsample)
-	break;
+      if (rkey.sampleidx() != origsample)
+        break;
 
-      uint64_t wkey = ((newsample << 44)
-		       | (keyparts[1] << 40)
-		       | (keyparts[2] << 20)
-		       | objnames2ix[keyparts[3]]);
+      IndexKey wkey(newsample,
+		    rkey.type(),
+		    rkey.lumiend(),
+		    objnames2ix[rkey.objnameidx()]);
 
       DEBUG(2, "mapping object key " << std::hex << rkey
 	    << " to key " << wkey << std::dec << '\n');
@@ -1984,17 +1981,17 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       StringAtomTree objnames(1500000), othobjnames(1500000);
       StringAtomTree streamers(100),    othstreamers(100);
 
-      readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
-      readStrings(dsnames, master, VisDQMIndex::MASTER_DATASET_NAME);
-      readStrings(vnames, master, VisDQMIndex::MASTER_CMSSW_VERSION);
-      readStrings(objnames, master, VisDQMIndex::MASTER_OBJECT_NAME);
-      readStrings(streamers, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+      readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+      readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+      readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+      readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+      readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
-      readStrings(othpathnames, othermaster, VisDQMIndex::MASTER_SOURCE_PATHNAME);
-      readStrings(othdsnames, othermaster, VisDQMIndex::MASTER_DATASET_NAME);
-      readStrings(othvnames, othermaster, VisDQMIndex::MASTER_CMSSW_VERSION);
-      readStrings(othobjnames, othermaster, VisDQMIndex::MASTER_OBJECT_NAME);
-      readStrings(othstreamers, othermaster, VisDQMIndex::MASTER_TSTREAMERINFO);
+      readStrings(othpathnames, othermaster, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+      readStrings(othdsnames, othermaster, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+      readStrings(othvnames, othermaster, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+      readStrings(othobjnames, othermaster, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+      readStrings(othstreamers, othermaster, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
       std::vector<size_t> vnames2ix(othvnames.size());
       std::vector<size_t> dsnames2ix(othdsnames.size());
@@ -2036,15 +2033,14 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       samples.reserve(10000);
 
       for (VisDQMFile::ReadHead rdhead
-	     (master, VisDQMIndex::MASTER_SAMPLE_RECORD);
+	     (master, IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD));
 	   ! rdhead.isdone(); rdhead.next())
       {
 	// Extract next sample.  Stop when we hit other tables.
 	void *rdbegin, *rdend;
-	uint64_t key, hipart;
+	IndexKey key;
 	rdhead.get(&key, &rdbegin, &rdend);
-	hipart = key & 0xffffffff00000000ull;
-	if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
+	if ((key.catalogIndex()) != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  break;
 
 	// Add the sample to a list so we can revise file id.
@@ -2063,15 +2059,14 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       VisDQMFile *wfile[2] = {0,0};
 
       for (VisDQMFile::ReadHead rdhead
-	     (othermaster, VisDQMIndex::MASTER_SAMPLE_RECORD);
+	     (othermaster, IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD));
 	   ! rdhead.isdone(); rdhead.next())
       {
 	// Extract next sample.  Stop when we hit other tables.
 	void *rdbegin, *rdend;
-	uint64_t key, hipart;
+	IndexKey key;
 	rdhead.get(&key, &rdbegin, &rdend);
-	hipart = key & 0xffffffff00000000ull;
-	if (hipart != VisDQMIndex::MASTER_SAMPLE_RECORD)
+	if ((key.catalogIndex()) != VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  break;
 
 	// Add the sample to a list so we can revise file id.
@@ -2123,25 +2118,25 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       for (size_t i = 0, e = samples.size(); i != e; ++i)
       {
 	void *wrbegin, *wrend;
-	wrhead.allocate(VisDQMIndex::MASTER_SAMPLE_RECORD + i,
+	wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD + i),
 			sizeof(VisDQMIndex::Sample), &wrbegin, &wrend);
 	memcpy(wrbegin, &samples[i], sizeof(VisDQMIndex::Sample));
       }
 
       DEBUG(1, "adding " << (pathnames.size()-1) << " path names\n");
-      writeStrings(wrhead, pathnames, VisDQMIndex::MASTER_SOURCE_PATHNAME);
+      writeStrings(wrhead, pathnames, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
 
       DEBUG(1, "adding " << (dsnames.size()-1) << " dataset names\n");
-      writeStrings(wrhead, dsnames, VisDQMIndex::MASTER_DATASET_NAME);
+      writeStrings(wrhead, dsnames, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
 
       DEBUG(1, "adding " << (vnames.size()-1) << " version names\n");
-      writeStrings(wrhead, vnames, VisDQMIndex::MASTER_CMSSW_VERSION, 0);
+      writeStrings(wrhead, vnames, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION), 0);
 
       DEBUG(1, "adding " << (objnames.size()-1) << " object names\n");
-      writeStrings(wrhead, objnames, VisDQMIndex::MASTER_OBJECT_NAME);
+      writeStrings(wrhead, objnames, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
 
       DEBUG(1, "adding " << (streamers.size()-1) << " streamers\n");
-      writeStrings(wrhead, streamers, VisDQMIndex::MASTER_TSTREAMERINFO);
+      writeStrings(wrhead, streamers, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
       DEBUG(1, "committing output\n");
       wrhead.finish();
@@ -2210,26 +2205,24 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
   // Read the master catalogue. We need all the info anyway.
   DEBUG(1, "starting index read\n");
   ix.beginRead(master);
-  for (VisDQMFile::ReadHead rdhead(master, 0); ! rdhead.isdone(); rdhead.next())
+  for (VisDQMFile::ReadHead rdhead(master, IndexKey(0, 0)); ! rdhead.isdone(); rdhead.next())
   {
     void *begin;
     void *end;
-    uint64_t key;
-    uint64_t hipart;
+    IndexKey key;
 
     rdhead.get(&key, &begin, &end);
-    hipart = key & 0xffffffff00000000ull;
-    if (hipart == VisDQMIndex::MASTER_SAMPLE_RECORD)
+    if ((key.catalogIndex()) == VisDQMIndex::MASTER_SAMPLE_RECORD)
       samples.push_back(*(const VisDQMIndex::Sample *)begin);
     else
       break;
   }
 
-  readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
-  readStrings(dsnames, master, VisDQMIndex::MASTER_DATASET_NAME);
-  readStrings(vnames, master, VisDQMIndex::MASTER_CMSSW_VERSION);
-  readStrings(objnames, master, VisDQMIndex::MASTER_OBJECT_NAME);
-  readStrings(streamers, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+  readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+  readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+  readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+  readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+  readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
   // Now output the selected parts, walking over one sample at a time.
   std::list<VisDQMIndex::Sample>::iterator si;
@@ -2311,17 +2304,16 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 		    si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff,
 		    VisDQMFile::OPEN_READ))
       {
-	for (VisDQMFile::ReadHead rdhead(f, (uint64_t) n << 44);
+	IndexKey sample(n, 0, 0, 0);
+	for (VisDQMFile::ReadHead rdhead(f, sample);
 	     ! rdhead.isdone(); rdhead.next())
 	{
-	  uint64_t key;
+	  IndexKey key;
 	  void *begin;
 	  void *end;
 
 	  rdhead.get(&key, &begin, &end);
-	  uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
-				   (key >> 20) & 0xfffff, key & 0xfffff };
-	  if (keyparts[0] == n)
+	  if (key.sampleidx() == n)
 	  {
 	    VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
 	    uint32_t type = s->properties & VisDQMIndex::SUMMARY_PROP_TYPE_MASK;
@@ -2331,9 +2323,9 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	      = (s->qtestLength ? ((const char *) (s+1) + s->dataLength) : "");
 
 	    std::cout
-	      << "ME [sample:" << keyparts[0] << ", category:" << keyparts[1]
-	      << ", lumiend:" << keyparts[2] << ", nameidx:" << keyparts[3]
-	      << "] name='" << objnames.key(keyparts[3])
+	      << "ME [sample:" << key.sampleidx() << ", category:" << key.type()
+	      << ", lumiend:" << key.lumiend() << ", nameidx:" << key.objnameidx()
+	      << "] name='" << objnames.key(key.objnameidx())
 	      << "' properties=" << std::hex << s->properties << std::dec << "["
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_INVALID ? "INVALID"
 		  : (type <= VisDQMIndex::SUMMARY_PROP_TYPE_SCALAR) ? "SCALAR"
@@ -2441,17 +2433,16 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 		    si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff,
 		    VisDQMFile::OPEN_READ))
       {
-	for (VisDQMFile::ReadHead rdhead(f, (uint64_t) n << 44);
+	IndexKey sample(n, 0, 0, 0);
+	for (VisDQMFile::ReadHead rdhead(f, sample);
 	     ! rdhead.isdone(); rdhead.next())
 	{
-	  uint64_t key;
+	  IndexKey key;
 	  void *begin;
 	  void *end;
 
 	  rdhead.get(&key, &begin, &end);
-	  uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
-				   (key >> 20) & 0xfffff, key & 0xfffff };
-	  if (keyparts[0] == n)
+	  if (key.sampleidx() == n)
 	  {
 	    size_t len = (char *) end - (char *) begin;
 	    MD5Digest md5;
@@ -2463,8 +2454,8 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	    TObject *ref = extractNextObject(buf);
 
 	    std::cout
-	      << "ME [sample:" << keyparts[0] << ", category:" << keyparts[1]
-	      << ", lumiend:" << keyparts[2] << ", nameidx:" << keyparts[3]
+	      << "ME [sample:" << key.sampleidx() << ", category:" << key.type()
+	      << ", lumiend:" << key.lumiend() << ", nameidx:" << key.objnameidx()
 	      << "] data-length=" << len
 	      << " object=[ptr:" << (void *) obj
 	      << ", type:" << (obj ? typeid(*obj).name() : "(none)")
@@ -2519,24 +2510,22 @@ streamout(const Filename &indexdir, size_t sampleid)
   // Read the master catalogue. We need all the info anyway.
   DEBUG(1, "starting index read\n");
   ix.beginRead(master);
-  for (VisDQMFile::ReadHead rdhead(master, 0); ! rdhead.isdone(); rdhead.next())
+  for (VisDQMFile::ReadHead rdhead(master, IndexKey(0, 0)); ! rdhead.isdone(); rdhead.next())
   {
     void *begin;
     void *end;
-    uint64_t key;
-    uint64_t hipart;
+    IndexKey key;
 
     rdhead.get(&key, &begin, &end);
-    hipart = key & 0xffffffff00000000ull;
-    if (hipart == VisDQMIndex::MASTER_SAMPLE_RECORD)
+    if ((key.catalogIndex()) == VisDQMIndex::MASTER_SAMPLE_RECORD)
       samples.push_back(*(const VisDQMIndex::Sample *)begin);
     else
       break;
   }
 
-  readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
-  readStrings(objnames, master, VisDQMIndex::MASTER_OBJECT_NAME);
-  readStrings(streamers, master, VisDQMIndex::MASTER_TSTREAMERINFO);
+  readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+  readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+  readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
   // Now output the selected parts, walking over one sample at a time.
   std::list<VisDQMIndex::Sample>::iterator si;
@@ -2586,18 +2575,17 @@ streamout(const Filename &indexdir, size_t sampleid)
                               VisDQMFile::OPEN_READ);
     if (f)
     {
-      for (VisDQMFile::ReadHead rdhead(f, (uint64_t) n << 44);
+      IndexKey sample(n, 0, 0, 0);
+      for (VisDQMFile::ReadHead rdhead(f, sample);
            ! rdhead.isdone(); rdhead.next())
       {
-        uint64_t key;
+        IndexKey key;
         void *begin;
         void *end;
         DQMNet::DataBlob rawdata;
 
         rdhead.get(&key, &begin, &end);
-        uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
-                                 (key >> 20) & 0xfffff, key & 0xfffff };
-        if (keyparts[0] == n)
+        if (key.sampleidx() == n)
         {
           VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
           const char *data = (s->dataLength ? (const char *) (s+1) : "");
@@ -2605,9 +2593,9 @@ streamout(const Filename &indexdir, size_t sampleid)
             = (s->qtestLength ? ((const char *) (s+1) + s->dataLength) : "");
 
           out
-            << objnames.key(keyparts[3]) << "\n"
-	    << keyparts[1]
-            << " " << keyparts[2]
+            << objnames.key(key.objnameidx()) << "\n"
+	    << key.type()
+            << " " << key.lumiend()
             << " " << s->properties
             << " " << s->dataLength
             << " " << s->qtestLength
@@ -2661,18 +2649,17 @@ streamout(const Filename &indexdir, size_t sampleid)
     if (ff)
     {
       out << MEROOTBOUNDARY << "\n";
-      for (VisDQMFile::ReadHead rddata(ff, (uint64_t) n << 44);
+      IndexKey sample(n, 0, 0, 0);
+      for (VisDQMFile::ReadHead rddata(ff, sample);
            ! rddata.isdone(); rddata.next())
       {
-        uint64_t key;
+        IndexKey key;
         void *begin;
         void *end;
         DQMNet::DataBlob rawdata;
 
         rddata.get(&key, &begin, &end);
-        uint64_t keyparts[4] = { (key >> 44) & 0xfffff, (key >> 40) & 0xf,
-                                 (key >> 20) & 0xfffff, key & 0xfffff };
-        if (keyparts[0] == n)
+        if (key.sampleidx() == n)
         {
 	  rawdata.clear();
 	  rawdata.insert(rawdata.end(),

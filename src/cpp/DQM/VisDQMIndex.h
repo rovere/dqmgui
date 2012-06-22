@@ -123,9 +123,9 @@ class VisDQMCache;
    <type> is "info" or "data", <nnn> is the thousands part of the file
    index, <mmm> is the mod 1000 part and <vvvvv> is the version.
 
-   Inside the data files objects are ordered by 64-bit keys. The top
-   20 bits are the sample index, followed by 4-bit type identifier,
-   20-bit lumi section index and 20-bit object name index.  The sample
+   Inside the data files objects are ordered by 128-bit keys. The top
+   60 bits are the sample index, followed by 4-bit type identifier,
+   32-bit lumi section index and 32-bit object name index.  The sample
    index is the index of this sample in the master catalogue.  The
    type identifier is 0 for run summary in which case the lumi section
    index will be zero.  The type is 1 for lumi range summary, and the
