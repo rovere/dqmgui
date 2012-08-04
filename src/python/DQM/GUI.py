@@ -692,6 +692,7 @@ class DQMWorkspace:
            samplepat = None,
            sampledynsearch = None,
            sampletype = None,
+           sampleimportversion = None,
            dataset = None,
            runnr = None,
 	   qplot = None,
@@ -756,6 +757,14 @@ class DQMWorkspace:
         raise HTTPError(500, "Incorrect sample type parameter")
       elif hasattr(Accelerator.sampletype, sampletype):
         session['dqm.sample.type'] = int(getattr(Accelerator.sampletype, sampletype))
+      else:
+        raise HTTPError(500, "Incorrect sample type parameter")
+
+    if sampleimportversion != None:
+      if not isinstance(sampleimportversion, int):
+        raise HTTPError(500, "Incorrect sample importversion parameter")
+      elif hasattr(Accelerator.sampleimportversion, sampleimportversion):
+        session['dqm.sample.importversion'] = getattr(Accelerator.sampleimportversion, sampleimportversion)
       else:
         raise HTTPError(500, "Incorrect sample type parameter")
 
@@ -1308,6 +1317,7 @@ class DQMSampleWorkspace(Accelerator.DQMSampleWorkspace, DQMWorkspace):
   def sessionSelect(self, session, *args, **kwargs):
     self._set(session,
               sampletype = kwargs.get("type"),
+              sampleimportversion = kwargs.get("importversion"),
               dataset = kwargs.get("dataset"),
               runnr = kwargs.get("runnr"));
     return self.sessionReturn(session)

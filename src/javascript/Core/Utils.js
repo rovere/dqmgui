@@ -467,3 +467,22 @@ function localToGlobal( _el ) {
   moonwalk( target.offsetParent );
   return rect;
 }
+
+/** Function to test if a specific @a url is available or not. In
+    order to avoid excessive load on both client and server, the AJAX
+    request is sent using the "HEAD" method, since we are interested
+    only on the status of the request, not on the content. The status
+    is passed to the @a callback function for further
+    customization. */
+
+function _urlExists(url, callback)
+{
+    var http = new XMLHttpRequest();
+    http.open('HEAD', url);
+    http.onreadystatechange = function() {
+        if (this.readyState == this.DONE) {
+            callback(this.status);
+        }
+    };
+    http.send();
+}

@@ -426,6 +426,7 @@ struct VisDQMSample
 {
   VisDQMSampleType		type;
   long				runnr;
+  uint32_t			importversion;
   std::string			dataset;
   std::string			version;
   VisDQMSource			*origin;
@@ -433,6 +434,7 @@ struct VisDQMSample
   VisDQMSample(VisDQMSampleType t, long r, const std::string & d)
     : type(t),
       runnr(r),
+      importversion(0),
       dataset(d),
       version(""),
       origin(0),
@@ -441,6 +443,7 @@ struct VisDQMSample
   VisDQMSample(VisDQMSampleType t, long r)
     : type(t),
       runnr(r),
+      importversion(0),
       dataset(""),
       version(""),
       origin(0),
@@ -1094,7 +1097,9 @@ sampleToJSON(const VisDQMSample &sample, std::string &result)
   result += sample.dataset;
   result += "\", \"version\":\"";
   result += sample.version;
-  result += "\"}";
+  result += "\", \"importversion\":";
+  result += StringFormat("%1").arg(sample.importversion);
+  result += "}";
 }
 
 static std::string
@@ -1150,6 +1155,7 @@ sessionSample(const py::dict &session)
   long type = py::extract<long>(session.get("dqm.sample.type"));
   result.runnr = py::extract<long>(session.get("dqm.sample.runnr"));
   result.dataset = py::extract<std::string>(session.get("dqm.sample.dataset"));
+  result.importversion = py::extract<int>(session.get("dqm.sample.importversion"));
   result.origin = 0;
 
   if (type < SAMPLE_LIVE || type > SAMPLE_OFFLINE_MC)
@@ -3339,6 +3345,7 @@ public:
       {
 	session["dqm.sample.runnr"] = 0L;
 	session["dqm.sample.dataset"] = mydataset_;
+	session["dqm.sample.importversion"] = 0;
 	session["dqm.sample.type"] = long(SAMPLE_LIVE);
       }
     }
@@ -4017,6 +4024,7 @@ public:
       {
 	bool found = false;
 	long runnr = -1;
+	uint32_t importversion = 0;
 	std::string dataset;
 	VisDQMSampleType type = SAMPLE_ANY;
 
@@ -4046,6 +4054,7 @@ public:
 	    found = true;
 	    runnr = newest->runNumber;
 	    dataset = dsnames_.key(newest->datasetNameIdx);
+	    importversion = newest->importVersion;
 	    type = (newest->cmsswVersion > 0 ? SAMPLE_OFFLINE_RELVAL
 		    : newest->runNumber == 1 ? SAMPLE_OFFLINE_MC
 		    : rxonline_.search(dataset) < 0
@@ -4057,6 +4066,7 @@ public:
 	{
 	  session["dqm.sample.runnr"] = runnr;
 	  session["dqm.sample.dataset"] = dataset;
+	  session["dqm.sample.importversion"] = importversion;
 	  session["dqm.sample.type"] = long(type);
 	}
       }
@@ -4371,6 +4381,7 @@ public:
 	RDLock rdgate(&lock_);
 	SampleList::const_iterator si;
 	SampleList::const_iterator se;
+	uint32_t importversion;
 	samples.reserve(samples.size() + samples_.size());
 	for (si = samples_.begin(), se = samples_.end(); si != se; ++si)
 	{
@@ -4381,6 +4392,7 @@ public:
 	  VisDQMSample &s = samples.back();
 	  s.dataset = dsnames_.key(si->datasetNameIdx);
 	  s.version = vnames_.key(si->cmsswVersion);
+	  s.importversion = si->importVersion;
 	  s.runnr = si->runNumber;
 	  s.type = (si->cmsswVersion > 0 ? SAMPLE_OFFLINE_RELVAL
 		    : si->runNumber == 1 ? SAMPLE_OFFLINE_MC

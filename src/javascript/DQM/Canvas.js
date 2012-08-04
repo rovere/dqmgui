@@ -644,6 +644,7 @@ GUI.Plugin.DQMCanvas = new function()
 					scope:    _self,
 					id: 'canvas-linkMe' });
 
+    var rootFileLink = _gui.Plugin.DQMHeaderRow.getROOTFileURL();
     var tb = new Ext.Toolbar({ id : 'canvas-submenu' });
     var store = new Ext.data.ArrayStore({ fields: ['label', 'abbr'],
 					  data : _SIZESARRAY });
@@ -722,11 +723,32 @@ GUI.Plugin.DQMCanvas = new function()
 	     text          : '(Top)',
 	     xtype         : 'tbtext'
 	   }, '->',
+	   {
+	     /* The URL for the ROOT file is based on some heuristic
+	        guesses: as such it is not guaranteed to work in 100%
+	        of cases. That's why we serve this component as
+	        hidden by default. We will in case enable it if the
+	        result of an ad-hoc AJAX query against the server
+	        returns a valid status code. */
+	     xtype: 'box',
+	     id: 'canvas-downloadROOTfile',
+	     autoEl: {tag: 'a',
+		      href: rootFileLink,
+		      html: 'ROOT File'},
+	     hidden: true
+	   },
 	   linkmeAction
 	  );
 
     tb.render('canvas-opts');
     tb.doLayout();
+    if (rootFileLink)
+      _urlExists(rootFileLink,
+		 function(status){
+		   if (status == 200)
+		     Ext.getCmp('canvas-downloadROOTfile').show();
+		 });
+
     Ext.getCmp('canvas-layouts').on('click', function(btn, event) {
       if (_layoutroot != "")
 	  _gui.makeCall(_url() + "/setRoot?n=" + encodeURIComponent(_layoutroot));

@@ -143,6 +143,13 @@ GUI.Plugin.DQMHeaderRow = new function() {
   /** Currently displayed extra menu in the sub-header area. */
   var _curmenu          = null;
 
+  /** Regexp for valid RelVal dataset names. */
+  var _RXRELVALMC = /^\/RelVal[^\/]+\/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$/;
+  var _RXRELVALDATA = /^\/[^\/]+\/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$/;
+
+  /** Regexp for acquisition era part of the processed dataset name. */
+  var _RXERA = /^([A-Za-z]+\d+|CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)/;
+
   // ----------------------------------------------------------------
   /** Return list of current workspaces, for use by other modules. */
   this.workspaces = function()
@@ -825,7 +832,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
   };
 
   /** Expose private variables needed to assemble the link-me hyperlink.
-   *  @returns {Object} The parameters are assemble in a unique object
+   *  @returns {Object} The parameters are assembled in a unique object
    *  whose keys are formatted in a way already readable by the start
    *  method exposed by the GUI. */
   this.linkMe = function()
@@ -859,9 +866,51 @@ GUI.Plugin.DQMHeaderRow = new function() {
       stripomit:     _data.view.strip.omit,
       workspace:     _data.workspace
     };
-
     return result;
   };
 
+  this.getROOTFileURL = function()
+  {
+    var url = '';
+    switch (_data.view.sample.type) {
+    case "online_data":
+      break;
+    case "offline_mc":
+      break;
+    case "offline_relval":
+      match = _RXRELVALMC.exec(_data.view.sample.dataset);
+      if (match)
+	url = sprintf("%s/data/browse/ROOT/RelVal/%s_x/DQM_V%04d_R%09d%s.root",
+		      FULLROOTPATH, match[1].split("_",3).join("_"),
+		      _data.view.sample.importversion,
+		      parseInt(_data.view.sample.run,10),
+		      _data.view.sample.dataset.replace(/\//g, "__"));
+      break;
+    case "offline_data":
+      match = _RXRELVALDATA.exec(_data.view.sample.dataset);
+      if (match)
+      {
+	url = sprintf("%s/data/browse/ROOT/RelValData/%s_x/DQM_V%04d_R%09d%s.root",
+		      FULLROOTPATH,
+		      match[1].split("_",3).join("_"),
+		      _data.view.sample.importversion,
+		      parseInt(_data.view.sample.run,10),
+		      _data.view.sample.dataset.replace(/\//g, "__"));
+	break;
+      }
+      else
+      {
+	[junk, primds, procds, datatier] = _data.view.sample.dataset.split('/');
+	match = _RXERA.exec(procds);
+	if (match)
+	  url = sprintf("%s/data/browse/ROOT/OfflineData/%s/%s/%07dxx/DQM_V%04d_R%09d%s.root",
+			FULLROOTPATH, match[0], primds, parseInt(_data.view.sample.run,10)/100,
+			_data.view.sample.importversion,parseInt(_data.view.sample.run,10),
+			_data.view.sample.dataset.replace(/\//g, "__"));
+      }
+    break;
+    }
+    return url;
+  }
   return this;
 }();
