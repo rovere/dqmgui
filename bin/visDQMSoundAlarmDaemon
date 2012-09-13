@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-import urllib2, re, os, time, sys
+import urllib2, re, os, time, sys, cjson
 from traceback import print_exc
 from datetime import datetime
-from urllib import quote_plus
+from urllib import quote
 from fcntl import lockf, LOCK_EX, LOCK_UN
 from socket import socket, AF_INET, SOCK_STREAM
 
@@ -11,23 +11,24 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
-BASEURL = sys.argv[1] # GUI Server's URL
+BASEURL = quote(sys.argv[1],':/-_') # GUI Server's URL
 SOUNDSERVER = sys.argv[2] # CMS-WOW server's name
 PORT = int(sys.argv[3]) # Listening port on the CMS-WOW server
 REMINDERINTERVAL = int(sys.argv[4]) # Seconds between sonourous alarms
-REBROADCAST = int(sys.argv[5]) # Number of times the same alarm is breoadcasted
+REBROADCAST = int(sys.argv[5]) # Number of times the same alarm is broadcasted
 
 # GLOBAL CONSTANTS
 # location of the error folder that contains alarms histos.
-EFLOCATION = "00 Shift/Errors"
+ERROR_FOLDER = quote("00 Shift/Errors", ':/-_')
+DATA_LOCATION = quote("data/json/live/1/Global/Online/ALL", ':/-_')
 
 # Body of the XML message that is sent to CMS-WOW
-MSGBODY = "<CommandSequence source=\"DQM\"><talk source=\"DQM\">%s</talk></CommandSequence>"
+MSGBODY = '<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="">Please inform the DQM shifter that: %s</alarm></CommandSequence>'
+
 SESSIONLIFE = 24 * 3600 # Session life time in seconds
 WAITTIME = 30
 
 # Control Variables:
-lastSessionRenew = 0
 lastGlobalReminder = 0
 noRun = True
 
@@ -64,8 +65,8 @@ def getGuiData(opener,url):
   return contents
 # --------------------------------------------------------------------
 # The SoundAlarm agent monitors the state of alarm in histograms
-# located in EFLOCATION. This location is a layout with a selection
-# of MEs that fallow very closely the state of the detector. The agent
+# located in ERROR_FOLDER. This location is a layout with a selection
+# of MEs that follow very closely the state of the detector. The agent
 # makes the following assumptions:
 # 1. Each ME listed in the layout will rise an alarm if its QT fails,
 #    however, the ME and QT have to be done in such way that, if the
@@ -83,48 +84,34 @@ def getGuiData(opener,url):
 # system, the global clock gets reset every time we pass from 0 alarms
 # to at least 1 alarm.
 
-opener1 = urllib2.build_opener(urllib2.ProxyHandler({}))
-sr = re.search(r"dqm/([-a-zA-Z0-9_]+)",BASEURL)
+
+# Construct URL pointing to the Error folder
+sr = re.search(r"dqm/(online)", BASEURL)
 if not sr:
-  logme("FATAL:  Couold not identify the site from the BaseURL(%s)",
-        BASEURL)
+  logme("FATAL:  Could not identify the site from the base url")
   sys.exit(1)
 
-site = sr.group(1)
-session = ""
+BASEURL = "%s/%s/%s/" %  (BASEURL, DATA_LOCATION, ERROR_FOLDER)
+
 alarms = {}
 activeAlarmsList = []
+
 while True:
   try:
     now = time.time()
 
-    # get GUI session
-    if now - SESSIONLIFE > lastSessionRenew:
-      page1 = opener1.open("%s/" % BASEURL)
-      session = re.search(r"location.replace\('/dqm/%s/session/([-A-Za-z0-9_]+)'\)" % site,
-                   page1.read()).group(1)
-      url = "%s/session/%s/" %  (BASEURL,session)
-      page1 = opener1.open(url)
-      page1.read()
-      url = "%s/session/%s/workspace?name=shift" %  (BASEURL,session)
-      page1 = opener1.open(url)
-      page1.read()
-      url = "%s/session/%s/setRoot?n=00%%20Shift%%2FErrors" %  (BASEURL,session)
-      page1 = opener1.open(url)
-      page1.read()
-      lastSessionRenew = now
+    datareq = urllib2.Request(BASEURL)
+    result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
+    state = result.read()
+    state = cjson.decode(state)
 
-    url = "%s/session/%s/state" %  (BASEURL,session)
-    page1 = opener1.open(url)
-    state = eval(page1.read())
-
-    # Detect No run state
-    if noRun == False and state[1]['run']  == '(None)':
+    ## Detect No run state
+    if noRun == False and len(state["contents"]) <= 1:
       noRun = True
       alarms = {}
       lastGlobalReminder = 0
 
-    if noRun and state[1]['run'] != '(None)':
+    if noRun and len(state["contents"])  > 1:
       noRun = False
 
     if noRun:
@@ -133,19 +120,17 @@ while True:
 
     # Find new alarm histos, and update alarm states
     newAlarmsList = []
-    for histo in state[2]['items']:
-      m=re.match(r'00 Shift/Errors/(([0-9\-_:. ]*|[0-9 ]*|)(.*))',histo['name'])
-      name = m.group(3)
+    for histo in state["contents"]:
+      if histo.has_key('obj'):
+        name = histo['obj']
+      else:
+        continue
+
       alarms.setdefault(name,{'state':0, 'lastBroadcast':0,
                               'numOfBroadcasts':0, 'broadcast':False})
-      localAlarms = 0
-      for row in histo['items']:
-        for col in row:
-          if col['alarm']:
-            localAlarms += 1
 
-      if localAlarms:
-        if alarms[name]['numOfBroadcasts'] <= REBROADCAST:
+      if histo['properties']['report']['alarm'] == 1:
+        if alarms[name]['numOfBroadcasts'] < REBROADCAST:
           alarms[name]['state'] = 1
           alarms[name]['broadcast'] = True
           if alarms[name]['lastBroadcast'] == 0:
@@ -157,7 +142,7 @@ while True:
 
       else:
         alarms[name]={'state':0, 'lastBroadcast':0,
-                        'numOfBroadcasts':0, 'broadcast':False}
+                       'numOfBroadcasts':0, 'broadcast':False}
         if name in activeAlarmsList:
           activeAlarmsList.remove(name)
 
