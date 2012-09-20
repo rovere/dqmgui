@@ -40,7 +40,7 @@ GUI.Plugin.DQMSample = new function() {
   var _subheader = $('subheader');
 
   /** The DQM toolbar with all elements that pertain to search action. */
-  var _optsarea		= $('canvas-opts');
+  var _optsarea         = $('canvas-opts');
 
   /** The DOM element for the main search field. */
   var _search = null;
@@ -90,80 +90,80 @@ GUI.Plugin.DQMSample = new function() {
     var rbMinWidth = 120;
     var lblStyle = {'font-weight': 'bold', color: '#00f'};
     tb.add({ text       : 'Search:',
-	     xtype      : 'tbtext',
-	     style      : lblStyle
-	   },
-	   { xtype           :'textfield',
-	     enableKeyEvents : true,
-	     id              : 'sample-search',
-	     style           : {width: '100%'},
-	     ctCls           : 'search-field'
-	   }, '-',
-	   { xtype      : 'tbtext',
-	     text       : 'Vary By:',
-	     style      : lblStyle
-	   },
-	   { xtype      : 'radio',
+             xtype      : 'tbtext',
+             style      : lblStyle
+           },
+           { xtype           :'textfield',
+             enableKeyEvents : true,
+             id              : 'sample-search',
+             style           : {width: '100%'},
+             ctCls           : 'search-field'
+           }, '-',
+           { xtype      : 'tbtext',
+             text       : 'Vary By:',
+             style      : lblStyle
+           },
+           { xtype      : 'radio',
              name       : 'rb-vary',
-	     inputValue : 'Any',
-	     boxLabel   : 'Any',
-	     id         : 'vary-any'
-	   },
-	   { xtype      : 'radio',
+             inputValue : 'Any',
+             boxLabel   : 'Any',
+             id         : 'vary-any'
+           },
+           { xtype      : 'radio',
              name       : 'rb-vary',
-	     inputValue : 'Run',
-	     boxLabel   : 'Run',
-	     ctCls      : 'search-tb-radiobtn',
+             inputValue : 'Run',
+             boxLabel   : 'Run',
+             ctCls      : 'search-tb-radiobtn',
              id         : 'vary-run'
-	   },
-	   { xtype      : 'radio',
+           },
+           { xtype      : 'radio',
              name       : 'rb-vary',
-	     inputValue : 'Dataset',
-	     boxLabel   : 'Dataset',
-	     ctCls      : 'search-tb-radiobtn',
-	     id         : 'vary-dataset',
-	     checked    : true
-	   }, '-',
-	   { xtype      : 'tbtext',
-	     text       : 'Order by:',
-	     style      : lblStyle
-	   },
-	   { xtype      : 'radio',
-	     name       : 'rb-order',
-	     inputValue : 'Run',
-	     boxLabel   : 'Run',
-	     ctCls      : 'search-tb-radiobtn',
-	     id         : 'order-run'
-	   },
-	   { xtype      : 'radio',
-	     name       : 'rb-order',
-	     inputValue : 'Dataset',
-	     boxLabel   : 'Dataset',
-	     ctCls      : 'search-tb-radiobtn',
-	     checked    : true,
-	     id         : 'order-dataset'
-	   }, '-',
-	   { xtype      : 'checkbox',
-	     boxLabel   : 'Search while typing',
-	     ctCls      : 'search-tb-radiobtn',
-	     id         : 'dynamic-search',
-	     checked    : true
-	   }, '-',
-	   { xtype      : 'button',
-	     text       : 'Search',
-	     id         : 'searchBtn',
-	     handler    : function()
-	     {
-	       if (! $('dynamic-search').checked)
-		 _self.search();
-	     }
-	   }, '-',
-	   { xtype      : 'button',
-	     text       : 'Help',
-	     id         : 'helpBtn',
-	     handler    : function(){window.open('https://twiki.cern.ch/twiki/bin/view/CMS/DQMGuiSearch', 'helpWindow');}
-	   }
-	  );
+             inputValue : 'Dataset',
+             boxLabel   : 'Dataset',
+             ctCls      : 'search-tb-radiobtn',
+             id         : 'vary-dataset',
+             checked    : true
+           }, '-',
+           { xtype      : 'tbtext',
+             text       : 'Order by:',
+             style      : lblStyle
+           },
+           { xtype      : 'radio',
+             name       : 'rb-order',
+             inputValue : 'Run',
+             boxLabel   : 'Run',
+             ctCls      : 'search-tb-radiobtn',
+             id         : 'order-run'
+           },
+           { xtype      : 'radio',
+             name       : 'rb-order',
+             inputValue : 'Dataset',
+             boxLabel   : 'Dataset',
+             ctCls      : 'search-tb-radiobtn',
+             checked    : true,
+             id         : 'order-dataset'
+           }, '-',
+           { xtype      : 'checkbox',
+             boxLabel   : 'Search while typing',
+             ctCls      : 'search-tb-radiobtn',
+             id         : 'dynamic-search',
+             checked    : true
+           }, '-',
+           { xtype      : 'button',
+             text       : 'Search',
+             id         : 'searchBtn',
+             handler    : function()
+             {
+               if (! $('dynamic-search').checked)
+                 _self.search();
+             }
+           }, '-',
+           { xtype      : 'button',
+             text       : 'Help',
+             id         : 'helpBtn',
+             handler    : function(){window.open('https://twiki.cern.ch/twiki/bin/view/CMS/DQMGuiSearch', 'helpWindow');}
+           }
+          );
 
     tb.render('canvas-opts');
     tb.doLayout();
@@ -175,10 +175,10 @@ GUI.Plugin.DQMSample = new function() {
       var radio = $(anyBtns[i]);
       if (radio)
       {
-	radio.onchange = function()
-	{
-	  return GUI.Plugin.DQMSample.modify(this.id.replace(/-/, '='));
-	};
+        radio.onchange = function()
+        {
+          return GUI.Plugin.DQMSample.modify(this.id.replace(/-/, '='));
+        };
       }
     }
     $('dynamic-search').onchange = function()
@@ -207,7 +207,7 @@ GUI.Plugin.DQMSample = new function() {
     {
       m = n.nextSibling;
       if (n.className == "heading")
-	_header.removeChild(n);
+        _header.removeChild(n);
     }
 
     // Clear subheader entirely.
@@ -244,12 +244,13 @@ GUI.Plugin.DQMSample = new function() {
   };
 
   /** Response callback to make a dataset selection. */
-  this.select = function(type, dsname, run)
+  this.select = function(type, dsname, run, importversion)
   {
     _gui.makeCall(_url() + "/select?type="
-		  + encodeURIComponent(type) + ";dataset="
-		  + encodeURIComponent(dsname) + ";runnr="
-		  + encodeURIComponent(run));
+                  + encodeURIComponent(type) + ";dataset="
+                  + encodeURIComponent(dsname) + ";runnr="
+                  + encodeURIComponent(run) + ";importversion="
+                  + encodeURIComponent(importversion));
     return false;
   };
 
@@ -316,9 +317,9 @@ GUI.Plugin.DQMSample = new function() {
       type = "Other: ";
 
     var content = "<span class='item'>" + type + dsname + runid
-		  + "</span><span class='item'><a href='#' onclick='"
-		  + "return GUI.Plugin.DQMSample.goback()'>"
-		  + "(Back)</a></span>";
+                  + "</span><span class='item'><a href='#' onclick='"
+                  + "return GUI.Plugin.DQMSample.goback()'>"
+                  + "(Back)</a></span>";
 
     if (_subheader.innerHTML != content)
       _subheader.innerHTML = content;
@@ -363,19 +364,19 @@ GUI.Plugin.DQMSample = new function() {
       content += "<div style='clear:both;font-weight:bold'>" + (sel ? _selem : "");
 
       if (g.type == "live")
-	content += "<a href='#' onclick='return GUI.Plugin.DQMSample.select(\""
-		   + g.type + "\", \"" + g.items[0].dataset + "\", "
-		   + g.items[0].run + ")'>Live</a>";
+        content += "<a href='#' onclick='return GUI.Plugin.DQMSample.select(\""
+                   + g.type + "\", \"" + g.items[0].dataset + "\", "
+                   + g.items[0].run + ", 0)'>Live</a>";
       else if (g.type == "online_data")
-	content += "Online";
+        content += "Online";
       else if (g.type == "offline_data")
-	content += "Offline";
+        content += "Offline";
       else if (g.type == "offline_relval")
-	content += "RelVal";
+        content += "RelVal";
       else if (g.type == "offline_mc")
-	content += "MC";
+        content += "MC";
       else
-	content += "Other";
+        content += "Other";
 
       content += (sel ? "</em>" : "") + "</div>";
 
@@ -421,46 +422,46 @@ GUI.Plugin.DQMSample = new function() {
       prevexpanded = false;
       for (var i = 0, e = _expanded.dataset.length; i < e; ++i)
       {
-	if (dataset == _expanded.dataset[i])
-	  expanded = true;
-	if (prev != null && prev == _expanded.dataset[i])
-	  prevexpanded = true;
+        if (dataset == _expanded.dataset[i])
+          expanded = true;
+        if (prev != null && prev == _expanded.dataset[i])
+          prevexpanded = true;
       }
 
       if (prev != null && dataset != prev)
       {
-	singleDatasetContent += prevexpanded ? "</div></div>" : "</div>";
-	content += singleDatasetContent.replace(/#TOBEREPLACED/, runsInSingleDS);
-	singleDatasetContent = "";
-	runsInSingleDS = 0;
+        singleDatasetContent += prevexpanded ? "</div></div>" : "</div>";
+        content += singleDatasetContent.replace(/#TOBEREPLACED/, runsInSingleDS);
+        singleDatasetContent = "";
+        runsInSingleDS = 0;
       }
 
       if (prev == null || dataset != prev)
       {
-	content += singleDatasetContent.replace(/#TOBEREPLACED/, runsInSingleDS);
-	runsInSingleDS = 0;
-	singleDatasetContent = "";
-	prev = dataset;
+        content += singleDatasetContent.replace(/#TOBEREPLACED/, runsInSingleDS);
+        runsInSingleDS = 0;
+        singleDatasetContent = "";
+        prev = dataset;
 
-	if (type == "live")
-	  prev = null;
-	else
-	  singleDatasetContent += _("<div style='clear:both;margin:0 2em'>"
-				    + "<div onclick='return"
-				    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${dshtml}\", \"dataset\")'"
-				    + " style='cursor:pointer; ${style}' > ${label}: (#TOBEREPLACED) </div>",
-				    { dshtml: _sanitise(dataset),
-					style: (selds ? _selemstyle : ''),
-					label: (type == "online_data" ? "Online Runs" :_sanitise(dataset)),
-					thetype: type});
-	if (expanded)
-	  singleDatasetContent += "<div>";
+        if (type == "live")
+          prev = null;
+        else
+          singleDatasetContent += _("<div style='clear:both;margin:0 2em'>"
+                                    + "<div onclick='return"
+                                    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${dshtml}\", \"dataset\")'"
+                                    + " style='cursor:pointer; ${style}' > ${label}: (#TOBEREPLACED) </div>",
+                                    { dshtml: _sanitise(dataset),
+                                        style: (selds ? _selemstyle : ''),
+                                        label: (type == "online_data" ? "Online Runs" :_sanitise(dataset)),
+                                        thetype: type});
+        if (expanded)
+          singleDatasetContent += "<div>";
       }
 
       // Update this element in case this sample is in the expanded's list
       if (run > 1 || version != "")
-	if (expanded)
-	  singleDatasetContent += this.addContent(cur, s);
+        if (expanded)
+          singleDatasetContent += this.addContent(cur, s);
       runsInSingleDS++;
     }
 
@@ -500,58 +501,58 @@ GUI.Plugin.DQMSample = new function() {
       var ctype = s.type;
 
       var key = (type == "offline_data" ? run
-		 : (type == "offline_relval" ? version : type));
+                 : (type == "offline_relval" ? version : type));
       var selrun = (cur.type == ctype && cur.run == run);
       var selver = (cur.type == ctype && cur.version == version);
       var selds = (cur.type == ctype
-		   && cur.dataset == dataset
-		   && ((run > 1 && selrun)
-		       || (version != "" && selver)
-		       || (run == 1 && version == "")));
+                   && cur.dataset == dataset
+                   && ((run > 1 && selrun)
+                       || (version != "" && selver)
+                       || (run == 1 && version == "")));
 
       expanded = false;
       prevexpanded = false;
       for (var i = 0, e = _expanded.run.length; i < e; ++i)
       {
-	if (key == _expanded.run[i])
-	  expanded = true;
-	if (prev != null && prev == _expanded.run[i])
-	  prevexpanded = true;
+        if (key == _expanded.run[i])
+          expanded = true;
+        if (prev != null && prev == _expanded.run[i])
+          prevexpanded = true;
       }
 
       if (prev != null && key != prev)
       {
-	singleRunContent += prevexpanded ? "</div></div>" : "</div>";
-	content += singleRunContent.replace(/#TOBEREPLACED/, itemsInKey);
-	singleRunContent = "";
-	itemsInKey = 0;
+        singleRunContent += prevexpanded ? "</div></div>" : "</div>";
+        content += singleRunContent.replace(/#TOBEREPLACED/, itemsInKey);
+        singleRunContent = "";
+        itemsInKey = 0;
       }
 
       if (prev == null || key != prev)
       {
-	prev = key;
-	itemsInKey = 0;
-	singleRunContent = "";
+        prev = key;
+        itemsInKey = 0;
+        singleRunContent = "";
 
-	if (type == "live")
-	  prev = null;
-	else
-	  singleRunContent += _("<div style='clear:both;margin:0 2em'>"
-				    + "<div onclick='return"
-				    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${ckey}\", \"run\")'"
-				    + " style='cursor:pointer ${style}' >${label} (#TOBEREPLACED):</div>",
-				    { ckey: _sanitise(key),
-					style: (selrun ? _selemstyle : ''),
-					label: (type == 'online_data' ? 'Online Runs' :
-						( type == "offline_mc" ? 'Monte Carlo' : key)) ,
-					thetype: type});
-	if (expanded)
-	  singleRunContent += "<div>";
+        if (type == "live")
+          prev = null;
+        else
+          singleRunContent += _("<div style='clear:both;margin:0 2em'>"
+                                    + "<div onclick='return"
+                                    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${ckey}\", \"run\")'"
+                                    + " style='cursor:pointer ${style}' >${label} (#TOBEREPLACED):</div>",
+                                    { ckey: _sanitise(key),
+                                        style: (selrun ? _selemstyle : ''),
+                                        label: (type == 'online_data' ? 'Online Runs' :
+                                                ( type == "offline_mc" ? 'Monte Carlo' : key)) ,
+                                        thetype: type});
+        if (expanded)
+          singleRunContent += "<div>";
       }
 
       // Update this element in case this key is in the expanded's list
       if (expanded)
-	singleRunContent += this.addContentByRun(cur, s, type);
+        singleRunContent += this.addContentByRun(cur, s, type);
       itemsInKey++;
     }
 
@@ -581,11 +582,11 @@ GUI.Plugin.DQMSample = new function() {
     {
       if (key == _expanded[by][i])
       {
-	if (el.parentNode.lastChild)
-	  el.parentNode.removeChild(el.parentNode.lastChild);
-	// Remove elements from the list of expanded ones.
-	_expanded[by].splice(i,1);
-	return;
+        if (el.parentNode.lastChild)
+          el.parentNode.removeChild(el.parentNode.lastChild);
+        // Remove elements from the list of expanded ones.
+        _expanded[by].splice(i,1);
+        return;
       }
     }
 
@@ -600,15 +601,15 @@ GUI.Plugin.DQMSample = new function() {
     {
       if (type == _data.items[i].type)
       {
-	for (var j = 0, l = _data.items[i].items.length; j < l; ++j)
+        for (var j = 0, l = _data.items[i].items.length; j < l; ++j)
         {
-	  var s = _data.items[i].items[j];
-	  var compareTo = (by == 'dataset' ? s.dataset
-			   : (type == "offline_data" ? s.run
-			   : (type == "offline_relval" ? s.version : type)));
-	  if (key == compareTo)
-	    content += (by == 'run' ? this.addContentByRun(cur, s, type) : this.addContent(cur, s));
-	}
+          var s = _data.items[i].items[j];
+          var compareTo = (by == 'dataset' ? s.dataset
+                           : (type == "offline_data" ? s.run
+                           : (type == "offline_relval" ? s.version : type)));
+          if (key == compareTo)
+            content += (by == 'run' ? this.addContentByRun(cur, s, type) : this.addContent(cur, s));
+        }
       }
     }
     container.innerHTML = content;
@@ -620,15 +621,16 @@ GUI.Plugin.DQMSample = new function() {
     var template = "<a href='#' style='display:block;float:left;"
       + "margin-right:1em;min-width:5em; ${style}' onclick='return"
       + " GUI.Plugin.DQMSample.select"
-      + "(\"${type}\", \"${dsname}\", ${run})'>"
+      + "(\"${type}\", \"${dsname}\", ${run}, ${importversion})'>"
       + "${val}</a>";
     var selds = (cur.type == s.type && cur.dataset == s.dataset);
     var selrun = (selds && cur.run == s.run);
     var selver = (selds && cur.version == s.version);
     result += _(template,
- 	    	{ type: s.type, run: s.run, dsname: s.dataset,
-		  val: (s.type.match(/.*relval.*/) ? s.version.replace(/^CMSSW_/, "") : s.run),
- 		  style: (selrun ? _selemstyle : "")});
+                { type: s.type, run: s.run, dsname: s.dataset,
+                  val: (s.type.match(/.*relval.*/) ? s.version.replace(/^CMSSW_/, "") : s.run),
+                  style: (selrun ? _selemstyle : ""),
+                  importversion: s.importversion});
     return result;
   };
 
@@ -636,30 +638,31 @@ GUI.Plugin.DQMSample = new function() {
   {
     var result = '';
     var key = (type == "offline_data" ? s.run
-	       : (type == "offline_relval" ? s.version : type));
+               : (type == "offline_relval" ? s.version : type));
     var selrun = (cur.type == s.type && cur.run == s.run);
     var selver = (cur.type == s.type && cur.version == s.version);
     var selds = (cur.type == s.type
-		 && cur.dataset == s.dataset
-		 && ((s.run > 1 && selrun)
-		     || (s.version != "" && selver)
-		     || (s.run == 1 && s.version == "")));
+                 && cur.dataset == s.dataset
+                 && ((s.run > 1 && selrun)
+                     || (s.version != "" && selver)
+                     || (s.run == 1 && s.version == "")));
     var template
       = (type == "live" ? ""
-	 : (type == "online_data"
-	    ? "<a href='#' style='display:block;float:left;"
-	    + "margin-right:1em;min-width:5em' onclick='return GUI.Plugin"
-	    + ".DQMSample.select(\"${type}\", \"${dsname}\", ${run})'>"
-	    + "${begin}${val}${end}</a>"
-	    : "<div style='margin-left:1em'><a href='#'"
-	    + " onclick='return GUI.Plugin.DQMSample.select"
-	    + "(\"${type}\", \"${dsname}\", ${run})'>${begin}${val}${end}"
-	    + "</a></div>"));
+         : (type == "online_data"
+            ? "<a href='#' style='display:block;float:left;"
+            + "margin-right:1em;min-width:5em' onclick='return GUI.Plugin"
+            + ".DQMSample.select(\"${type}\", \"${dsname}\", ${run})'>"
+            + "${begin}${val}${end}</a>"
+            : "<div style='margin-left:1em'><a href='#'"
+            + " onclick='return GUI.Plugin.DQMSample.select"
+            + "(\"${type}\", \"${dsname}\", ${run}, ${importversion})'>${begin}${val}${end}"
+            + "</a></div>"));
 
     var opts = { type: s.type, run: s.run, dsname: s.dataset,
-		 val: (type.indexOf("offline_") >= 0 ? _sanitise(s.dataset) : s.run),
-		 begin: (selds ? _selem : ""),
-		 end: (selds ? "</em>" : "") };
+                 val: (type.indexOf("offline_") >= 0 ? _sanitise(s.dataset) : s.run),
+                 importversion: s.importversion,
+                 begin: (selds ? _selem : ""),
+                 end: (selds ? "</em>" : "") };
     result += _(template, opts);
 
     return result;
