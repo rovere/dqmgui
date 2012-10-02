@@ -900,11 +900,11 @@ GUI.Plugin.DQMHeaderRow = new function() {
       }
       else
       {
-	[junk, primds, procds, datatier] = _data.view.sample.dataset.split('/');
-	match = _RXERA.exec(procds);
+	values = _data.view.sample.dataset.split('/');
+	match = _RXERA.exec(values[2]);
 	if (match)
 	  url = sprintf("%s/data/browse/ROOT/OfflineData/%s/%s/%07dxx/DQM_V%04d_R%09d%s.root",
-			FULLROOTPATH, match[0], primds, parseInt(_data.view.sample.run,10)/100,
+			FULLROOTPATH, match[0], values[1], parseInt(_data.view.sample.run,10)/100,
 			_data.view.sample.importversion,parseInt(_data.view.sample.run,10),
 			_data.view.sample.dataset.replace(/\//g, "__"));
       }
