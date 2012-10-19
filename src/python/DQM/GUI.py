@@ -10,7 +10,7 @@ from cherrypy.lib.static import serve_file
 from cherrypy.lib import cptools, http
 from struct import pack, unpack
 from cStringIO import StringIO
-import os, re, time, socket, shutil, tempfile, cgi, cjson
+import os, re, time, socket, shutil, tempfile, cgi, cjson, hmac, hashlib
 
 DEF_DQM_PORT = 9090
 
@@ -27,7 +27,7 @@ class DQMUpload:
   STATUS_ERROR_EXISTS         = 301 # Cannot overwrite an existing object.
   STATUS_ERROR_NOT_EXISTS     = 302 # Requested file does not exist.
   STATUS_FAIL_EXECUTE         = 400 # Failed to execute the request.
-  STATUS_ERROR_NOT_AUTHORIZED = 401 # Unauthorized, user is not allowed to submit layouts
+  STATUS_ERROR_NOT_AUTHORIZED = 401 # Unauthorized, user is not allowed to submit requests
 
   def __init__(self):
     pass
@@ -68,6 +68,38 @@ class DQMUpload:
     response.headers['Last-Modified'] = http.HTTPDate(time)
     cptools.validate_since()
 
+  def _check_authentication(self):
+    """Read and verify the front-end headers. Return the result of
+    the verification."""
+
+    headers = request.headers
+    prefix = suffix = ""
+    hkeys = headers.keys()
+    hkeys.sort()
+    for hk in hkeys:
+        hk = hk.lower()
+        if hk[0:9] in ["cms-authn","cms-authz"] and hk != "cms-authn-hmac":
+            prefix += "h%xv%x" % (len(hk), len(headers[hk]))
+            suffix += "%s%s" % (hk, headers[hk])
+
+    vfy = hmac.new(self.key, prefix + "#" + suffix, hashlib.sha1).hexdigest()
+    return vfy == headers["cms-authn-hmac"]
+
+  def _log_authentication_failure_and_exit(self):
+    """Log all authentication failures to be able to investigate any
+    troubles more easily. """
+
+    _logerr("Authentication Failure, details follow.")
+    headers = request.headers
+    hkeys = headers.keys()
+    hkeys.sort()
+    for hk in hkeys:
+        hk = hk.lower()
+        _logerr("%s --> %s" % (hk, headers[hk]))
+
+    raise HTTPError(self.STATUS_ERROR_NOT_AUTHORIZED, "Unauthorized upload.")
+
+
 # --------------------------------------------------------------------
 # DQM extension to manage DQM file uploads.
 class DQMFileAccess(DQMUpload):
@@ -76,8 +108,17 @@ class DQMFileAccess(DQMUpload):
     self.server = server
     self.uploads = uploads
     self.roots = roots
+    self.key = ''
     if uploads and not os.path.exists(uploads):
       os.makedirs(uploads)
+    if aclfile and os.path.exists(aclfile):
+      try:
+        f = open(aclfile, "rb")
+        self.key = f.read()
+        f.close()
+      except:
+        _logerr("Keyfile %s could not be read." % aclfile)
+
     tree.mount(self, script_name=server.baseUrl + "/data",
                config={"/": {'request.show_tracebacks': False}})
 
@@ -94,9 +135,26 @@ class DQMFileAccess(DQMUpload):
           file = None,
           *args,
           **kwargs):
+
+    headers = request.headers
     # Bail out if upload is not supported.
     if not self.uploads:
       raise HTTPError(404, "Not found")
+
+    # Authenticate user in case the authentication happend via a Limited Proxy.
+    if 'cms-auth-status' in headers:
+      if not self._check_authentication():
+        self._log_authentication_failure_and_throw()
+      if headers['Cms-Authn-Method'] == 'X509LimitedProxy':
+        if 'Cms-Authz-t0-operator' not in headers \
+               and 'Cms-Authz-production-operator' not in headers:
+          self._log_authentication_failure_and_throw()
+        if 'Cms-Authz-t0-operator' in headers:
+          if 'group:dataops' not in headers['Cms-Authz-t0-operator'].split(' '):
+            self._log_authentication_failure_and_throw()
+        if 'Cms-Authz-production-operator' in headers:
+          if 'group:dataops' not in headers['Cms-Authz-production-operator'].split(' '):
+            self._log_authentication_failure_and_throw()
 
     # Argument validation.
     if file == None \
@@ -273,6 +331,7 @@ class DQMLayoutAccess(DQMUpload):
     self.server = server
     self.uploads = uploads
     self.allowedUsers = allowedUsers
+    self.key = ''
     if uploads and not os.path.exists(uploads):
       os.makedirs(uploads)
     tree.mount(self, script_name=server.baseUrl + "/layout",
