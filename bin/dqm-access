@@ -187,8 +187,7 @@ def match_filters(item, filters, poslist):
     if 'subdir' in item \
        and (f.type == DIR or f.type == ANY) \
        and f.rx.match(item['subdir']):
-      descend = (idx < len(filters)-1)
-      fmatched = True
+      matched = descend = fmatched = True
       name = item['subdir']
     elif 'obj' in item \
          and (f.type == FILE or f.type == ANY) \
@@ -245,6 +244,9 @@ op = OptionParser()
 op.add_option("-v", "--verbose", dest = "verbose",
               action = "store_true", default = False,
               help = "Show verbose scan information")
+op.add_option("-c", dest = "dqmCompliant",
+              action = "store_true", default = False,
+              help = "Fetch DQM compliant root content")
 op.add_option("-d", "--debug", dest = "debug",
               action = "store_true", default = False,
               help = "Show debug information")
@@ -337,14 +339,23 @@ for sample in find_matching_samples(options):
     # If writing, create output file with directories
     ofile = None
     if options.write:
-      fname = ("%(dataset)s__run%(run)s.root" % sample)[1:].replace("/", "__")
+      if options.dqmCompliant:
+        run = "%(run)s" % sample
+        fname = "DQM_V0001_R"+run.zfill(9)+("_%(dataset)s.root" % sample)[1:].replace("/", "__")
+      else:
+        fname = ("%(dataset)s__run%(run)s.root" % sample)[1:].replace("/", "__")
       ofile = TFile(fname, "RECREATE")
       ofile.cd()
 
     for path, item in found:
+      if options.dqmCompliant:
+          path = "DQMData/Run "+run+re.sub("^/"+path.split('/')[1],"/"+path.split('/')[1]+"/Run summary",path)
+
       # We are treating a directory
       if 'subdir' in item:
         print " %s/%s" % (path, (options.long_listing and " = directory") or "")
+        if options.write:
+          tfile_cd(path,ofile)
 
       # We are treating an int/double/string
       elif 'value' in item:
