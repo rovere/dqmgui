@@ -1,5 +1,6 @@
 #define DEBUG(n,x)
 #include "DQM/DQMRenderPlugin.h"
+#include "DQM/VisDQMRenderTools.h"
 #include "DQM/VisDQMTools.h"
 #include "DQM/VisDQMIndex.h"
 #include "DQM/Objects.h"
@@ -16,6 +17,7 @@
 #include "classlib/utils/StringOps.h"
 #include "classlib/utils/DebugAids.h"
 #include "classlib/utils/Error.h"
+#include "boost/algorithm/string.hpp"
 #include "TObjString.h"
 #include "TDirectory.h"
 #include "TImageDump.h"
@@ -32,9 +34,9 @@
 #include "TGraphErrors.h"
 #include "TGraphAsymmErrors.h"
 #include "TPaveStats.h"
+#include "TProfile2D.h"
 #include <fstream>
 #include <sstream>
-#include <iostream>
 #include <iostream>
 #include <cassert>
 #include <cerrno>
@@ -45,6 +47,7 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #include <math.h>
+#include <string>
 
 using namespace lat;
 
@@ -615,7 +618,9 @@ class VisDQMImageServer : public DQMImplNet<VisDQMObject>
 public:
   static const uint32_t DQM_MSG_GET_IMAGE_DATA	= 4;
   static const uint32_t DQM_MSG_DUMP_PROFILE	= 5;
+  static const uint32_t DQM_MSG_GET_JSON_DATA	= 6;
   static const uint32_t DQM_REPLY_IMAGE_DATA	= 105;
+  static const uint32_t DQM_REPLY_JSON_DATA 	= 106;
 
   typedef std::vector<DQMRenderPlugin *> RenderPlugins;
   typedef std::map<std::string, lat::Time> BlackList;
@@ -740,7 +745,7 @@ protected:
 	}
 	return true;
       }
-      else if (type == DQM_MSG_GET_IMAGE_DATA)
+      else if (type == DQM_MSG_GET_IMAGE_DATA || type == DQM_MSG_GET_JSON_DATA)
       {
         Time start = Time::current();
 	if (debug_)
@@ -799,7 +804,7 @@ protected:
 	// Validate the image request.
 	VisDQMImgInfo info;
 	const char *error = 0;
-	if (! parseImageSpec(info, spec, error))
+	if (type == DQM_MSG_GET_IMAGE_DATA && ! parseImageSpec(info, spec, error))
 	{
 	  logme()
 	    << "ERROR: invalid image specification '"
@@ -823,13 +828,25 @@ protected:
 	  objs[i].reference = 0;
         }
 
-	if (! readRequest(info, odata, objs, numobjs))
-	  return false;
+        if (type == DQM_MSG_GET_IMAGE_DATA)
+          if(! readRequest(info, odata, objs, numobjs))
+            return false;
 
-	// Now render and build response.
+        if (type == DQM_MSG_GET_JSON_DATA)
+          if(! readJsonRequest(odata, objs, numobjs))
+            return false;
+
+        // Now render and build response.
 	DataBlob imgdata;
-	uint32_t words[2] = { sizeof(words), DQM_REPLY_IMAGE_DATA };
-	bool blacklisted = doRender(info, &objs[0], numobjs, imgdata);
+        bool blacklisted = false;
+        uint32_t words[2] = { sizeof(words), DQM_REPLY_IMAGE_DATA };
+        if(type == DQM_MSG_GET_IMAGE_DATA)
+          blacklisted = doRender(info, &objs[0], numobjs, imgdata);
+        else if(type == DQM_MSG_GET_JSON_DATA)
+        {
+          getJson(&objs[0], numobjs, imgdata);
+          words[1] = DQM_REPLY_JSON_DATA;
+        }
 	words[0] += imgdata.size();
 	msg->data.reserve(msg->data.size() + words[0]);
 	copydata(msg, &words[0], sizeof(words));
@@ -1083,6 +1100,185 @@ private:
 
       return true;
     }
+
+  // ----------------------------------------------------------------------
+  bool
+  readJsonRequest(
+	      std::string &odata,
+	      std::vector<VisDQMObject> &objs,
+	      uint32_t &numobjs)
+    {
+      std::vector<VisDQMIndex::Summary> attrs;
+      std::vector<std::string> binlabels;
+      std::vector<double> axisvals;
+      uint32_t lenbits[2];
+      uint32_t firstobj = 0;
+      uint32_t pos = 0;
+
+      if ((objs[0].flags & DQM_PROP_TYPE_MASK) <= DQM_PROP_TYPE_SCALAR)
+      {
+	if (odata.size())
+	  objs[0].object = new TObjString(odata.c_str());
+      }
+      else
+      {
+	for (uint32_t i = firstobj; i < numobjs; ++i)
+	{
+	  if (odata.size() - pos < sizeof(lenbits))
+	  {
+	    logme() << "ERROR: 'GET JSON DATA' missing object length"
+		    << ", expected " << sizeof(lenbits) << " but "
+		    << (odata.size() - pos) << " bytes left of "
+		    << odata.size() << " for image #" << i
+		    << " of " << numobjs << std::endl;
+	    return false;
+	  }
+
+	  memcpy(&lenbits[0], &odata[pos], sizeof(lenbits));
+	  pos += sizeof(lenbits);
+
+	  if (odata.size() - pos < lenbits[0] + lenbits[1])
+	  {
+	    logme() << "ERROR: 'GET JSON DATA' missing object data"
+		    << ", expected " << (lenbits[0]+lenbits[1]) << " but "
+		    << (odata.size() - pos) << " bytes left of "
+		    << odata.size() << " for image #" << i
+		    << " of " << numobjs << std::endl;
+	    return false;
+	  }
+
+	  loadStreamerInfo(&odata[pos], lenbits[0]);
+	  pos += lenbits[0];
+
+	  TBufferFile buf(TBufferFile::kRead, lenbits[1], &odata[pos], kFALSE);
+	  buf.Reset();
+	  objs[i].object = extractNextObject(buf);
+	  objs[i].reference = extractNextObject(buf);
+	  pos += lenbits[1];
+	}
+
+	if (pos != odata.size())
+	{
+	  logme() << "ERROR: 'GET JSON DATA' request with excess"
+		  << " object data, expected " << pos
+		  << " bytes but found " << odata.size() << std::endl;
+	  return false;
+	}
+      }
+      return true;
+    }
+
+  void getJson(VisDQMObject *objs, size_t /*numobjs*/, DataBlob &jsondata)
+  {
+    TObject *ob = objs[0].object;
+    std::string json ="";
+    if (const TH1* const h = dynamic_cast<const TH1* const>(ob))
+    {
+      std::string jsonTemplate =
+          "{'hist':"
+          "{"
+          "'type':'%1'"
+          "%2"          //'title'
+          ",'stats':{%3}"
+          "%4"          //Xaxis
+          "%5"          //Yaxis
+          "%6"          //Zaxis for TH2 and TProfile2D, empty for TH1 and TProfile
+          ",'values':{"
+          "'min':%7"
+          ",'max':%8"
+          "}"
+          ",'bins':{"
+          "%9"
+          "}"
+          "%10"         // yMin for TProfile, zMin for TProfile2D, empty for the rest
+          "%11"         // yMax for TProfile, zMax for TProfile2D, empty for the rest
+          "%12"         // errorStyle for TProfile and TProfile2D, empty for the rest
+          "} "
+          "}";
+      if (const TH2* const h2 = dynamic_cast<const TH2* const>(ob))
+      {
+        if (const TProfile2D* const h2d = dynamic_cast<const TProfile2D* const>(ob))
+        {
+          json += StringFormat(jsonTemplate)
+              .arg(h2d->Class_Name())
+              .arg(optionalTextValueToJson<const char* const>("title", h2d->GetTitle()))
+              .arg(statsToJson<TH2>(h2d))
+              .arg(axisDataToJson(h2d->GetXaxis()))
+              .arg(axisDataToJson(h2d->GetYaxis()))
+              .arg(axisDataToJson(h2d->GetZaxis()))
+              .arg(h2d->GetMinimum())
+              .arg(h2d->GetMaximum())
+              .arg(binsToArray(h2d))
+              .arg(optionalNumericValueToJson<Double_t>("zMin", h2d->GetZmin()))
+              .arg(optionalNumericValueToJson<Double_t>("zMax", h2d->GetZmax()))
+              .arg(errorCodeToJson<TProfile2D>(h2d));
+        }
+        else
+        { /*just TH2*/
+          json += StringFormat(jsonTemplate)
+              .arg(h2->Class_Name())
+              .arg(optionalTextValueToJson<const char* const>("title", h2->GetTitle()))
+              .arg(statsToJson<TH2>(h2))
+              .arg(axisDataToJson(h2->GetXaxis()))
+              .arg(axisDataToJson(h2->GetYaxis()))
+              .arg(axisDataToJson(h2->GetZaxis()))
+              .arg(h2->GetMinimum())
+              .arg(h2->GetMaximum())
+              .arg(binsToArray(h2))
+              .arg("")
+              .arg("")
+              .arg("");
+        }
+      }
+      else
+      { /* not TH2 */
+        if (const TProfile* const   tprof = dynamic_cast<const TProfile* const >(ob))
+        {
+          json += StringFormat(jsonTemplate)
+              .arg(tprof->Class_Name())
+              .arg(optionalTextValueToJson<const char* const>("title", tprof->GetTitle()))
+              .arg(statsToJson<TH1>(tprof))
+              .arg(axisDataToJson(tprof->GetXaxis()))
+              .arg(axisDataToJson(tprof->GetYaxis()))
+              .arg("")
+              .arg(tprof->GetMinimum())
+              .arg(tprof->GetMaximum())
+              .arg(binsToArray(tprof))
+              .arg(optionalNumericValueToJson<Double_t>("yMax", tprof->GetYmax()))
+              .arg(optionalNumericValueToJson<Double_t>("yMin", tprof->GetYmin()))
+              .arg(errorCodeToJson<TProfile>(tprof));
+        }
+        else
+        { /*just TH1*/
+          json += StringFormat(jsonTemplate)
+              .arg(h->Class_Name())
+              .arg(optionalTextValueToJson<const char* const>("title", h->GetTitle()))
+              .arg(statsToJson<TH1>(h))
+              .arg(axisDataToJson(h->GetXaxis()))
+              .arg(axisDataToJson(h->GetYaxis()))
+              .arg("")
+              .arg(h->GetMinimum())
+              .arg(h->GetMaximum())
+              .arg(binsToArray(h))
+              .arg("")
+              .arg("")
+              .arg("");
+        }
+      }
+    }
+    else
+    {
+      json = "{'hist': 'unsupported type'}";
+    }
+
+    replacePseudoNumericValues(json);
+    boost::replace_all(json, "'","\"");
+
+    DataBlob tmp(json.begin(), json.end());
+    jsondata = tmp;
+
+    return;
+  }
 
   // ----------------------------------------------------------------------
   // Render a ROOT object.

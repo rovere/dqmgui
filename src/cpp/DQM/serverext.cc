@@ -47,6 +47,7 @@
 #include "boost/gil/extension/numeric/resample.hpp"
 #include "boost/lambda/algorithm.hpp"
 #include "boost/lambda/casts.hpp"
+#include "boost/algorithm/string.hpp"
 #include "rtgu/image/rescale.hpp"
 #include "rtgu/image/filters.hpp"
 
@@ -1213,6 +1214,12 @@ public:
       return "unknown";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "unknown";
+    }
+
   virtual void
   prepareSession(py::dict /* session */)
     {}
@@ -1342,8 +1349,11 @@ static IMGOPT TRENDIMGOPTS[] = {
     frequently accessed images. */
 class VisDQMRenderLink
 {
-  static const uint32_t DQM_MSG_GET_IMAGE_DATA = 4;
-  static const uint32_t DQM_MSG_REPLY_IMAGE_DATA = 105;
+  static const uint32_t DQM_MSG_GET_IMAGE_DATA  	= 4;
+  static const uint32_t DQM_MSG_GET_JSON_DATA		= 6;
+  static const uint32_t DQM_MSG_REPLY_IMAGE_DATA 	= 105;
+  static const uint32_t DQM_REPLY_JSON_DATA 		= 106;
+
   static const int MIN_WIDTH = 532;
   static const int MIN_HEIGHT = 400;
   static const int IMAGE_CACHE_SIZE = 1024;
@@ -1562,7 +1572,24 @@ public:
       return ! quiet_ && makepng(image, type, protoimg, finalspec, destwidth, destheight);
     }
 
-private:
+  bool
+  prepareJson(std::string &jsonData,
+              std::string &type,
+              const std::string &path,
+              const std::map<std::string, std::string> &,
+              const std::string *streamers,
+              DQMNet::Object *obj,
+              size_t numobj,
+              IMGOPT *)
+  {
+    std::string reqspec;
+    Image protoimg;
+    initimg(protoimg, path, reqspec, streamers, obj, numobj);
+    Lock gate(&lock_);
+    return ! quiet_ && makeJson(jsonData, type, protoimg, reqspec);
+  }
+
+ private:
   static std::ostream &
   logme(void)
     {
@@ -1600,8 +1627,8 @@ private:
 	  const std::string *streamers,
 	  const DQMNet::Object *obj,
 	  size_t numobj,
-	  int width,
-	  int height)
+	  int width  = 0,
+	  int height = 0)
     {
       assert(numobj);
       lrunuke(proto);
@@ -1748,7 +1775,7 @@ private:
     }
 
   void
-  requestimg(Image &img, std::string &imgbytes)
+  requestimg(Image &img, std::string &imgbytes, const bool json=false)
     {
       assert(imgbytes.empty());
 
@@ -1856,7 +1883,7 @@ private:
 	  {
 	    sizeof(words) + img.pathname.size() + img.imagespec.size()
 	    + img.databytes.size() + img.qdata.size(),
-	    DQM_MSG_GET_IMAGE_DATA,
+	    (json ? DQM_MSG_GET_JSON_DATA : DQM_MSG_GET_IMAGE_DATA),
 	    img.flags,
 	    img.tag,
 	    (img.version >> 0 ) & 0xffffffff,
@@ -1880,7 +1907,7 @@ private:
 
 	if (sock.xread(&words[0], 2*sizeof(uint32_t)) == 2*sizeof(uint32_t)
 	    && words[0] >= 2*sizeof(uint32_t)
-	    && words[1] == DQM_MSG_REPLY_IMAGE_DATA)
+            && (words[1] == DQM_MSG_REPLY_IMAGE_DATA || words[1] == DQM_REPLY_JSON_DATA ))
 	{
 	  message.resize(words[0] - 2*sizeof(uint32_t), '\0');
 	  if (sock.xread(&message[0], message.size()) == message.size())
@@ -1906,7 +1933,8 @@ private:
 	{
 	  srv.checkme = false;
 	  srv.lastimg.clear();
-	  compress(img, imgbytes);
+	  if (!json)
+            compress(img, imgbytes);
 	}
 	srv.pending.pop_front();
       }
@@ -2100,6 +2128,39 @@ private:
       else
 	return false;
     }
+
+  bool makeJson(std::string &jsonData,
+                std::string &imgtype,
+                Image &protoreq,
+                const std::string &spec)
+  {
+    jsonData.clear();
+    imgtype.clear();
+    Image proto = protoreq;
+    proto.id = Time::current().ns();
+    proto.imagespec = spec;
+    Image &img = proto;
+
+    assert(! img.busy);
+    assert(! img.inuse);
+    assert(img.pngbytes.empty());
+    img.busy = true;
+    img.inuse++;
+    requestimg(img, jsonData, true);
+
+    assert(img.inuse > 0);
+    assert(img.busy);
+    img.busy = false;
+    pthread_cond_broadcast(&imgavail_);
+
+    while (img.busy)
+      pthread_cond_wait(&imgavail_, &lock_);
+
+    assert(img.inuse > 0);
+    img.inuse--;
+
+    return true;
+  }
 
   void
   expandpng(std::string &imgbytes, const Image &img)
@@ -2380,6 +2441,12 @@ public:
       return "overlay";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
+    }
+
   py::tuple
   plot(py::list overlay, py::dict opts)
     {
@@ -2479,6 +2546,12 @@ public:
   plotter(void) const
     {
       return "stripchart";
+    }
+
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
     }
 
   py::tuple
@@ -2705,6 +2778,12 @@ public:
   plotter(void) const
     {
       return "certification";
+    }
+
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
     }
 
   py::tuple
@@ -3280,6 +3359,12 @@ public:
       return "live";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
+    }
+
   virtual void
   getdata(const VisDQMSample & /* sample */,
 	  const std::string &path,
@@ -3705,6 +3790,12 @@ public:
       return "archive";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "archive";
+    }
+
   void
   exit(void)
     {
@@ -3874,6 +3965,34 @@ public:
 	}
       }
     }
+
+  py::str
+  getJson(const int runnr,
+          const std::string &dataset,
+          const std::string &path,
+          py::dict opts)
+  {
+    VisDQMSample sample(SAMPLE_ANY, runnr, dataset);
+    std::map<std::string,std::string> options;
+    bool jsonok = false;
+    std::string jsonData;
+    std::string imagetype;
+    std::string streamers;
+    DQMNet::Object obj;
+    copyopts(opts, options);
+
+    {
+      PyReleaseInterpreterLock nogil;
+      getdata(sample, path, streamers, obj);
+      jsonok = link_->prepareJson(jsonData, imagetype, path, options,
+                                  &streamers, &obj, 1, STDIMGOPTS);
+    }
+    if(jsonok) {
+      py::str _str(jsonData);
+      return _str;
+    }
+    return "\"error\":\"JSON preparing process was interrupted.\"";
+  }
 
   py::tuple
   plot(int runnr,
@@ -4381,7 +4500,6 @@ public:
 	RDLock rdgate(&lock_);
 	SampleList::const_iterator si;
 	SampleList::const_iterator se;
-	uint32_t importversion;
 	samples.reserve(samples.size() + samples_.size());
 	for (si = samples_.begin(), se = samples_.end(); si != se; ++si)
 	{
@@ -4571,20 +4689,27 @@ protected:
   static std::string
   sessionZoomConfig(const py::dict &session)
     {
-      bool show;
-      int  x;
-      int  y;
-      int  w;
-      int  h;
+      bool show, jsonmode;
+      int  x, jx;
+      int  y, jy;
+      int  w, jw;
+      int  h, jh;
 
       show = py::extract<bool>(session.get("dqm.zoom.show", false));
       x = py::extract<int>(session.get("dqm.zoom.x", -1));
       y = py::extract<int>(session.get("dqm.zoom.y", -1));
       w = py::extract<int>(session.get("dqm.zoom.w", -1));
       h = py::extract<int>(session.get("dqm.zoom.h", -1));
+      jsonmode = py::extract<bool>(session.get("dqm.zoom.jsonmode", false));
+      jx = py::extract<int>(session.get("dqm.zoom.jx", -1));
+      jy = py::extract<int>(session.get("dqm.zoom.jy", -1));
+      jw = py::extract<int>(session.get("dqm.zoom.jw", -1));
+      jh = py::extract<int>(session.get("dqm.zoom.jh", -1));
 
-      return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5}")
-	.arg(show).arg(x).arg(y).arg(w).arg(h);
+      return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5,\
+                           'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10}")
+          .arg(show).arg(x).arg(y).arg(w).arg(h)
+          .arg(jsonmode).arg(jx).arg(jy).arg(jw).arg(jh);
     }
 
   // Produce Certification zoom configuration format.
@@ -6176,30 +6301,35 @@ BOOST_PYTHON_MODULE(Accelerator)
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMUnknownSource", py::init<>())
     .add_property("plothook", &VisDQMUnknownSource::plotter)
+    .add_property("jsonhook", &VisDQMUnknownSource::jsoner)
     .def("_plot", &VisDQMUnknownSource::plot);
 
   py::class_<VisDQMOverlaySource, shared_ptr<VisDQMOverlaySource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMOverlaySource", py::init<>())
     .add_property("plothook", &VisDQMOverlaySource::plotter)
+    .add_property("jsonhook", &VisDQMOverlaySource::jsoner)
     .def("_plot", &VisDQMOverlaySource::plot);
 
   py::class_<VisDQMStripChartSource, shared_ptr<VisDQMStripChartSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMStripChartSource", py::init<>())
     .add_property("plothook", &VisDQMStripChartSource::plotter)
+    .add_property("jsonhook", &VisDQMStripChartSource::jsoner)
     .def("_plot", &VisDQMStripChartSource::plot);
 
   py::class_<VisDQMCertificationSource, shared_ptr<VisDQMCertificationSource>,
              py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMCertificationSource", py::init<>())
     .add_property("plothook", &VisDQMCertificationSource::plotter)
+    .add_property("jsonhook", &VisDQMCertificationSource::jsoner)
     .def("_plot", &VisDQMCertificationSource::plot);
 
   py::class_<VisDQMLiveSource, shared_ptr<VisDQMLiveSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMLiveSource", py::init<py::object, py::dict>())
     .add_property("plothook", &VisDQMLiveSource::plotter)
+    .add_property("jsonhook", &VisDQMLiveSource::jsoner)
     .def("_plot", &VisDQMLiveSource::plot)
     .def("_exit", &VisDQMLiveSource::exit);
 
@@ -6207,7 +6337,9 @@ BOOST_PYTHON_MODULE(Accelerator)
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMArchiveSource", py::init<py::object, py::dict>())
     .add_property("plothook", &VisDQMArchiveSource::plotter)
+    .add_property("jsonhook", &VisDQMArchiveSource::jsoner)
     .def("_plot", &VisDQMArchiveSource::plot)
+    .def("_getJson", &VisDQMArchiveSource::getJson)
     .def("_exit", &VisDQMArchiveSource::exit);
 
   py::class_<VisDQMLayoutSource, shared_ptr<VisDQMLayoutSource>,

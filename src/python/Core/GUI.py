@@ -535,6 +535,42 @@ class Server:
     else:
       return self.start(workspace = self.workspaces[0].name)
 
+# -----------------------------------------------------------------
+  @expose
+  def jsonfairy(self, *args, **kwargs):
+    """General session-independent access path for json representation
+    of plot. The first subdirectory argument contains the name of the
+    'source json hook' able to handle the json request.  In case of
+    value of argument 'formatted' = true insread of pure JSON whole
+    HTML page is returned.  The rest of the processing is given over
+    to the hook."""
+
+    try:
+      if len(args) >= 1:
+        for s in self.sources:
+          if getattr(s, 'jsonhook', None) == args[0]:
+            data = s.getJson(*args[1:], **kwargs)
+            if kwargs.get('formatted') == 'true':
+              template = self._maybeRefreshFile(self.templates, "json")
+              variables = {'TITLE'		 : 'JSON represetation of histogram',
+                           'JSON'		 : data};
+              return str(Template(template, searchList=[variables]))
+            else:
+              return data
+            break
+        #if not found any...
+        return 'JSON format of '+args[0]+' source plot is not supported yet.';
+    except Exception, e:
+      o = StringIO()
+      traceback.print_exc(file=o)
+      log("WARNING: unable to produce a json: "
+          + (str(e) + "\n" + o.getvalue()).replace("\n", " ~~ "),
+          severity=logging.WARNING)
+
+    self._noResponseCaching()
+    return str(e);
+
+
   # -----------------------------------------------------------------
   @expose
   def plotfairy(self, *args, **kwargs):
