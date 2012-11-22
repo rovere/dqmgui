@@ -3599,7 +3599,7 @@ class VisDQMArchiveSource : public VisDQMSource
   SampleList		samples_;
   StringAtomTree	vnames_; // (10000);
   StringAtomTree	dsnames_; // (100000);
-  StringAtomTree	objnames_; // (1500000);
+  StringAtomTree	objnames_; // (2500000);
   StringAtomTree	streamers_; // (100);
   FileMap		infoFiles_;
   FileMap		dataFiles_;
@@ -3770,7 +3770,7 @@ public:
       index_(path_, &cache_),
       vnames_(10000),
       dsnames_(100000),
-      objnames_(1500000),
+      objnames_(2500000),
       streamers_(100),
       link_(VisDQMRenderLink::instance())
     {

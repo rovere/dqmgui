@@ -1303,7 +1303,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 
       // Read in the file with appropriate format.
       std::vector<MonitorElementInfo> minfo;
-      StringAtomTree rootobjs(1500000);
+      StringAtomTree rootobjs(2500000);
       size_t    numObjs = 0;
       uint64_t 	numEvents = 0;
       uint64_t 	numLumiSections = 0;
@@ -1376,7 +1376,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       StringAtomTree vnames(10000);
       StringAtomTree dsnames(100000);
       StringAtomTree pathnames(1000000);
-      StringAtomTree objnames(1500000);
+      StringAtomTree objnames(2500000);
       StringAtomTree streamers(100);
 
       readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
@@ -1635,7 +1635,7 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
     StringAtomTree vnames(10000);
     StringAtomTree dsnames(100000);
     StringAtomTree pathnames(1000000);
-    StringAtomTree objnames(1500000);
+    StringAtomTree objnames(2500000);
     StringAtomTree streamers(100);
 
     readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
@@ -1981,7 +1981,7 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       StringAtomTree vnames(10000),     othvnames(10000);
       StringAtomTree dsnames(100000),    othdsnames(100000);
       StringAtomTree pathnames(1000000), othpathnames(1000000);
-      StringAtomTree objnames(1500000), othobjnames(1500000);
+      StringAtomTree objnames(2500000), othobjnames(2500000);
       StringAtomTree streamers(100),    othstreamers(100);
 
       readStrings(pathnames, master, VisDQMIndex::MASTER_SOURCE_PATHNAME);
@@ -2203,7 +2203,7 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
   StringAtomTree vnames(10000);
   StringAtomTree dsnames(100000);
   StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(1500000);
+  StringAtomTree objnames(2500000);
   StringAtomTree streamers(100);
   DQMNet::QReports qreports;
 
@@ -2509,7 +2509,7 @@ streamout(const Filename &indexdir, size_t sampleid)
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
   StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(1500000);
+  StringAtomTree objnames(2500000);
   StringAtomTree streamers(100);
   DQMNet::QReports qreports;
 
