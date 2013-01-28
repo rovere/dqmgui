@@ -231,6 +231,7 @@ class Server:
 
     self._yui   = os.getenv("YUI_ROOT") + "/build"
     self._extjs = os.getenv("EXTJS_ROOT")
+    self._d3    = os.getenv("D3_ROOT")
     self._addCSSFragment("%s/css/Core/style.css" % self.contentpath)
     self._addJSFragment("%s/yahoo/yahoo.js" % self._yui)
     self._addJSFragment("%s/event/event.js" % self._yui)
@@ -487,7 +488,7 @@ class Server:
   def yui(self, *args, **kwargs):
     """Access YUI static content."""
     path = "/".join(args)
-    if not re.match(r"^[-a-z_/]+\.(png|gif)$", path):
+    if not re.match(r"^[-a-z_/]+\.(png|gif|js|css)$", path):
       return self._invalidURL()
     return serve_file(self._yui + '/' + path)
 
@@ -495,9 +496,17 @@ class Server:
   def extjs(self, *args, **kwargs):
     """Access ExtJS static content."""
     path = "/".join(args)
-    if not (self._extjs and re.match(r"^[-a-z_/]+\.(png|gif)$", path)):
+    if not (self._extjs and re.match(r"^[-a-z_/]+\.(png|gif|js|css)$", path)):
       return self._invalidURL()
     return serve_file(self._extjs + '/' + path)
+
+  @expose
+  def d3(self, *args, **kwargs):
+    """Access D3 static content."""
+    path = "/".join(args)
+    if not (self._d3 and re.match(r"^[-a-z_/0-9\.]+\.(png|gif|js|css)$", path)):
+      return self._invalidURL()
+    return serve_file(self._d3 + '/' + path)
 
   # -----------------------------------------------------------------
   @expose
