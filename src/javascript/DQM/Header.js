@@ -244,6 +244,16 @@ GUI.Plugin.DQMHeaderRow = new function() {
       _searchDelay = setTimeout(_self.search, 150);
     };
 
+    // Set up actions for statistical box
+    $('subhead-stats').onchange = function(e) {
+      _self.updateStats()
+    }
+
+    // Set up actions for error bars
+    $('subhead-errbars').onchange = function(e) {
+      _self.updateErrbars()
+    }
+
     // Set up actions for strip chart changes.
     _striptype.onchange = _stripaxis.onchange
       = _stripomit.onchange = _stripn.onkeyup = _stripn.paste
@@ -255,8 +265,6 @@ GUI.Plugin.DQMHeaderRow = new function() {
     // Set up actions for reference changes.
     $('subhead-ref-show').onchange
       = $('subhead-ref-position').onchange
-      = $('subhead-ref-stats').onchange
-      = $('subhead-ref-errbars').onchange
       = function(e) { _self.updateRefView(); };
 
     var refupdate = function(e) {
@@ -422,7 +430,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     return false;
   };
 
-  /** Respone callback for changing the alarm filter.  The @a choice
+  /** Response callback for changing the alarm filter.  The @a choice
       parameter specifies the filter choice, one of three hard-coded
       values "all", "alarms" or "nonalarms". */
   this.setFilter = function(choice)
@@ -430,6 +438,28 @@ GUI.Plugin.DQMHeaderRow = new function() {
     _gui.makeCall(_url() + "/setFilter?n=" + encodeURIComponent(choice));
     return false;
   };
+
+
+  /** Response callback for changing the global statistical display
+      box. Passes request to the server that will send an updated
+      state. */
+  this.updateStats = function()
+  {
+    _gui.makeCall(_url() +_("/setStats?showstats=${showstats};",
+			     {showstats: $('subhead-stats').value}));
+    return false;
+  };
+
+  /** Response callback for changing the global error bars
+      display. Passes request to the server that will send an updated
+      state. */
+  this.updateErrbars = function()
+  {
+    _gui.makeCall(_url() +_("/setErrbars?showerrbars=${showerrbars};",
+			     {showerrbars: $('subhead-errbars').value}));
+    return false;
+  };
+
 
   /** Respone callback for changing the global reference display.
       Passes the request to server which will prompt for details. */
@@ -451,11 +481,9 @@ GUI.Plugin.DQMHeaderRow = new function() {
       Passes the request to server which will prompt for details. */
   this.updateRefView = function()
   {
-    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos};showstats=${showstats};showerrbars=${errbars}",
+    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos}",
 			     {show: $('subhead-ref-show').value,
-			      pos: $('subhead-ref-position').value,
-			      showstats: $('subhead-ref-stats').value,
-			      errbars: $('subhead-ref-errbars').value}));
+			      pos: $('subhead-ref-position').value }));
     return false;
   };
 
@@ -688,6 +716,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
       filter.selectedIndex = 1;
     else if (_data.view.filter == "nonalarms")
       filter.selectedIndex = 2;
+
+    // Update statistical box and error bars.
+    $('subhead-stats').selectedIndex = _data.view.showstats;
+    $('subhead-errbars').selectedIndex = _data.view.showerrbars;
 
     // Update the strip charting settings.
     if (_striptype.selectedIndex != _STRIPTYPE[_data.view.strip.type])

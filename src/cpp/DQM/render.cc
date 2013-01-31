@@ -296,7 +296,7 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
   i.height = -1;
   i.reference = DQM_REF_OBJECT;
   i.showstats = 1;
-  i.showerrbars = 1;
+  i.showerrbars = 0;
   i.trend = DQM_TREND_OBJECT;
   i.ktest = NAN;
   i.xaxis.type = i.yaxis.type = i.zaxis.type = "def";
@@ -1494,6 +1494,8 @@ private:
         }
 
         // Draw the main object on top.
+        if (gStyle)
+          gStyle->SetOptStat(i.showstats);
         ob->Draw(ri.drawOptions.c_str());
 
         // Maybe draw overlay from reference and other objects.

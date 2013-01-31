@@ -125,7 +125,8 @@ function layoutimg(img, container, focus, onclick, ref, size, ob,
 }
 
 // Layout one canvas item.
-function layout(type, container, item, obj, sz, ref, strip, focus, onclick, xstyle, n)
+function layout(type, container, item, obj, sz, ref, strip, focus,
+                showstats, showerrbars, onclick, xstyle, n)
 {
   var size = _SIZEMAP[sz];
   var title;
@@ -262,9 +263,13 @@ function layout(type, container, item, obj, sz, ref, strip, focus, onclick, xsty
 	      xargs += ';ktest='+refdef.ktest;
           }
 	}
-	xargs += ';showstats='+ref.showstats;
-	xargs += ';showerrbars='+ref.showerrbars;
       }
+
+      // Only attach to the plot non-default options
+      if (!showstats)
+        xargs += ';showstats=' + showstats;
+      if (showerrbars)
+        xargs += ';showerrbars=' + showerrbars;
 
       var showref = (overlay ? "overlay" : "object");
       if (! dostrip && xargs)
@@ -1054,6 +1059,7 @@ GUI.Plugin.DQMCanvas = new function()
 	 ++n, item = item.nextSibling)
       item = layout("div", _canvas, item, _shown[n], _size,
 		    data.reference, data.strip, data.focus,
+                    data.showstats, data.showerrbars,
 		    this.focus, "", "div" + n);
 
     // Remove whatever is left of old contents.

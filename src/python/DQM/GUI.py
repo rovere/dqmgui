@@ -691,8 +691,9 @@ class DQMWorkspace:
                  'dqm.strip.omit':     "none",
                  'dqm.strip.axis':     "run",
                  'dqm.strip.n':        "",
-                 'dqm.reference':      {'show': "customise", 'position': "overlay",
-                                        'showstats': "1", 'showerrbars': "1", 'param':
+                 'dqm.showstats':      "1",
+                 'dqm.showerrbars':    "0",
+                 'dqm.reference':      {'show': "customise", 'position': "overlay", 'param':
                                         [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
 					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
 					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
@@ -762,10 +763,10 @@ class DQMWorkspace:
            runnr = None,
 	   qplot = None,
            filter = None,
+           showstats   = None,
+           showerrbars = None,
            referencepos  = None,
            referenceshow = None,
-           referenceshowstats   = None,
-           referenceshowerrbars = None,
            referenceobj1 = None,
            referenceobj2 = None,
            referenceobj3 = None,
@@ -856,21 +857,21 @@ class DQMWorkspace:
         raise HTTPError(500, "Incorrect filter parameter")
       session['dqm.filter'] = filter
 
+    if showstats != None:
+      if not isinstance(showstats, str):
+        raise HTTPError(500, "Incorrect showstats parameter")
+      session['dqm.showstats'] = showstats
+
+    if showerrbars != None:
+      if not isinstance(showerrbars, str):
+        raise HTTPError(500, "Incorrect showerrbars parameter")
+      session['dqm.showerrbars'] = showerrbars
+
     if referenceshow != None:
       if not isinstance(referenceshow, str) \
          or referenceshow not in ("all", "none", "customise"):
         raise HTTPError(500, "Incorrect referenceshow parameter")
       session['dqm.reference']['show'] = referenceshow
-
-    if referenceshowstats != None:
-      if not isinstance(referenceshowstats, str):
-        raise HTTPError(500, "Incorrect referenceshowstats parameter")
-      session['dqm.reference']['showstats'] = referenceshowstats
-
-    if referenceshowerrbars != None:
-      if not isinstance(referenceshowerrbars, str):
-        raise HTTPError(500, "Incorrect referenceshowerrbars parameter")
-      session['dqm.reference']['showerrbars'] = referenceshowerrbars
 
     if referencepos != None:
       if not isinstance(referencepos, str) \
@@ -1048,13 +1049,25 @@ class DQMWorkspace:
     self.gui._saveSession(session)
     return self._state(session)
 
+  # Set global statistical display option.
+  def sessionSetStats(self, session, *args, **kwargs):
+    self._set(session,
+              showstats = kwargs.get("showstats", None))
+    self.gui._saveSession(session)
+    return self._state(session)
+
+  # Set global statistical display option.
+  def sessionSetErrbars(self, session, *args, **kwargs):
+    self._set(session,
+              showerrbars = kwargs.get("showerrbars", None))
+    self.gui._saveSession(session)
+    return self._state(session)
+
   # Set global reference display override.
   def sessionSetReference(self, session, *args, **kwargs):
     self._set(session,
 	      referencepos         = kwargs.get("position", None),
 	      referenceshow        = kwargs.get("show", None),
-	      referenceshowstats   = kwargs.get("showstats", None),
-	      referenceshowerrbars = kwargs.get("showerrbars", None),
 	      referenceobj1 = kwargs.get("r1", None),
 	      referenceobj2 = kwargs.get("r2", None),
 	      referenceobj3 = kwargs.get("r3", None),

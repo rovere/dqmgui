@@ -4753,12 +4753,9 @@ protected:
       std::string ref3(sessionReferenceOne(py::extract<py::dict>(refspec[2])));
       std::string ref4(sessionReferenceOne(py::extract<py::dict>(refspec[3])));
       return StringFormat("{'position':'%1', 'show':'%2', \
-                            'showstats':'%3', 'showerrbars':'%4', \
-                            'param':[%5,%6,%7,%8]}")
+                            'param':[%3,%4,%5,%6]}")
         .arg(py::extract<std::string>(refdict.get("position")))    // overlay, on-side
 	.arg(py::extract<std::string>(refdict.get("show")))        // all, none, custom
-	.arg(py::extract<std::string>(refdict.get("showstats")))   // 0, 1
-	.arg(py::extract<std::string>(refdict.get("showerrbars"))) // 0, 1
 	.arg(ref1).arg(ref2).arg(ref3).arg(ref4);
     }
 
@@ -4785,6 +4782,8 @@ protected:
 	       const std::string &submenu,
 	       const VisDQMSample &sample,
 	       const std::string &filter,
+	       const std::string &showstats,
+	       const std::string &showerrbars,
 	       const std::string &reference,
 	       const std::string &strip,
 	       const std::string &rxstr,
@@ -4794,11 +4793,12 @@ protected:
 	       Time startTime)
     {
       StringFormat result
-	= StringFormat("([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, 'serverTime':%19},"
+	= StringFormat("([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, 'serverTime':%21},"
 		       "{'kind':'DQMHeaderRow', 'run':\"%3\", 'lumi':\"%4\", 'event':\"%5\","
 		       " 'runstart':\"%6\", 'service':'%7', 'services':[%8], 'workspace':'%9',"
 		       " 'workspaces':[%10], 'view':{'show':'%11','sample': %12, 'filter':'%13',"
-		       " 'reference':%14, 'strip':%15, 'search':%16, %17}},%18])")
+		       " 'showstats': %14, 'showerrbars': %15, 'reference':%16, 'strip':%17,"
+                       " 'search':%18, %19}},%20])")
 	.arg(interval)
 	.arg(guiTimeStamp_, 0, 'f')
 	.arg(current.runnr < 0 ? std::string("(None)")
@@ -4816,6 +4816,8 @@ protected:
 	.arg(submenu)
 	.arg(sampleToJSON(sample))
 	.arg(filter)
+	.arg(showstats)
+	.arg(showerrbars)
 	.arg(reference)
 	.arg(strip)
 	.arg(StringFormat("{'pattern':%1, 'valid':%2, 'nmatches':%3, 'error':%4}")
@@ -5070,6 +5072,8 @@ public:
       std::string toolspanel(sessionPanelConfig(session, "tools"));
       std::string qplot(py::extract<std::string>(session.get("dqm.qplot", "")));
       std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string showstats(py::extract<std::string>(session.get("dqm.showstats")));
+      std::string showerrbars(py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string reference(sessionReference(session));
       std::string strip(sessionStripChart(session));
       std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
@@ -5161,11 +5165,11 @@ public:
 			    .arg(summaryToJSON(summary))
 			    .arg(plotter)
 			    .arg(qplot),
-			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
-			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, summary.size(), toolspanel,
-			    startTime);
+                            sample.type == SAMPLE_LIVE ? 30 : 300, current,
+                            services, workspaceName_, workspaces,
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, summary.size(),
+                            toolspanel, startTime);
       }
     }
 
@@ -5243,6 +5247,8 @@ public:
       std::string zoom(sessionCertZoomConfig(session));
       std::string qplot(py::extract<std::string>(session.get("dqm.qplot", "")));
       std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string showstats(py::extract<std::string>(session.get("dqm.showstats")));
+      std::string showerrbars(py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string reference(sessionReference(session));
       std::string strip(sessionStripChart(session));
       std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
@@ -5307,9 +5313,9 @@ public:
 			    .arg(zoom),
 			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
 			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, cert.size(), toolspanel,
-			    startTime);
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, cert.size(),
+                            toolspanel, startTime);
       }
     }
 
@@ -5402,6 +5408,8 @@ public:
       VisDQMSample sample(sessionSample(session));
       std::string toolspanel(sessionPanelConfig(session, "tools"));
       std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string showstats(py::extract<std::string>(session.get("dqm.showstats")));
+      std::string showerrbars(py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string reference(sessionReference(session));
       std::string strip(sessionStripChart(session));
       std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
@@ -5502,10 +5510,10 @@ public:
         return makeResponse(StringFormat("{'kind':'DQMQuality', 'items':[%1]}")
 			    .arg(qmapToJSON(qmap)),
 			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
-			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, qmap.size(), toolspanel,
-			    startTime);
+                            services, workspaceName_, workspaces,
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, qmap.size(),
+                            toolspanel, startTime);
       }
     }
 
@@ -6061,6 +6069,8 @@ public:
       std::string   root         (workspaceParam<std::string>(session, "dqm.root", ""));
       std::string   focus        (workspaceParam<std::string>(session, "dqm.focus", ""));  // None
       std::string   filter       (py::extract<std::string>(session.get("dqm.filter")));
+      std::string   showstats    (py::extract<std::string>(session.get("dqm.showstats")));
+      std::string   showerrbars  (py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string   reference    (sessionReference(session));
       std::string   strip	 (sessionStripChart(session));
       std::string   submenu      (py::extract<std::string>(session.get("dqm.submenu")));
@@ -6117,26 +6127,29 @@ public:
 	  root = ""; // FIXME: #36093
 
         return makeResponse(StringFormat("{'kind':'DQMCanvas', 'items':%1,"
-					 " 'root':%2, 'focus':%3, 'size':'%4', %5,"
-			    		 " %6, %7, 'reference':%8, 'strip':%9,"
-					 " 'layoutroot':%11}")
-			    .arg(shownToJSON(contents, status, drawopts,
-					     StringAtom(&stree, root),
-					     sample, shown))
-			    .arg(stringToJSON(root))
-			    .arg(stringToJSON(focus, true))
-			    .arg(size)
-			    .arg(helppanel)
-			    .arg(custompanel)
-			    .arg(zoom)
-			    .arg(reference)
-			    .arg(strip)
-			    .arg(stringToJSON(layoutroot)),
-			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
-			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, contents.size(), toolspanel,
-			    startTime);
+                                         " 'root':%2, 'focus':%3, 'size':'%4', %5,"
+                                         " %6, 'showstats': %7, 'showerrbars': %8, %9,"
+                                         " 'reference':%10, 'strip':%11,"
+                                         " 'layoutroot':%12}")
+                            .arg(shownToJSON(contents, status, drawopts,
+                                             StringAtom(&stree, root),
+                                             sample, shown))
+                            .arg(stringToJSON(root))
+                            .arg(stringToJSON(focus, true))
+                            .arg(size)
+                            .arg(helppanel)
+                            .arg(custompanel)
+                            .arg(showstats)
+                            .arg(showerrbars)
+                            .arg(zoom)
+                            .arg(reference)
+                            .arg(strip)
+                            .arg(stringToJSON(layoutroot)),
+                            sample.type == SAMPLE_LIVE ? 30 : 300, current,
+                            services, workspaceName_, workspaces,
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, contents.size(),
+                            toolspanel, startTime);
       }
     }
 };
@@ -6172,6 +6185,8 @@ public:
       std::string   workspace    (py::extract<std::string>(session.get("dqm.play.prevws")));
       std::string   root         (workspaceParamOther<std::string>(session, "dqm.root", "", workspace));
       std::string   filter       (py::extract<std::string>(session.get("dqm.filter")));
+      std::string   showstats    (py::extract<std::string>(session.get("dqm.showstats")));
+      std::string   showerrbars  (py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string   reference    (sessionReference(session));
       std::string   strip	 (sessionStripChart(session));
       std::string   submenu      (py::extract<std::string>(session.get("dqm.submenu")));
@@ -6243,9 +6258,9 @@ public:
 			    .arg(reference)
 			    .arg(strip),
 			    300, current, services, workspace, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, contents.size(), toolspanel,
-			    startTime);
+			    submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, contents.size(),
+                            toolspanel, startTime);
       }
     }
 };
