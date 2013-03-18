@@ -651,7 +651,7 @@ GUI.Plugin.DQMSample = new function() {
          : (type == "online_data"
             ? "<a href='#' style='display:block;float:left;"
             + "margin-right:1em;min-width:5em' onclick='return GUI.Plugin"
-            + ".DQMSample.select(\"${type}\", \"${dsname}\", ${run})'>"
+            + ".DQMSample.select(\"${type}\", \"${dsname}\", ${run}, ${importversion})'>"
             + "${begin}${val}${end}</a>"
             : "<div style='margin-left:1em'><a href='#'"
             + " onclick='return GUI.Plugin.DQMSample.select"

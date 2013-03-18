@@ -1242,6 +1242,7 @@ GUI.Plugin.DQMCanvas = new function()
     _jsonWin.suspendEvents();
     _jsonWin.setVisible(data.show && data.jsonmode);
     _jsonWin.resumeEvents();
+    _jsonModeChanged = false;
   };
 
   this.zoomResize = function(panel, w, h)
