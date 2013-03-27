@@ -15,7 +15,7 @@ ROOTG_LIBS   = $(ROOTC_LIBS) -lTreePlayer -lGpad -lGraf3d -lGraf \
                -lPhysics -lPostscript -lASImage -ljpeg -lpng
 OTHER_LIBS_Darwin =
 OTHER_LIBS_Linux  = -lrt
-OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -ldl $(OTHER_LIBS_$(PLATFORM))
+OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -lprotobuf -ldl $(OTHER_LIBS_$(PLATFORM))
 PYTHON_LIBS  = -lboost_python -lpython2.6
 
 LIB_SRC      = DQM/DQMRenderPlugin.cc \
@@ -40,7 +40,8 @@ EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
 
 INDEX_SRC    = DQM/index.cc DQM/DQMNet.cc DQM/DQMError.cc \
                DQM/DQMStore.cc DQM/MonitorElement.cc \
-               DQM/QTest.cc DQM/QReport.cc
+               DQM/QTest.cc DQM/QReport.cc \
+               DQM/StreamSample.pb.cc
 INDEX_OBJ    = $(patsubst %.cc,%.o,$(notdir $(INDEX_SRC)))
 INDEX_LINK   = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(INDEX_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTC_LIBS) $(OTHER_LIBS)
@@ -54,6 +55,12 @@ vpath %.cc $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQ
 all: visDQMIndex visDQMRender DQMCollector Accelerator.so libDQMGUI.so
 clean:; rm -f *.o *.so visDQMIndex visDQMRender
 %.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
+DQM/StreamSample.pb.cc: DQM/StreamSample.proto
+	protoc --cpp_out=. DQM/StreamSample.proto
+StreamSample.pb.o: DQM/StreamSample.pb.cc
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+index.o: DQM/index.cc DQM/StreamSample.pb.cc
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 libDQMGUI.so: $(LIB_OBJ); $(LIB_LINK)
 Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
