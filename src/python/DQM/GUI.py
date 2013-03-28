@@ -99,7 +99,6 @@ class DQMUpload:
 
     raise HTTPError(self.STATUS_ERROR_NOT_AUTHORIZED, "Unauthorized upload.")
 
-
 # --------------------------------------------------------------------
 # DQM extension to manage DQM file uploads.
 class DQMFileAccess(DQMUpload):
@@ -648,6 +647,13 @@ class DQMArchiveSource(Accelerator.DQMArchiveSource):
     return self._plot(int(runnr), "/".join(('', dsP, dsW, dsT)),
 		      "/".join(path), options)
 
+  # Generate a json describtion given an object type ('scalar' or
+  # 'rootobj'), the run number, dataset path, object name and render
+  # options.
+  def getJson(self, runnr, dsP, dsW, dsT, *path, **options):
+    return self._getJson(int(runnr), "/".join(('', dsP, dsW, dsT)),
+                         "/".join(path), options)
+
 # --------------------------------------------------------------------
 # .sessiondef
 # .gui
@@ -685,8 +691,9 @@ class DQMWorkspace:
                  'dqm.strip.omit':     "none",
                  'dqm.strip.axis':     "run",
                  'dqm.strip.n':        "",
-                 'dqm.reference':      {'show': "customise", 'position': "overlay",
-                                        'showstats': "1", 'showerrbars': "1", 'param':
+                 'dqm.showstats':      "1",
+                 'dqm.showerrbars':    "0",
+                 'dqm.reference':      {'show': "customise", 'position': "overlay", 'param':
                                         [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
 					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
 					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
@@ -751,14 +758,15 @@ class DQMWorkspace:
            samplepat = None,
            sampledynsearch = None,
            sampletype = None,
+           sampleimportversion = None,
            dataset = None,
            runnr = None,
 	   qplot = None,
            filter = None,
+           showstats   = None,
+           showerrbars = None,
            referencepos  = None,
            referenceshow = None,
-           referenceshowstats   = None,
-           referenceshowerrbars = None,
            referenceobj1 = None,
            referenceobj2 = None,
            referenceobj3 = None,
@@ -818,6 +826,11 @@ class DQMWorkspace:
       else:
         raise HTTPError(500, "Incorrect sample type parameter")
 
+    if sampleimportversion != None:
+      if not isinstance(sampleimportversion, int):
+        raise HTTPError(500, "Incorrect sample importversion parameter")
+      session['dqm.sample.importversion'] = sampleimportversion
+
     if dataset != None:
       if not isinstance(dataset, str):
         raise HTTPError(500, "Incorrect dataset parameter")
@@ -844,21 +857,21 @@ class DQMWorkspace:
         raise HTTPError(500, "Incorrect filter parameter")
       session['dqm.filter'] = filter
 
+    if showstats != None:
+      if not isinstance(showstats, str):
+        raise HTTPError(500, "Incorrect showstats parameter")
+      session['dqm.showstats'] = showstats
+
+    if showerrbars != None:
+      if not isinstance(showerrbars, str):
+        raise HTTPError(500, "Incorrect showerrbars parameter")
+      session['dqm.showerrbars'] = showerrbars
+
     if referenceshow != None:
       if not isinstance(referenceshow, str) \
          or referenceshow not in ("all", "none", "customise"):
         raise HTTPError(500, "Incorrect referenceshow parameter")
       session['dqm.reference']['show'] = referenceshow
-
-    if referenceshowstats != None:
-      if not isinstance(referenceshowstats, str):
-        raise HTTPError(500, "Incorrect referenceshowstats parameter")
-      session['dqm.reference']['showstats'] = referenceshowstats
-
-    if referenceshowerrbars != None:
-      if not isinstance(referenceshowerrbars, str):
-        raise HTTPError(500, "Incorrect referenceshowerrbars parameter")
-      session['dqm.reference']['showerrbars'] = referenceshowerrbars
 
     if referencepos != None:
       if not isinstance(referencepos, str) \
@@ -1036,13 +1049,25 @@ class DQMWorkspace:
     self.gui._saveSession(session)
     return self._state(session)
 
+  # Set global statistical display option.
+  def sessionSetStats(self, session, *args, **kwargs):
+    self._set(session,
+              showstats = kwargs.get("showstats", None))
+    self.gui._saveSession(session)
+    return self._state(session)
+
+  # Set global statistical display option.
+  def sessionSetErrbars(self, session, *args, **kwargs):
+    self._set(session,
+              showerrbars = kwargs.get("showerrbars", None))
+    self.gui._saveSession(session)
+    return self._state(session)
+
   # Set global reference display override.
   def sessionSetReference(self, session, *args, **kwargs):
     self._set(session,
 	      referencepos         = kwargs.get("position", None),
 	      referenceshow        = kwargs.get("show", None),
-	      referenceshowstats   = kwargs.get("showstats", None),
-	      referenceshowerrbars = kwargs.get("showerrbars", None),
 	      referenceobj1 = kwargs.get("r1", None),
 	      referenceobj2 = kwargs.get("r2", None),
 	      referenceobj3 = kwargs.get("r3", None),
@@ -1130,6 +1155,44 @@ class DQMWorkspace:
     self.gui._saveSession(session)
     return self._state(session)
 
+  def sessionSetJsonmode(self, session, *args, **kwargs):
+    jsonmode = kwargs.get('mode', None)
+    if isinstance(jsonmode, str) or jsonmode in ("yes", "no"):
+      session['dqm.zoom.jsonmode'] = (jsonmode == "yes")
+
+    self.gui._saveSession(session)
+    return self._state(session)
+
+  # Change JSON window parameters.
+  def sessionSetJsonZoom(self, session, *args, **kwargs):
+    x = kwargs.get('x', None)
+    y = kwargs.get('y', None)
+    w = kwargs.get('w', None)
+    h = kwargs.get('h', None)
+
+    if x != None:
+      if not isinstance(x, str) or not re.match(r"^\d+$", x):
+        raise HTTPError(500, "Invalid Zoom position parameter")
+      session['dqm.zoom.jx'] = int(x)
+
+    if y != None:
+      if not isinstance(y, str) or not re.match(r"^\d+$", y):
+        raise HTTPError(500, "Invalid Zoom position parameter")
+      session['dqm.zoom.jy'] = int(y)
+
+    if w != None:
+      if not isinstance(w, str) or not re.match(r"^\d+$", w):
+        raise HTTPError(500, "Invalid Zoom width parameter")
+      session['dqm.zoom.jw'] = int(w)
+
+    if h != None:
+      if not isinstance(h, str) or not re.match(r"^\d+$", h):
+        raise HTTPError(500, "Invalid Zoom height parameter")
+      session['dqm.zoom.jh'] = int(h)
+
+    self.gui._saveSession(session)
+    return self._state(session)
+
   # Change Zoom window parameters.
   def sessionSetZoom(self, session, *args, **kwargs):
     show = kwargs.get('show', None)
@@ -1164,7 +1227,6 @@ class DQMWorkspace:
       session['dqm.zoom.h'] = int(h)
 
     self.gui._saveSession(session)
-#    return "Ma."
     return self._state(session)
 
   def sessionChangeRun(self, session, *args, **kwargs):
@@ -1367,6 +1429,7 @@ class DQMSampleWorkspace(Accelerator.DQMSampleWorkspace, DQMWorkspace):
   def sessionSelect(self, session, *args, **kwargs):
     self._set(session,
               sampletype = kwargs.get("type"),
+              sampleimportversion = int(kwargs.get("importversion")),
               dataset = kwargs.get("dataset"),
               runnr = kwargs.get("runnr"));
     return self.sessionReturn(session)

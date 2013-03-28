@@ -1,0 +1,51 @@
+package dqmgui;
+
+message StreamSample
+{
+
+  message Header {
+    required int32 runNumber = 1;
+    required uint32 numObjects = 2;
+    required uint64 numEvents = 3;
+    required uint64 numLumiSections = 4;
+    required uint64 runStartTime = 5;
+    required uint64 processedTime = 6;
+    required bytes streamerInfo = 7;
+  }
+
+  message MonitorElementInfo {
+    required double nbins = 1;
+    required double mean = 2;
+    required double rms =3;
+    required double bound_min = 4;
+    required double bound_max = 5;
+  }
+
+  message MonitorElement {
+    required string name = 1;
+    required int32  category = 2;
+    required int32  lumibegin = 3;
+    required uint32 properties = 4;
+    required uint32 dataLength = 5;
+    required uint32 qtestLength = 6;
+    required uint32 objectLength = 7;
+    required uint32 tag = 8;
+    required double entries = 9;
+    repeated MonitorElementInfo info = 10;
+    optional bytes data = 11;
+    optional bytes qt = 12;
+  }
+
+  message MERoot {
+    required bytes rawdata = 1;
+  }
+
+  message GenericCompressed {
+    required uint32 size = 1;
+    required bytes buff = 2;
+  }
+
+  required GenericCompressed header_c = 1;
+  repeated MonitorElement me = 2;
+  repeated GenericCompressed me_root_c = 3;
+};

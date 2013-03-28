@@ -47,6 +47,7 @@
 #include "boost/gil/extension/numeric/resample.hpp"
 #include "boost/lambda/algorithm.hpp"
 #include "boost/lambda/casts.hpp"
+#include "boost/algorithm/string.hpp"
 #include "rtgu/image/rescale.hpp"
 #include "rtgu/image/filters.hpp"
 
@@ -426,6 +427,7 @@ struct VisDQMSample
 {
   VisDQMSampleType		type;
   long				runnr;
+  uint32_t			importversion;
   std::string			dataset;
   std::string			version;
   VisDQMSource			*origin;
@@ -433,6 +435,7 @@ struct VisDQMSample
   VisDQMSample(VisDQMSampleType t, long r, const std::string & d)
     : type(t),
       runnr(r),
+      importversion(0),
       dataset(d),
       version(""),
       origin(0),
@@ -441,6 +444,7 @@ struct VisDQMSample
   VisDQMSample(VisDQMSampleType t, long r)
     : type(t),
       runnr(r),
+      importversion(0),
       dataset(""),
       version(""),
       origin(0),
@@ -1094,7 +1098,9 @@ sampleToJSON(const VisDQMSample &sample, std::string &result)
   result += sample.dataset;
   result += "\", \"version\":\"";
   result += sample.version;
-  result += "\"}";
+  result += "\", \"importversion\":";
+  result += StringFormat("%1").arg(sample.importversion);
+  result += "}";
 }
 
 static std::string
@@ -1150,6 +1156,7 @@ sessionSample(const py::dict &session)
   long type = py::extract<long>(session.get("dqm.sample.type"));
   result.runnr = py::extract<long>(session.get("dqm.sample.runnr"));
   result.dataset = py::extract<std::string>(session.get("dqm.sample.dataset"));
+  result.importversion = py::extract<int>(session.get("dqm.sample.importversion"));
   result.origin = 0;
 
   if (type < SAMPLE_LIVE || type > SAMPLE_OFFLINE_MC)
@@ -1203,6 +1210,12 @@ public:
 
   virtual const char *
   plotter(void) const
+    {
+      return "unknown";
+    }
+
+  virtual const char *
+  jsoner(void) const
     {
       return "unknown";
     }
@@ -1336,8 +1349,11 @@ static IMGOPT TRENDIMGOPTS[] = {
     frequently accessed images. */
 class VisDQMRenderLink
 {
-  static const uint32_t DQM_MSG_GET_IMAGE_DATA = 4;
-  static const uint32_t DQM_MSG_REPLY_IMAGE_DATA = 105;
+  static const uint32_t DQM_MSG_GET_IMAGE_DATA  	= 4;
+  static const uint32_t DQM_MSG_GET_JSON_DATA		= 6;
+  static const uint32_t DQM_MSG_REPLY_IMAGE_DATA 	= 105;
+  static const uint32_t DQM_REPLY_JSON_DATA 		= 106;
+
   static const int MIN_WIDTH = 532;
   static const int MIN_HEIGHT = 400;
   static const int IMAGE_CACHE_SIZE = 1024;
@@ -1556,7 +1572,24 @@ public:
       return ! quiet_ && makepng(image, type, protoimg, finalspec, destwidth, destheight);
     }
 
-private:
+  bool
+  prepareJson(std::string &jsonData,
+              std::string &type,
+              const std::string &path,
+              const std::map<std::string, std::string> &,
+              const std::string *streamers,
+              DQMNet::Object *obj,
+              size_t numobj,
+              IMGOPT *)
+  {
+    std::string reqspec;
+    Image protoimg;
+    initimg(protoimg, path, reqspec, streamers, obj, numobj);
+    Lock gate(&lock_);
+    return ! quiet_ && makeJson(jsonData, type, protoimg, reqspec);
+  }
+
+ private:
   static std::ostream &
   logme(void)
     {
@@ -1594,8 +1627,8 @@ private:
 	  const std::string *streamers,
 	  const DQMNet::Object *obj,
 	  size_t numobj,
-	  int width,
-	  int height)
+	  int width  = 0,
+	  int height = 0)
     {
       assert(numobj);
       lrunuke(proto);
@@ -1742,7 +1775,7 @@ private:
     }
 
   void
-  requestimg(Image &img, std::string &imgbytes)
+  requestimg(Image &img, std::string &imgbytes, const bool json=false)
     {
       assert(imgbytes.empty());
 
@@ -1850,7 +1883,7 @@ private:
 	  {
 	    sizeof(words) + img.pathname.size() + img.imagespec.size()
 	    + img.databytes.size() + img.qdata.size(),
-	    DQM_MSG_GET_IMAGE_DATA,
+	    (json ? DQM_MSG_GET_JSON_DATA : DQM_MSG_GET_IMAGE_DATA),
 	    img.flags,
 	    img.tag,
 	    (img.version >> 0 ) & 0xffffffff,
@@ -1874,7 +1907,7 @@ private:
 
 	if (sock.xread(&words[0], 2*sizeof(uint32_t)) == 2*sizeof(uint32_t)
 	    && words[0] >= 2*sizeof(uint32_t)
-	    && words[1] == DQM_MSG_REPLY_IMAGE_DATA)
+            && (words[1] == DQM_MSG_REPLY_IMAGE_DATA || words[1] == DQM_REPLY_JSON_DATA ))
 	{
 	  message.resize(words[0] - 2*sizeof(uint32_t), '\0');
 	  if (sock.xread(&message[0], message.size()) == message.size())
@@ -1900,7 +1933,8 @@ private:
 	{
 	  srv.checkme = false;
 	  srv.lastimg.clear();
-	  compress(img, imgbytes);
+	  if (!json)
+            compress(img, imgbytes);
 	}
 	srv.pending.pop_front();
       }
@@ -2094,6 +2128,39 @@ private:
       else
 	return false;
     }
+
+  bool makeJson(std::string &jsonData,
+                std::string &imgtype,
+                Image &protoreq,
+                const std::string &spec)
+  {
+    jsonData.clear();
+    imgtype.clear();
+    Image proto = protoreq;
+    proto.id = Time::current().ns();
+    proto.imagespec = spec;
+    Image &img = proto;
+
+    assert(! img.busy);
+    assert(! img.inuse);
+    assert(img.pngbytes.empty());
+    img.busy = true;
+    img.inuse++;
+    requestimg(img, jsonData, true);
+
+    assert(img.inuse > 0);
+    assert(img.busy);
+    img.busy = false;
+    pthread_cond_broadcast(&imgavail_);
+
+    while (img.busy)
+      pthread_cond_wait(&imgavail_, &lock_);
+
+    assert(img.inuse > 0);
+    img.inuse--;
+
+    return true;
+  }
 
   void
   expandpng(std::string &imgbytes, const Image &img)
@@ -2374,6 +2441,12 @@ public:
       return "overlay";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
+    }
+
   py::tuple
   plot(py::list overlay, py::dict opts)
     {
@@ -2473,6 +2546,12 @@ public:
   plotter(void) const
     {
       return "stripchart";
+    }
+
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
     }
 
   py::tuple
@@ -2699,6 +2778,12 @@ public:
   plotter(void) const
     {
       return "certification";
+    }
+
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
     }
 
   py::tuple
@@ -3274,6 +3359,12 @@ public:
       return "live";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "underconstruction";
+    }
+
   virtual void
   getdata(const VisDQMSample & /* sample */,
 	  const std::string &path,
@@ -3339,6 +3430,7 @@ public:
       {
 	session["dqm.sample.runnr"] = 0L;
 	session["dqm.sample.dataset"] = mydataset_;
+	session["dqm.sample.importversion"] = 0;
 	session["dqm.sample.type"] = long(SAMPLE_LIVE);
       }
     }
@@ -3697,6 +3789,12 @@ public:
       return "archive";
     }
 
+  virtual const char *
+  jsoner(void) const
+    {
+      return "archive";
+    }
+
   void
   exit(void)
     {
@@ -3867,6 +3965,34 @@ public:
       }
     }
 
+  py::str
+  getJson(const int runnr,
+          const std::string &dataset,
+          const std::string &path,
+          py::dict opts)
+  {
+    VisDQMSample sample(SAMPLE_ANY, runnr, dataset);
+    std::map<std::string,std::string> options;
+    bool jsonok = false;
+    std::string jsonData;
+    std::string imagetype;
+    std::string streamers;
+    DQMNet::Object obj;
+    copyopts(opts, options);
+
+    {
+      PyReleaseInterpreterLock nogil;
+      getdata(sample, path, streamers, obj);
+      jsonok = link_->prepareJson(jsonData, imagetype, path, options,
+                                  &streamers, &obj, 1, STDIMGOPTS);
+    }
+    if(jsonok) {
+      py::str _str(jsonData);
+      return _str;
+    }
+    return "\"error\":\"JSON preparing process was interrupted.\"";
+  }
+
   py::tuple
   plot(int runnr,
        const std::string &dataset,
@@ -4018,6 +4144,7 @@ public:
       {
 	bool found = false;
 	long runnr = -1;
+	uint32_t importversion = 0;
 	std::string dataset;
 	VisDQMSampleType type = SAMPLE_ANY;
 
@@ -4047,6 +4174,7 @@ public:
 	    found = true;
 	    runnr = newest->runNumber;
 	    dataset = dsnames_.key(newest->datasetNameIdx);
+	    importversion = newest->importVersion;
 	    type = (newest->cmsswVersion > 0 ? SAMPLE_OFFLINE_RELVAL
 		    : newest->runNumber == 1 ? SAMPLE_OFFLINE_MC
 		    : rxonline_.search(dataset) < 0
@@ -4058,6 +4186,7 @@ public:
 	{
 	  session["dqm.sample.runnr"] = runnr;
 	  session["dqm.sample.dataset"] = dataset;
+	  session["dqm.sample.importversion"] = importversion;
 	  session["dqm.sample.type"] = long(type);
 	}
       }
@@ -4386,6 +4515,7 @@ public:
 	  VisDQMSample &s = samples.back();
 	  s.dataset = dsnames_.key(si->datasetNameIdx);
 	  s.version = vnames_.key(si->cmsswVersion);
+	  s.importversion = si->importVersion;
 	  s.runnr = si->runNumber;
 	  s.type = (si->cmsswVersion > 0 ? SAMPLE_OFFLINE_RELVAL
 		    : si->runNumber == 1 ? SAMPLE_OFFLINE_MC
@@ -4564,20 +4694,27 @@ protected:
   static std::string
   sessionZoomConfig(const py::dict &session)
     {
-      bool show;
-      int  x;
-      int  y;
-      int  w;
-      int  h;
+      bool show, jsonmode;
+      int  x, jx;
+      int  y, jy;
+      int  w, jw;
+      int  h, jh;
 
       show = py::extract<bool>(session.get("dqm.zoom.show", false));
       x = py::extract<int>(session.get("dqm.zoom.x", -1));
       y = py::extract<int>(session.get("dqm.zoom.y", -1));
       w = py::extract<int>(session.get("dqm.zoom.w", -1));
       h = py::extract<int>(session.get("dqm.zoom.h", -1));
+      jsonmode = py::extract<bool>(session.get("dqm.zoom.jsonmode", false));
+      jx = py::extract<int>(session.get("dqm.zoom.jx", -1));
+      jy = py::extract<int>(session.get("dqm.zoom.jy", -1));
+      jw = py::extract<int>(session.get("dqm.zoom.jw", -1));
+      jh = py::extract<int>(session.get("dqm.zoom.jh", -1));
 
-      return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5}")
-	.arg(show).arg(x).arg(y).arg(w).arg(h);
+      return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5,\
+                           'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10}")
+          .arg(show).arg(x).arg(y).arg(w).arg(h)
+          .arg(jsonmode).arg(jx).arg(jy).arg(jw).arg(jh);
     }
 
   // Produce Certification zoom configuration format.
@@ -4621,12 +4758,9 @@ protected:
       std::string ref3(sessionReferenceOne(py::extract<py::dict>(refspec[2])));
       std::string ref4(sessionReferenceOne(py::extract<py::dict>(refspec[3])));
       return StringFormat("{'position':'%1', 'show':'%2', \
-                            'showstats':'%3', 'showerrbars':'%4', \
-                            'param':[%5,%6,%7,%8]}")
+                            'param':[%3,%4,%5,%6]}")
         .arg(py::extract<std::string>(refdict.get("position")))    // overlay, on-side
 	.arg(py::extract<std::string>(refdict.get("show")))        // all, none, custom
-	.arg(py::extract<std::string>(refdict.get("showstats")))   // 0, 1
-	.arg(py::extract<std::string>(refdict.get("showerrbars"))) // 0, 1
 	.arg(ref1).arg(ref2).arg(ref3).arg(ref4);
     }
 
@@ -4653,6 +4787,8 @@ protected:
 	       const std::string &submenu,
 	       const VisDQMSample &sample,
 	       const std::string &filter,
+	       const std::string &showstats,
+	       const std::string &showerrbars,
 	       const std::string &reference,
 	       const std::string &strip,
 	       const std::string &rxstr,
@@ -4662,11 +4798,12 @@ protected:
 	       Time startTime)
     {
       StringFormat result
-	= StringFormat("([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, 'serverTime':%19},"
+	= StringFormat("([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, 'serverTime':%21},"
 		       "{'kind':'DQMHeaderRow', 'run':\"%3\", 'lumi':\"%4\", 'event':\"%5\","
 		       " 'runstart':\"%6\", 'service':'%7', 'services':[%8], 'workspace':'%9',"
 		       " 'workspaces':[%10], 'view':{'show':'%11','sample': %12, 'filter':'%13',"
-		       " 'reference':%14, 'strip':%15, 'search':%16, %17}},%18])")
+		       " 'showstats': %14, 'showerrbars': %15, 'reference':%16, 'strip':%17,"
+                       " 'search':%18, %19}},%20])")
 	.arg(interval)
 	.arg(guiTimeStamp_, 0, 'f')
 	.arg(current.runnr < 0 ? std::string("(None)")
@@ -4684,6 +4821,8 @@ protected:
 	.arg(submenu)
 	.arg(sampleToJSON(sample))
 	.arg(filter)
+	.arg(showstats)
+	.arg(showerrbars)
 	.arg(reference)
 	.arg(strip)
 	.arg(StringFormat("{'pattern':%1, 'valid':%2, 'nmatches':%3, 'error':%4}")
@@ -4938,6 +5077,8 @@ public:
       std::string toolspanel(sessionPanelConfig(session, "tools"));
       std::string qplot(py::extract<std::string>(session.get("dqm.qplot", "")));
       std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string showstats(py::extract<std::string>(session.get("dqm.showstats")));
+      std::string showerrbars(py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string reference(sessionReference(session));
       std::string strip(sessionStripChart(session));
       std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
@@ -5029,11 +5170,11 @@ public:
 			    .arg(summaryToJSON(summary))
 			    .arg(plotter)
 			    .arg(qplot),
-			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
-			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, summary.size(), toolspanel,
-			    startTime);
+                            sample.type == SAMPLE_LIVE ? 30 : 300, current,
+                            services, workspaceName_, workspaces,
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, summary.size(),
+                            toolspanel, startTime);
       }
     }
 
@@ -5111,6 +5252,8 @@ public:
       std::string zoom(sessionCertZoomConfig(session));
       std::string qplot(py::extract<std::string>(session.get("dqm.qplot", "")));
       std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string showstats(py::extract<std::string>(session.get("dqm.showstats")));
+      std::string showerrbars(py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string reference(sessionReference(session));
       std::string strip(sessionStripChart(session));
       std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
@@ -5175,9 +5318,9 @@ public:
 			    .arg(zoom),
 			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
 			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, cert.size(), toolspanel,
-			    startTime);
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, cert.size(),
+                            toolspanel, startTime);
       }
     }
 
@@ -5270,6 +5413,8 @@ public:
       VisDQMSample sample(sessionSample(session));
       std::string toolspanel(sessionPanelConfig(session, "tools"));
       std::string filter(py::extract<std::string>(session.get("dqm.filter")));
+      std::string showstats(py::extract<std::string>(session.get("dqm.showstats")));
+      std::string showerrbars(py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string reference(sessionReference(session));
       std::string strip(sessionStripChart(session));
       std::string submenu(py::extract<std::string>(session.get("dqm.submenu")));
@@ -5370,10 +5515,10 @@ public:
         return makeResponse(StringFormat("{'kind':'DQMQuality', 'items':[%1]}")
 			    .arg(qmapToJSON(qmap)),
 			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
-			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, qmap.size(), toolspanel,
-			    startTime);
+                            services, workspaceName_, workspaces,
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, qmap.size(),
+                            toolspanel, startTime);
       }
     }
 
@@ -5929,6 +6074,8 @@ public:
       std::string   root         (workspaceParam<std::string>(session, "dqm.root", ""));
       std::string   focus        (workspaceParam<std::string>(session, "dqm.focus", ""));  // None
       std::string   filter       (py::extract<std::string>(session.get("dqm.filter")));
+      std::string   showstats    (py::extract<std::string>(session.get("dqm.showstats")));
+      std::string   showerrbars  (py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string   reference    (sessionReference(session));
       std::string   strip	 (sessionStripChart(session));
       std::string   submenu      (py::extract<std::string>(session.get("dqm.submenu")));
@@ -5985,26 +6132,29 @@ public:
 	  root = ""; // FIXME: #36093
 
         return makeResponse(StringFormat("{'kind':'DQMCanvas', 'items':%1,"
-					 " 'root':%2, 'focus':%3, 'size':'%4', %5,"
-			    		 " %6, %7, 'reference':%8, 'strip':%9,"
-					 " 'layoutroot':%11}")
-			    .arg(shownToJSON(contents, status, drawopts,
-					     StringAtom(&stree, root),
-					     sample, shown))
-			    .arg(stringToJSON(root))
-			    .arg(stringToJSON(focus, true))
-			    .arg(size)
-			    .arg(helppanel)
-			    .arg(custompanel)
-			    .arg(zoom)
-			    .arg(reference)
-			    .arg(strip)
-			    .arg(stringToJSON(layoutroot)),
-			    sample.type == SAMPLE_LIVE ? 30 : 300, current,
-			    services, workspaceName_, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, contents.size(), toolspanel,
-			    startTime);
+                                         " 'root':%2, 'focus':%3, 'size':'%4', %5,"
+                                         " %6, 'showstats': %7, 'showerrbars': %8, %9,"
+                                         " 'reference':%10, 'strip':%11,"
+                                         " 'layoutroot':%12}")
+                            .arg(shownToJSON(contents, status, drawopts,
+                                             StringAtom(&stree, root),
+                                             sample, shown))
+                            .arg(stringToJSON(root))
+                            .arg(stringToJSON(focus, true))
+                            .arg(size)
+                            .arg(helppanel)
+                            .arg(custompanel)
+                            .arg(showstats)
+                            .arg(showerrbars)
+                            .arg(zoom)
+                            .arg(reference)
+                            .arg(strip)
+                            .arg(stringToJSON(layoutroot)),
+                            sample.type == SAMPLE_LIVE ? 30 : 300, current,
+                            services, workspaceName_, workspaces,
+                            submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, contents.size(),
+                            toolspanel, startTime);
       }
     }
 };
@@ -6040,6 +6190,8 @@ public:
       std::string   workspace    (py::extract<std::string>(session.get("dqm.play.prevws")));
       std::string   root         (workspaceParamOther<std::string>(session, "dqm.root", "", workspace));
       std::string   filter       (py::extract<std::string>(session.get("dqm.filter")));
+      std::string   showstats    (py::extract<std::string>(session.get("dqm.showstats")));
+      std::string   showerrbars  (py::extract<std::string>(session.get("dqm.showerrbars")));
       std::string   reference    (sessionReference(session));
       std::string   strip	 (sessionStripChart(session));
       std::string   submenu      (py::extract<std::string>(session.get("dqm.submenu")));
@@ -6111,9 +6263,9 @@ public:
 			    .arg(reference)
 			    .arg(strip),
 			    300, current, services, workspace, workspaces,
-			    submenu, sample, filter, reference, strip,
-			    rxstr, rxerr, contents.size(), toolspanel,
-			    startTime);
+			    submenu, sample, filter, showstats, showerrbars,
+                            reference, strip, rxstr, rxerr, contents.size(),
+                            toolspanel, startTime);
       }
     }
 };
@@ -6169,30 +6321,35 @@ BOOST_PYTHON_MODULE(Accelerator)
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMUnknownSource", py::init<>())
     .add_property("plothook", &VisDQMUnknownSource::plotter)
+    .add_property("jsonhook", &VisDQMUnknownSource::jsoner)
     .def("_plot", &VisDQMUnknownSource::plot);
 
   py::class_<VisDQMOverlaySource, shared_ptr<VisDQMOverlaySource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMOverlaySource", py::init<>())
     .add_property("plothook", &VisDQMOverlaySource::plotter)
+    .add_property("jsonhook", &VisDQMOverlaySource::jsoner)
     .def("_plot", &VisDQMOverlaySource::plot);
 
   py::class_<VisDQMStripChartSource, shared_ptr<VisDQMStripChartSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMStripChartSource", py::init<>())
     .add_property("plothook", &VisDQMStripChartSource::plotter)
+    .add_property("jsonhook", &VisDQMStripChartSource::jsoner)
     .def("_plot", &VisDQMStripChartSource::plot);
 
   py::class_<VisDQMCertificationSource, shared_ptr<VisDQMCertificationSource>,
              py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMCertificationSource", py::init<>())
     .add_property("plothook", &VisDQMCertificationSource::plotter)
+    .add_property("jsonhook", &VisDQMCertificationSource::jsoner)
     .def("_plot", &VisDQMCertificationSource::plot);
 
   py::class_<VisDQMLiveSource, shared_ptr<VisDQMLiveSource>,
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMLiveSource", py::init<py::object, py::dict>())
     .add_property("plothook", &VisDQMLiveSource::plotter)
+    .add_property("jsonhook", &VisDQMLiveSource::jsoner)
     .def("_plot", &VisDQMLiveSource::plot)
     .def("_exit", &VisDQMLiveSource::exit);
 
@@ -6200,7 +6357,9 @@ BOOST_PYTHON_MODULE(Accelerator)
     	     py::bases<VisDQMSource>, boost::noncopyable>
     ("DQMArchiveSource", py::init<py::object, py::dict>())
     .add_property("plothook", &VisDQMArchiveSource::plotter)
+    .add_property("jsonhook", &VisDQMArchiveSource::jsoner)
     .def("_plot", &VisDQMArchiveSource::plot)
+    .def("_getJson", &VisDQMArchiveSource::getJson)
     .def("_exit", &VisDQMArchiveSource::exit);
 
   py::class_<VisDQMLayoutSource, shared_ptr<VisDQMLayoutSource>,

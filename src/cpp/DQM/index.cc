@@ -5,6 +5,7 @@ int debug = 0;
 
 #define DEBUG(x, msg) if (debug >= x) std::cout << "DEBUG: " << msg << std::flush
 
+#include "DQM/StreamSample.pb.h"
 #include "DQM/VisDQMIndex.h"
 #include "DQM/VisDQMCache.h"
 #include "DQM/VisDQMFile.h"
@@ -24,6 +25,9 @@ int debug = 0;
 #include "classlib/iobase/FileError.h"
 #include "classlib/iobase/File.h"
 #include "classlib/zip/MD5Digest.h"
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/gzip_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "TH1.h"
 #include "TAxis.h"
 #include "TROOT.h"
@@ -40,6 +44,13 @@ int debug = 0;
 #include <float.h>
 
 using namespace lat;
+using google::protobuf::io::FileInputStream;
+using google::protobuf::io::FileOutputStream;
+using google::protobuf::io::GzipInputStream;
+using google::protobuf::io::GzipOutputStream;
+using google::protobuf::io::CodedInputStream;
+using google::protobuf::io::ArrayInputStream;
+using google::protobuf::io::StringOutputStream;
 
 // ----------------------------------------------------------------------
 /** Index task to perform. */
@@ -50,7 +61,8 @@ enum TaskType
   TASK_REMOVE,		 //< Remove data from the index.
   TASK_MERGE,            //< Merge an index to another.
   TASK_DUMP,		 //< Dump the index contents.
-  TASK_STREAM		 //< Stream a sample from the index into an intermediate .dat file.
+  TASK_STREAM,		 //< Stream a sample from the index into an intermediate .dat file.
+  TASK_STREAMPB          //< Stream a sample from the index into an intermediate ProtocolBuffer .pb file.
 };
 
 /** Things user can choose to dump out. */
@@ -77,6 +89,14 @@ enum DataType
   TYPE_DATA,		 //< DQM data for real detector data.
   TYPE_RELVAL,		 //< DQM data for release validation simulated data.
   TYPE_MC		 //< DQM data for other simulated data.
+};
+
+enum CompressionFactor
+{
+  NO_COMPRESSION   = 0,
+  FAST_COMPRESSION = 4,
+  DEFAULT_COMPRESSION = 6,
+  MAX_COMPRESSION = 9
 };
 
 /** Classification of DQM data into a unique DQM GUI "sample". */
@@ -194,18 +214,21 @@ public:
 Filename app;
 
 /// Regular expression to recognise a stream file.
-Regexp rxstreamfile(".*\\.dat$$");
+Regexp rxstreamfile(".*\\.dat$");
+
+/// Regular expression to recognise a Protocol Buffer stream file.
+Regexp rxstreampbfile(".*\\.pb$");
 
 /// Regular expression to recognise valid dataset names.
 Regexp rxdataset("^(/[-A-Za-z0-9_]+){3}$");
 
 /// Regular expression to recognise valid online "real data" DQM files.
 /// The first capture is the run number string.
-Regexp rxonline("^(?:.*/)?DQM_V\\d+(?:_[A-Za-z0-9]+)?_R(\\d+)\\.(dat|root)$");
+Regexp rxonline("^(?:.*/)?DQM_V\\d+(?:_[A-Za-z0-9]+)?_R(\\d+)\\.(dat|pb|root)$");
 
 /// Regular expression to recognise valid offline DQM data files.  The
 /// first capture is the run number, the second mangled dataset name.
-Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.(dat|root)$");
+Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.(dat|pb|root)$");
 
 /// Regular expression to recognise release validation dataset names.
 /// The first capture is the CMSSW release string.
@@ -218,7 +241,7 @@ static const size_t ALL_SAMPLES = ~(size_t)0;
 // ----------------------------------------------------------------------
 /** Utility function to round @a value to a value divisible by @a unit. */
 static inline uint32_t
-roundup(uint32_t value, uint32_t unit)
+myroundup(uint32_t value, uint32_t unit)
 {
   return (value + unit - 1) / unit * unit;
 }
@@ -226,6 +249,11 @@ roundup(uint32_t value, uint32_t unit)
 static bool isStreamFile(const char* filename)
 {
   return rxstreamfile.exactMatch(filename);
+}
+
+static bool isStreamPBFile(const char* filename)
+{
+  return rxstreampbfile.exactMatch(filename);
 }
 
 /** Utility function to read a double from a stream. */
@@ -245,6 +273,39 @@ static inline void writeDouble(ofstream &iwrite,
   snprintf(buf, sizeof(buf), "%s%.*g", prefix, DBL_DIG+2, val);
   iwrite << buf;
 }
+
+template<class OriginalMessage, class CompressedMessage>
+void CompressMessage(const OriginalMessage& source,
+                     CompressionFactor k,
+                     CompressedMessage* dest) {
+  std::string result;
+  {
+    StringOutputStream output(&result);
+    GzipOutputStream::Options options;
+    options.format = GzipOutputStream::GZIP;
+    options.compression_level = k;
+    GzipOutputStream gzout(&output,
+                           options);
+
+    source.SerializeToZeroCopyStream(&gzout);
+    gzout.Flush();
+  }
+  dest->set_size(result.size());
+  dest->set_buff(result);
+}
+
+template<class CompressedMessage, class Message>
+void UncompressMessage(const CompressedMessage& source, Message* dest) {
+  const int size = source.size();
+
+  ArrayInputStream input(source.buff().data(), size);
+  GzipInputStream gzin(&input);
+  CodedInputStream input_coded(&gzin);
+  input_coded.SetTotalBytesLimit(512*1024*1024, -1);
+  if (!dest->ParseFromCodedStream(&input_coded))
+    throw VisDQMError(0, "UncompressMessage","failed to uncompress message");
+}
+
 
 // ----------------------------------------------------------------------
 /** Classify and extract monitor element object properties from @a obj
@@ -903,7 +964,7 @@ extend(VisDQMIndex &ix,
        StringAtomTree &objnames,
        std::list<Filename> &oldfiles,
        std::list<Filename> &newfiles,
-       bool streamFile,
+       bool generic_stream_file,
        StringAtomTree & rootobjs)
 {
   // Produce monitor element permutation by their output ordering.
@@ -970,7 +1031,7 @@ extend(VisDQMIndex &ix,
 	MonitorElementInfo &info = minfo[minfoix[ix]];
 	if (kind == 1)
 	{
-	  if (! streamFile)
+	  if (! generic_stream_file)
 	  {
 	    // Serialise and write out the ROOT objects, if any.  Note
 	    // that this step is done first, and fills in the statistics
@@ -1034,7 +1095,7 @@ extend(VisDQMIndex &ix,
 	  // the size of the strings already includes the null at the
 	  // end.
 
-	  if (streamFile)
+	  if (generic_stream_file)
 	  {
 	    datalen = datalen ? datalen-1 : datalen;
 	    qreplen = qreplen ? qreplen-1 : qreplen;
@@ -1047,8 +1108,8 @@ extend(VisDQMIndex &ix,
 		<< datalen << " data + " << qreplen
 		<< " qreports bytes\n");
 	  wrhead.allocate(info.nameidx,
-			  roundup(sizeof(VisDQMIndex::Summary) + datalen + qreplen,
-				  sizeof(uint64_t)),
+			  myroundup(sizeof(VisDQMIndex::Summary) + datalen + qreplen,
+                                    sizeof(uint64_t)),
 			  &wstart, &wend);
 	  VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) wstart;
 	  s->properties = info.flags;
@@ -1249,6 +1310,131 @@ readFileStream(FileInfo &fi,
   } // Finish reading a single file.
 }
 
+/** Read a file streamed out of the index. */
+static void
+readFileStreamProtocolBuffer(FileInfo &fi,
+                             std::string &streamerinfo,
+                             size_t &numObjs,
+                             uint64_t &numEvents,
+                             uint64_t &numLumiSections,
+                             uint64_t &processedTime,
+                             uint64_t &runStartTime,
+                             std::vector<MonitorElementInfo> &minfo,
+                             StringAtomTree &rootobjs)
+{
+  // Now scan the file.
+  SampleInfo &si = *fi.sample;
+  dqmgui::StreamSample sample;
+  std::string dummy;
+  VisDQMIndex::Sample sr;
+
+  // Read in the file.
+  int filedescriptor = open(fi.path.name(), O_RDONLY);
+  FileInputStream fin(filedescriptor);
+  GzipInputStream input(&fin);
+  CodedInputStream input_coded(&input);
+  input_coded.SetTotalBytesLimit(1024*1024*1024, -1);
+  if (!sample.ParseFromCodedStream(&input_coded))
+    throw VisDQMError(0, fi.path.name(),
+		      StringFormat("failed to read file #%1")
+		      .arg(fi.path.name()));
+  const dqmgui::StreamSample::GenericCompressed& header_c = sample.header_c();
+  dqmgui::StreamSample::Header* header =
+      new dqmgui::StreamSample::Header();
+  UncompressMessage(header_c, header) ;
+
+  sr.runNumber = header->runnumber();
+  ASSERT(sr.runNumber == si.runnr);
+  numObjs = sr.numObjects = header->numobjects();
+  numEvents = header->numevents();
+  numLumiSections = header->numlumisections();
+  runStartTime = header->runstarttime();
+  processedTime = header->processedtime();
+  streamerinfo = header->streamerinfo();
+  delete header;
+
+  MonitorElementInfo cur;
+  minfo.reserve(sr.numObjects);
+  size_t datalen = 0;
+  size_t qreplen = 0;
+  std::string data, qt;
+  for (int i = 0; i < sample.me_size(); i++) {
+    const dqmgui::StreamSample::MonitorElement& me = sample.me(i);
+    cur.data.clear();
+    cur.qreports.clear();
+    cur.name = me.name();
+    cur.category = me.category();
+    cur.lumibegin = me.lumibegin();
+    cur.flags = me.properties();
+    datalen = me.datalength();
+    qreplen = me.qtestlength();
+    cur.ndata = me.objectlength();
+    cur.tag = me.tag();
+    cur.lumiend = cur.lumibegin;
+    cur.nentries = me.entries();
+    ASSERT(me.info_size() == 3);
+    for (int k = 0; k < me.info_size(); ++k) {
+      const dqmgui::StreamSample::MonitorElementInfo& me_info = me.info(k);
+      cur.nbins[k] = me_info.nbins();
+      cur.mean[k] = me_info.mean();
+      cur.rms[k] = me_info.rms() ;
+      cur.bounds[k][0] = me_info.bound_min();
+      cur.bounds[k][1] = me_info.bound_max();
+    }
+    if (datalen)
+    {
+      cur.data = me.data();
+      ASSERT(cur.data.size() == datalen);
+    }
+    if (qreplen)
+    {
+      cur.qreports = me.qt();
+      ASSERT(cur.qreports.size() == qreplen);
+    }
+    minfo.push_back(cur);
+  } // end of loop over ME Summary part
+
+  // Now extract the real ROOT object(s), put them in a dedicated
+  // StringAtomTree and fill in the streamidx field of the appropriate
+  // monitorElementInfo. We deeply rely on the fact that the order in
+  // which we stream ROOT hexlified buffers is the same in which we
+  // streamed the VisDQMSummary part. This is guaranteed by the
+  // strictly increasing ordering used while populating the index in
+  // the first place.
+
+  std::vector<MonitorElementInfo>::iterator mi = minfo.begin();
+  std::vector<MonitorElementInfo>::iterator me = minfo.end();
+  dqmgui::StreamSample::MERoot* me_root =
+      new dqmgui::StreamSample::MERoot();
+  for (int j = 0; mi != me; ++mi)
+  {
+    switch (mi->flags & DQMNet::DQM_PROP_TYPE_MASK)
+    {
+    case MonitorElement::DQM_KIND_INT:
+    case MonitorElement::DQM_KIND_REAL:
+    case MonitorElement::DQM_KIND_STRING:
+      break;
+    case MonitorElement::DQM_KIND_TH1F:
+    case MonitorElement::DQM_KIND_TH1S:
+    case MonitorElement::DQM_KIND_TH1D:
+    case MonitorElement::DQM_KIND_TH2F:
+    case MonitorElement::DQM_KIND_TH2S:
+    case MonitorElement::DQM_KIND_TH2D:
+    case MonitorElement::DQM_KIND_TH3F:
+    case MonitorElement::DQM_KIND_TPROFILE:
+    case MonitorElement::DQM_KIND_TPROFILE2D:
+      me_root->Clear();
+      const dqmgui::StreamSample::GenericCompressed& me_root_c = sample.me_root_c(j);
+      UncompressMessage(me_root_c, me_root);
+      mi->streamidx = StringAtom(&rootobjs, me_root->rawdata()).index();
+      ++j;
+    }
+    mi->nameidx = IndexKey(0, 0);
+  } // Finish reading a single file.
+  delete me_root;
+  google::protobuf::ShutdownProtobufLibrary();
+}
+
 /** Add files to a DQM GUI index. */
 static int
 addFiles(const Filename &indexdir, std::list<FileInfo> &files)
@@ -1284,6 +1470,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
     std::list<Filename> newfiles;
     std::list<Filename> oldfiles;
     bool streamFile = isStreamFile(fi.path.name());
+    bool streampbFile = isStreamPBFile(fi.path.name());
     DEBUG(1, "importing " << fi.path.name()
 	  << ": sample [#" << si.index
 	  << ", type '"
@@ -1310,7 +1497,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       uint64_t 	numLumiSections = 0;
       uint64_t 	runStartTime = 0;
       uint64_t 	processedTime = 0;
-      if (!streamFile)
+      if (!streamFile && !streampbFile)
       {
 	store.open(fi.fullpath.name());
 
@@ -1365,12 +1552,18 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 	numLumiSections = tasks[0].meta.numLumiSections;
 	processedTime = tasks[0].meta.processedTime;
 	runStartTime =  tasks[0].meta.runStartTime;
+      } else {
+        if (streamFile)
+          readFileStream(fi, streamerinfoFromStream, numObjs,
+                         numEvents, numLumiSections,
+                         processedTime, runStartTime,
+                         minfo, rootobjs);
+        if (streampbFile)
+          readFileStreamProtocolBuffer(fi, streamerinfoFromStream, numObjs,
+                                       numEvents, numLumiSections,
+                                       processedTime, runStartTime,
+                                       minfo, rootobjs);
       }
-      else
-	readFileStream(fi, streamerinfoFromStream, numObjs,
-		       numEvents, numLumiSections,
-		       processedTime, runStartTime,
-		       minfo, rootobjs);
 
       // Grab various strings tables from the master file.
       DEBUG(1, "reading string tables\n");
@@ -1477,7 +1670,8 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 	    s.sourceFileIdx = sapath.index();
 	    s.importVersion++;
 	    extend(ix, s, samples.size()-1, minfo,
-		   objnames, oldfiles, newfiles, streamFile, rootobjs);
+		   objnames, oldfiles, newfiles,
+                   streamFile|streampbFile, rootobjs);
 	    datafile[0] = s.files[0];
 	    datafile[1] = s.files[1];
 	  }
@@ -1529,7 +1723,8 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 	s.runStartTime = runStartTime;
 	s.processedTime = processedTime;
 	extend(ix, s, samples.size()-1, minfo,
-	       objnames, oldfiles, newfiles, streamFile, rootobjs);
+	       objnames, oldfiles, newfiles,
+               streamFile|streampbFile, rootobjs);
 	datafile[0] = s.files[0];
 	datafile[1] = s.files[1];
       }
@@ -2582,7 +2777,6 @@ streamout(const Filename &indexdir, size_t sampleid)
         IndexKey key;
         void *begin;
         void *end;
-        DQMNet::DataBlob rawdata;
 
         rdhead.get(&key, &begin, &end);
         if (key.sampleidx() == n)
@@ -2686,6 +2880,204 @@ streamout(const Filename &indexdir, size_t sampleid)
 }
 
 // ----------------------------------------------------------------------
+/** Stream a single sample from the DQM GUI Index into an intermediate
+    file that can be used to populate the index again. Avoid any
+    intersection with ROOT to go parallel. The output file name will
+    be identical to the input filename used to originally import the
+    sample, with the extension replaced by .pb.  */
+static int
+streamoutProtocolBuffer(const Filename &indexdir, size_t sampleid)
+{
+  VisDQMFile *master;
+  VisDQMIndex ix(indexdir);
+  std::list<VisDQMIndex::Sample> samples;
+  StringAtomTree pathnames(1000000);
+  StringAtomTree objnames(2500000);
+  StringAtomTree streamers(100);
+  DQMNet::QReports qreports;
+  dqmgui::StreamSample sample;
+  std::string fname;
+
+  // no way in dumping more than one sample at a time, for the moment.
+  ASSERT(sampleid != ALL_SAMPLES);
+
+  // Read the master catalogue. We need all the info anyway.
+  DEBUG(1, "starting index read\n");
+  ix.beginRead(master);
+  for (VisDQMFile::ReadHead rdhead(master, IndexKey(0, 0));
+       ! rdhead.isdone(); rdhead.next())
+  {
+    void *begin;
+    void *end;
+    IndexKey key;
+
+    rdhead.get(&key, &begin, &end);
+    if ((key.catalogIndex()) == VisDQMIndex::MASTER_SAMPLE_RECORD)
+      samples.push_back(*(const VisDQMIndex::Sample *)begin);
+    else
+      break;
+  }
+
+  readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+  readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+  readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+
+  // Now output the selected parts, walking over one sample at a time.
+  std::list<VisDQMIndex::Sample>::iterator si;
+  std::list<VisDQMIndex::Sample>::iterator se;
+
+  si = samples.begin();
+  se = samples.end();
+  for (size_t n = 0; si != se; ++si, ++n)
+  {
+    if (n != sampleid)
+      continue;
+    size_t delim;
+    delim = pathnames.key(si->sourceFileIdx).rfind("/");
+    if (delim != std::string::npos)
+      fname = pathnames.key(si->sourceFileIdx).substr(delim+1);
+    else
+      fname = pathnames.key(si->sourceFileIdx).substr(0, std::string::npos);
+    delim = fname.rfind(".");
+    // Change whatever file extension was used to register the file
+    // into .dat
+    if (delim != std::string::npos)
+      fname.replace(delim, fname.size()-delim, ".pb");
+
+    dqmgui::StreamSample::Header* header =
+        new dqmgui::StreamSample::Header();
+    header->set_runnumber(si->runNumber);
+    header->set_numobjects(si->numObjects);
+    header->set_numevents(si->numEvents);
+    header->set_numlumisections(si->numLumiSections);
+    header->set_runstarttime(si->runStartTime);
+    header->set_processedtime(si->processedTime);
+    header->set_streamerinfo(streamers.key(si->streamerInfoIdx));
+    dqmgui::StreamSample::GenericCompressed* header_c = sample.mutable_header_c();
+    CompressMessage(*header, DEFAULT_COMPRESSION, header_c);
+    delete header;
+    VisDQMFile * f = ix.open(VisDQMIndex::MASTER_FILE_INFO,
+                             si->files[VisDQMIndex::MASTER_FILE_INFO] >> 16,
+                             si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff,
+                             VisDQMFile::OPEN_READ);
+    VisDQMFile * ff = ix.open(VisDQMIndex::MASTER_FILE_DATA,
+                              si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16,
+                              si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff,
+                              VisDQMFile::OPEN_READ);
+    if (f)
+    {
+      IndexKey curr_sample(n, 0, 0, 0);
+      for (VisDQMFile::ReadHead rdhead(f, curr_sample);
+           ! rdhead.isdone(); rdhead.next())
+      {
+        IndexKey key;
+        void *begin;
+        void *end;
+
+        rdhead.get(&key, &begin, &end);
+        if (key.sampleidx() == n)
+        {
+          dqmgui::StreamSample::MonitorElement* me = sample.add_me();
+          VisDQMIndex::Summary *s = (VisDQMIndex::Summary *) begin;
+          const char *data = (s->dataLength ? (const char *) (s+1) : "");
+          const char *qdata
+            = (s->qtestLength ? ((const char *) (s+1) + s->dataLength) : "");
+
+          me->set_name(objnames.key(key.objnameidx()));
+          me->set_category(key.type());
+          me->set_lumibegin(key.lumiend());
+          me->set_properties(s->properties);
+          me->set_datalength(s->dataLength);
+          me->set_qtestlength(s->qtestLength);
+          me->set_objectlength(s->objectLength);
+          me->set_tag(s->tag);
+          me->set_entries(s->nentries);
+          for (int k = 0; k < 3; ++k) {
+            dqmgui::StreamSample::MonitorElementInfo* me_info = me->add_info();
+            me_info->set_nbins(s->nbins[k]);
+            me_info->set_mean(s->mean[k]);
+            me_info->set_rms(s->rms[k]);
+            me_info->set_bound_min(s->bounds[k][0]);
+            me_info->set_bound_max(s->bounds[k][1]);
+          }
+          if (s->dataLength)
+            me->set_data(data, s->dataLength);
+
+          if (s->qtestLength)
+            me->set_qt(qdata, s->qtestLength);
+        }
+        else
+          break;
+      }
+      delete f;
+    }
+    else
+    {
+      std::cout << "WARNING: data file ["
+                << (si->files[VisDQMIndex::MASTER_FILE_INFO] >> 16) << ':'
+                << (si->files[VisDQMIndex::MASTER_FILE_INFO] & 0xffff)
+                << " disappeared before it could be read\n";
+    }
+
+    if (ff)
+    {
+      dqmgui::StreamSample::MERoot* me_root =
+          new dqmgui::StreamSample::MERoot();
+      IndexKey curr_sample(n, 0, 0, 0);
+      for (VisDQMFile::ReadHead rddata(ff, curr_sample);
+           ! rddata.isdone(); rddata.next())
+      {
+        IndexKey key;
+        void *begin;
+        void *end;
+
+        rddata.get(&key, &begin, &end);
+        if (key.sampleidx() == n)
+        {
+          me_root->set_rawdata((const void*)begin,
+                               (((unsigned char *) end) -
+                                ((unsigned char *) begin)) * sizeof(char));
+          dqmgui::StreamSample::GenericCompressed* me_root_c = sample.add_me_root_c();
+          CompressMessage(*me_root, FAST_COMPRESSION, me_root_c);
+          me_root->Clear();
+	}
+	else
+	  break;
+      }
+      delete me_root;
+      delete ff;
+    }
+    else
+    {
+      std::cout << "WARNING: data file ["
+		<< (si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16) << ':'
+		<< (si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff)
+		<< " disappeared before it could be read\n";
+    }
+  }
+  // WRITE COMPRESSED SAMPLE
+  int filedescriptor = open(fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
+                            S_IREAD | S_IWRITE);
+  if (filedescriptor == -1)
+    throw VisDQMError(0, fname,
+                      StringFormat("failed to open file #%1")
+                      .arg(fname));
+  FileOutputStream file_stream(filedescriptor);
+  GzipOutputStream::Options options;
+  options.format = GzipOutputStream::GZIP;
+  options.compression_level = 6;
+  GzipOutputStream gzip_stream(&file_stream,
+                               options);
+  if (!sample.SerializeToZeroCopyStream(&gzip_stream))
+    throw VisDQMError(0, fname,
+                      StringFormat("failed to write file #%1")
+                      .arg(fname));
+
+  ix.finishRead();
+  return EXIT_SUCCESS;
+}
+
+// ----------------------------------------------------------------------
 /** Show a message on how to use this program. */
 static int
 showusage(void)
@@ -2697,7 +3089,8 @@ showusage(void)
 	    << app.name() << " [OPTIONS] remove --dataset DATASET-NAME --run RUNNR INDEX-DIRECTORY\n  "
 	    << app.name() << " [OPTIONS] merge INDEX-DIRECTORY [IMPORT-INDEX-DIRECTORY...]\n  "
 	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n  "
-	    << app.name() << " [OPTIONS] stream --sample SAMPLE-ID INDEX-DIRECTORY\n";
+	    << app.name() << " [OPTIONS] stream --sample SAMPLE-ID INDEX-DIRECTORY\n  "
+	    << app.name() << " [OPTIONS] streampb --sample SAMPLE-ID INDEX-DIRECTORY\n";
   return EXIT_FAILURE;
 }
 
@@ -2764,6 +3157,8 @@ int main(int argc, char **argv)
       ++arg, task = TASK_DUMP;
     else if (! strcmp(argv[arg], "stream"))
       ++arg, task = TASK_STREAM;
+    else if (! strcmp(argv[arg], "streampb"))
+      ++arg, task = TASK_STREAMPB;
     else
     {
       std::cerr << app.name() << ": unrecognised task parameter '"
@@ -2866,7 +3261,7 @@ int main(int argc, char **argv)
       else
 	break;
   }
-  else if (task == TASK_STREAM)
+  else if (task == TASK_STREAM || task == TASK_STREAMPB)
   {
     for ( ; arg < argc; ++arg)
     {
@@ -3122,7 +3517,7 @@ int main(int argc, char **argv)
       }
     }
   }
-  else if (task == TASK_STREAM)
+  else if (task == TASK_STREAM || task == TASK_STREAMPB)
   {
     if (! indexdir.exists())
     {
@@ -3157,6 +3552,8 @@ int main(int argc, char **argv)
       return dumpIndex(indexdir, dumpwhat, sampleid);
     else if (task == TASK_STREAM)
       return streamout(indexdir, sampleid);
+    else if (task == TASK_STREAMPB)
+      return streamoutProtocolBuffer(indexdir, sampleid);
     else
     {
       std::cerr << app.name() << ": internal error, unknown task\n";

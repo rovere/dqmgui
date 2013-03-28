@@ -67,6 +67,7 @@ function layoutimg(img, container, focus, onclick, ref, size, ob,
 		   + encodePathComponent(ob.name));
   var imgref = (! ob.name ? FULLROOTPATH + "/static/blank.gif?"
 		: FULLROOTPATH + "/plotfairy/" + nameref + "?");
+  var jsonref = FULLROOTPATH + "/jsonfairy/" + nameref + "?formatted=true";
   var param = "session=" + SESSION_ID
 	      + ";v=" + ob.version
 	      + (ob.xaxis.type != "def" ? ";xtype=" + ob.xaxis.type : "")
@@ -89,10 +90,14 @@ function layoutimg(img, container, focus, onclick, ref, size, ob,
 		: (focus && ob.name == focus ? _IMG_BORDER_SELECTED : _IMG_BORDER_NONE));
 
   if (! ob.name && img.src != url)
+  {
     img.src = url;
+    img.jsonsrc = jsonref;
+  }
   else if (img.src != url)
   {
     img.dqmsrc = url;
+    img.jsonsrc = jsonref;
     GUI.ImgLoader.load(n+"."+row+"."+col, img, url, border, _IMG_BORDER_NEW);
     if (img.src.replace(/\?.*/, "?") != imgref)
       img.src = ROOTPATH + "/static/blank.gif";
@@ -120,7 +125,8 @@ function layoutimg(img, container, focus, onclick, ref, size, ob,
 }
 
 // Layout one canvas item.
-function layout(type, container, item, obj, sz, ref, strip, focus, onclick, xstyle, n)
+function layout(type, container, item, obj, sz, ref, strip, focus,
+                showstats, showerrbars, onclick, xstyle, n)
 {
   var size = _SIZEMAP[sz];
   var title;
@@ -257,9 +263,13 @@ function layout(type, container, item, obj, sz, ref, strip, focus, onclick, xsty
 	      xargs += ';ktest='+refdef.ktest;
           }
 	}
-	xargs += ';showstats='+ref.showstats;
-	xargs += ';showerrbars='+ref.showerrbars;
       }
+
+      // Only attach to the plot non-default options
+      if (!showstats)
+        xargs += ';showstats=' + showstats;
+      if (showerrbars)
+        xargs += ';showerrbars=' + showerrbars;
 
       var showref = (overlay ? "overlay" : "object");
       if (! dostrip && xargs)
@@ -396,9 +406,11 @@ GUI.Plugin.DQMCanvas = new function()
   var _customlocal	= false;
   var _focus		= null;
   var _focusURL         = '';
+  var _jsonURL          = '';
 
   var _linkMe           = null;
   var _zoomWin          = null;
+  var _jsonWin          = null;
   var _zoomlocal        = false;
   var _rootPath         = null;
 
@@ -418,6 +430,19 @@ GUI.Plugin.DQMCanvas = new function()
   var _showzoom         = null;
   var _layoutroot	= null;
   var _click		= { event: null, timeout: null, timeClick: 0, timeDoubleClick: 0 };
+
+  var _jsonDataButton   = null;
+  var _jsonMode         = null;
+  var _jsonModeChanged  = false;
+
+  this.switchJsonMode = function() {
+	_jsonMode = _jsonDataButton.pressed;
+	_jsonModeChanged = true;
+	if(_jsonDataButton.pressed)
+          _gui.makeCall(_url() + "/setJsonmode?mode=yes")
+	else
+          _gui.makeCall(_url() + "/setJsonmode?mode=no")
+  }
 
   this.onresize = function()
   {
@@ -471,6 +496,7 @@ GUI.Plugin.DQMCanvas = new function()
     // Update customisation panel.
     if (hit.dqmsrc)
     {
+      var jsonUrl = hit.jsonsrc;
       var url   = hit.dqmsrc;
       var opts  = url.indexOf("drawopts=") >= 0 ? url.replace(/.*drawopts=([^;]*).*/, "$1") : "";
       var ref   = url.indexOf("withref=") >= 0  ? url.replace(/.*withref=([^;]*).*/, "$1")  : "";
@@ -556,6 +582,7 @@ GUI.Plugin.DQMCanvas = new function()
       _custompanel.setHeader("Customise" + titleabbrev);
       _custompanel.render();
       _focusURL = url;
+      _jsonURL = jsonUrl;
     }
     else
     {
@@ -584,6 +611,7 @@ GUI.Plugin.DQMCanvas = new function()
       _custompanel.setHeader("Customise");
       _custompanel.render();
       _focusURL = '';
+      _jsonURL = '';
     }
 
     _focus = hit.title || null;
@@ -644,6 +672,7 @@ GUI.Plugin.DQMCanvas = new function()
 					scope:    _self,
 					id: 'canvas-linkMe' });
 
+    var rootFileLink = _gui.Plugin.DQMHeaderRow.getROOTFileURL();
     var tb = new Ext.Toolbar({ id : 'canvas-submenu' });
     var store = new Ext.data.ArrayStore({ fields: ['label', 'abbr'],
 					  data : _SIZESARRAY });
@@ -674,6 +703,13 @@ GUI.Plugin.DQMCanvas = new function()
 	_gui.makeCall(_url() + "/setSize?sz=" + value);
       }
     });
+
+    _jsonDataButton = new Ext.Button({ text : 'JSON data',
+                                       toggleHandler : _self.switchJsonMode,
+                                       scope : _self,
+                                       id : 'canvas-jsonData',
+                                       enableToggle : true,
+                                       pressed : _jsonMode || false });
 
     tb.add({ text          : 'Size:' ,
 	     xtype         : 'tbtext' },
@@ -722,11 +758,33 @@ GUI.Plugin.DQMCanvas = new function()
 	     text          : '(Top)',
 	     xtype         : 'tbtext'
 	   }, '->',
+	   {
+	     /* The URL for the ROOT file is based on some heuristic
+	        guesses: as such it is not guaranteed to work in 100%
+	        of cases. That's why we serve this component as
+	        hidden by default. We will in case enable it if the
+	        result of an ad-hoc AJAX query against the server
+	        returns a valid status code. */
+	     xtype: 'box',
+	     id: 'canvas-downloadROOTfile',
+	     autoEl: {tag: 'a',
+		      href: rootFileLink,
+		      html: 'ROOT File'},
+	     hidden: true
+	   },
+	   _jsonDataButton,
 	   linkmeAction
 	  );
 
     tb.render('canvas-opts');
     tb.doLayout();
+    if (rootFileLink)
+      _urlExists(rootFileLink,
+		 function(status){
+		   if (status == 200)
+		     Ext.getCmp('canvas-downloadROOTfile').show();
+		 });
+
     Ext.getCmp('canvas-layouts').on('click', function(btn, event) {
       if (_layoutroot != "")
 	  _gui.makeCall(_url() + "/setRoot?n=" + encodeURIComponent(_layoutroot));
@@ -905,6 +963,11 @@ GUI.Plugin.DQMCanvas = new function()
       _zoomWin.destroy();
       _zoomWin = null;
     }
+    if (_jsonWin) {
+      _jsonWin.suspendEvents();
+      _jsonWin.destroy();
+      _jsonWin = null;
+    }
     if (_linkMe)
       if (_linkMe.isVisible())
 	_linkMe.hide();
@@ -971,6 +1034,12 @@ GUI.Plugin.DQMCanvas = new function()
     _size = data.size;
     _focus = null;
     _focusURL = '';
+    _jsonURL = '';
+
+    _jsonMode = data.zoom.jsonmode || false;
+    if (_jsonDataButton.pressed != data.zoom.jsonmode)
+      _jsonDataButton.toggle(data.zoom.jsonmode, true);
+
     if (_linkMe)
     {
       if (_linkMe.isVisible())
@@ -990,6 +1059,7 @@ GUI.Plugin.DQMCanvas = new function()
 	 ++n, item = item.nextSibling)
       item = layout("div", _canvas, item, _shown[n], _size,
 		    data.reference, data.strip, data.focus,
+                    data.showstats, data.showerrbars,
 		    this.focus, "", "div" + n);
 
     // Remove whatever is left of old contents.
@@ -1084,6 +1154,18 @@ GUI.Plugin.DQMCanvas = new function()
       img.src = src;
   };
 
+  this.updateJsonWin = function()
+  {
+    var src;
+    if (!_jsonURL || _jsonURL == '')
+      src = "";
+    else
+      src = _jsonURL;
+    // Prevent iframe from refreshing iframe...
+    if (Ext.get("jsonFrame").dom.src != src)
+      Ext.get("jsonFrame").dom.src = src;
+  };
+
   this.updateZoomPlot = function()
   {
     var title     = _focus ? _focus : '';
@@ -1092,6 +1174,9 @@ GUI.Plugin.DQMCanvas = new function()
     var winHeight = _zoomWin.getInnerHeight();
     current = current.replace(/;w=\d+/, ';w=' + winWidth);
     current = current.replace(/;h=\d+/, ';h=' + winHeight);
+    if ( (_jsonMode || _jsonMode == null)
+         && (Ext.get("jsonFrame") && Ext.get("jsonFrame").dom.src != _jsonURL) )
+      _self.updateJsonWin();
     _self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
     if (title != _zoomWin.title)
       _zoomWin.setTitle(title);
@@ -1101,20 +1186,69 @@ GUI.Plugin.DQMCanvas = new function()
   {
     /* Update zoom window position and size from server, if server owns state.
        We don't update contents of the window here, that is done via focus. */
-    if (! _zoomlocal)
+    var x = y = w = h = 0;
+    var jx = jy = jw = jh = 0;
+    /* If JSON mode did not change read stored dimentions */
+    if (!_jsonModeChanged)
     {
-      var winWidth  = data.w > 0 ? data.w : _zoomWin.getInnerWidth();
-      var winHeight = data.h > 0 ? data.h : _zoomWin.getInnerHeight();
-      if (data.x >= 0 && data.y >= 0)
-	_zoomWin.setPosition(data.x, data.y);
-      _zoomWin.setSize(winWidth+14, winHeight+32);
+      /* Take data from JSON if ALL dimentions are correct */
+      if (data.x >= 0 && data.y >= 0 && data.w >= 0 && data.h >= 0)
+      {
+        x = data.x;
+        y = data.y;
+        w = data.w + 14;
+        h = data.h + 32;
+      }
+      if (data.jx >= 0 && data.jy >= 0 && data.jw >= 0 && data.jh >= 0)
+      {
+        jx = data.jx;
+        jy = data.jy;
+        jw = data.jw + 14;
+        jh = data.jh + 32;
+      }
     }
+    var ww = (window.innerWidth || document.documentElement.clientWidth);
+    var wh = (window.innerHeight || document.documentElement.clientHeight);
+    /*If broken or not-set load default */
+    if(!x || !y || !h || !w)
+    {
+      /* Depending on json mode draw windows in proper places and sizes. */
+      if(data.jsonmode)
+      {
+        x = Math.round(0.05 * ww / 2);
+        y = Math.round(0.15 * wh);
+        w = Math.max(200, Math.round(0.45 * ww));
+      }
+      else
+      {
+        x = Math.round(ww / 8);
+        y = Math.round(0.15 * wh);
+        w = Math.max(200, Math.round(0.75 * ww));
+      }
+      h = Math.max(300, Math.round(0.75 * wh));
+    }
+    /*If broken or not-set load default */
+    if (data.jsonmode && (!jx || !jy || !jh || !jw))
+    {
+      jx = Math.round(1.05 * ww / 2);
+      jy = Math.round(0.15 * wh);
+      jw = Math.max(200, Math.round(0.45 * ww));
+      jh = Math.max(300, Math.round(0.75 * wh));
+    }
+    _zoomWin.setSize(w, h);
+    _zoomWin.setPosition(x, y);
+    _jsonWin.setPosition(jx, jy);
+    _jsonWin.setSize(jw, jh);
 
     /* Always hide or show according to server state, but without events that
        are normally triggered by direct user interaction. */
     _zoomWin.suspendEvents();
     _zoomWin.setVisible(data.show);
     _zoomWin.resumeEvents();
+    _jsonWin.suspendEvents();
+    _jsonWin.setVisible(data.show && data.jsonmode);
+    _jsonWin.resumeEvents();
+    _jsonModeChanged = false;
   };
 
   this.zoomResize = function(panel, w, h)
@@ -1161,8 +1295,8 @@ GUI.Plugin.DQMCanvas = new function()
   {
     var ww = (window.innerWidth || document.documentElement.clientWidth);
     var wh = (window.innerHeight || document.documentElement.clientHeight);
-    var w = Math.max(200, 0.75 * ww);
-    var h = Math.max(300, 0.75 * wh);
+    var w = Math.max(200, Math.round(0.75 * ww));
+    var h = Math.max(300, Math.round(0.75 * wh));
     _zoomWin = null;
     _zoomWin = new Ext.Window(
       { modal       : false,
@@ -1196,6 +1330,32 @@ GUI.Plugin.DQMCanvas = new function()
     _zoomWin.dd = new Ext.Panel.DD(_zoomWin, {
       insertProxy: false, onDrag: _self.zoomDrag,
       endDrag : function(e) { this.panel.setPosition(this.x, this.y); }});
+
+    _jsonWin = new Ext.Window({ layout : "fit",
+                                modal : false,
+                                id : 'jsonWin',
+                                title : 'json',
+                                height : h,
+                                width : w,
+                                resizable : true,
+                                shadow : false,
+                                closeAction : 'hide',
+                                style : {position : 'fixed'},
+                                html: '<iframe width="100%" height="100%" id="jsonFrame" src="" />',
+                                tools : [{ id : 'close',
+                                           qtip : 'close',
+                                           scope : _self,
+                                            handler : function(event, toolEl, panel, tc) { _jsonWin.setVisible(false);
+                                                        _jsonDataButton.toggle();
+                                                        _self.switchJsonMode(); }}]});
+    _jsonWin.on('bodyresize', function(el, w, h) {
+                  if(w < 0 || h < 0) return;
+                  _gui.asyncCall(_url() + "/setJsonZoom?w=" + w + ';h=' +h);});
+    _jsonWin.on('move',  function(el, x, y) {
+                  if(x < 0 || y < 0) return;
+                  _gui.asyncCall(_url() + "/setJsonZoom?x=" + x + ';y=' +y);})
+    _jsonWin.show(this);
+    _jsonWin.setVisible(false);
   };
 
   /** Expose private variables needed to assemble the link-me hyperlink.
