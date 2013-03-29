@@ -1608,7 +1608,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
       // the ROOT objects.
 
       size_t sastreamerIndex = 0;
-      if (!streamFile)
+      if (!streamFile && !streampbFile)
       {
 	StringAtom sastreamer(&streamers, streamerinfoFromRoot);
 	sastreamerIndex = sastreamer.index();
