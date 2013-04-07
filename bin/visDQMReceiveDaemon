@@ -20,7 +20,9 @@ RXDATASET = re.compile(r"^(/[-A-Za-z0-9_]+){3}$")
 
 # Regexp for valid RelVal dataset names.
 RXRELVALMC = re.compile(r"^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$")
+RXRELVALRUNDEPMC = re.compile(r"^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*rundepMC.*$")
 RXRELVALDATA = re.compile(r"^/[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$")
+RXRUNDEPMC = re.compile(r"^/(?!RelVal)[^/]+/.*rundepMC.*$")
 
 # Regexp for online DQM files.
 RXONLINE = re.compile(r"^(?:.*/)?DQM_V(\d+)(_[A-Za-z0-9]+)?_R(\d+)\.root$")
@@ -85,6 +87,8 @@ def classifyDQMFile(path, origin):
       dataset = m.group(3).replace("__", "/")
       relvalmc = re.match(RXRELVALMC, dataset)
       relvaldata = re.match(RXRELVALDATA, dataset)
+      relvalrundepmc = re.match(RXRELVALRUNDEPMC, dataset)
+      rundepmc = re.match(RXRUNDEPMC, dataset)
       runnr = int(m.group(2))
       if version != 1:
        warnPath(origin, path, "file version is not 1")
@@ -92,6 +96,19 @@ def classifyDQMFile(path, origin):
       if runnr < 1:
 	warnPath(origin, path, "file matches offline naming, but run number is < 1")
 	return None
+      elif rundepmc:
+        if runnr == 1:
+          warnPath(origin, path, "file matches Run Dependent MonteCarlo naming, but run number is 1")
+          return None
+        return  { 'class': 'simulated_rundep', 'version': version,
+                  'runnr': runnr, 'dataset': dataset }
+      elif relvalrundepmc:
+        if runnr == 1:
+          warnPath(origin, path, "file matches Run Dependent MonteCarlo naming, but run number is 1")
+          return None
+        return  { 'class': 'relval_rundepmc', 'version': version,
+                  'runnr': runnr, 'dataset': dataset,
+                  'release': relvalrundepmc.group(1)}
       elif relvalmc:
 	if runnr != 1:
 	  warnPath(origin, path, "file matches relval mc naming, but run number != 1")
@@ -311,6 +328,8 @@ def finaliseOneFile(info):
     assert re.match(RXDATASET, info['dataset'])
     assert not re.match(RXRELVALMC, info['dataset'])
     assert not re.match(RXRELVALDATA, info['dataset'])
+    assert not re.match(RXRELVALRUNDEPMC, info['dataset'])
+    assert not re.match(RXRUNDEPMC, info['dataset'])
     assert info['runnr'] > 1
     if checkDataset(info):
       info['filepat'] = ("OfflineData/%s/%s/%07dxx/DQM_V%%04d_R%09d%s.root"
@@ -327,6 +346,8 @@ def finaliseOneFile(info):
     assert 'release' in info
     assert re.match(RXDATASET, info['dataset'])
     assert not re.match(RXRELVALMC, info['dataset'])
+    assert not re.match(RXRELVALRUNDEPMC, info['dataset'])
+    assert not re.match(RXRUNDEPMC, info['dataset'])
     assert re.match(RXRELVALDATA, info['dataset'])
     assert info['runnr'] > 1
     assert info['release'].startswith("CMSSW")
@@ -357,6 +378,23 @@ def finaliseOneFile(info):
       assignUniqueVersion(info)
       ok = True
 
+  elif info['class'] == 'relval_rundepmc':
+    assert 'dataset' in info
+    assert 'release' in info
+    assert re.match(RXDATASET, info['dataset'])
+    assert re.match(RXRELVALRUNDEPMC, info['dataset'])
+    assert info['runnr'] > 1
+    assert info['release'].startswith("CMSSW")
+    if checkDataset(info):
+      info['filepat'] = ("RelVal/%s_x/DQM_V%%04d_R%09d%s.root"
+	                 % ("_".join(info['release'].split("_")[0:3]),
+		            info['runnr'], info['dataset'].replace("/", "__")))
+      info['zippat'] = ("RelVal/%s_x_x/DQM_RelVal_%s_S%%04d.zip"
+	                % ("_".join(info['release'].split("_")[0:2]),
+	                   info['release']))
+      assignUniqueVersion(info)
+      ok = True
+
   elif info['class'] == 'simulated':
     assert 'dataset' in info
     assert re.match(RXDATASET, info['dataset'])
@@ -369,6 +407,23 @@ def finaliseOneFile(info):
 	                 % (info['era'], info['runnr'],
 			    info['dataset'].replace("/", "__")))
       info['zippat'] = ("MonteCarlo/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
+	                % (info['era'], info['era'], info['primds'], filedate))
+      assignUniqueVersion(info)
+      ok = True
+
+  elif info['class'] == 'simulated_rundep':
+    assert 'dataset' in info
+    assert re.match(RXDATASET, info['dataset'])
+    assert not re.match(RXRELVALMC, info['dataset'])
+    assert not re.match(RXRELVALRUNDEPMC, info['dataset'])
+    assert not re.match(RXRELVALDATA, info['dataset'])
+    assert info['runnr'] > 1
+    if checkDataset(info):
+      filedate = time.strftime("%Y%m", time.gmtime(info['time']))
+      info['filepat'] = ("MonteCarlo_RunDep/%s/DQM_V%%04d_R%09d%s.root"
+	                 % (info['era'], info['runnr'],
+			    info['dataset'].replace("/", "__")))
+      info['zippat'] = ("MonteCarlo_RunDep/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
 	                % (info['era'], info['era'], info['primds'], filedate))
       assignUniqueVersion(info)
       ok = True

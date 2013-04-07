@@ -88,7 +88,9 @@ enum DataType
   TYPE_OTHER,		 //< Type not recognised or not determined.
   TYPE_DATA,		 //< DQM data for real detector data.
   TYPE_RELVAL,		 //< DQM data for release validation simulated data.
-  TYPE_MC		 //< DQM data for other simulated data.
+  TYPE_RELVAL_RUNDEPMC,  //< DQM data for release validation RunDependent simulated data.
+  TYPE_MC,		 //< DQM data for other simulated data.
+  TYPE_RUNDEPMC	 //< DQM data for Run Dependent simulated data.
 };
 
 enum CompressionFactor
@@ -234,6 +236,16 @@ Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.(dat|pb|
 /// The first capture is the CMSSW release string.
 Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*$");
 
+/// Regular expression to recognise Run Dependent Monte Carlo samples
+/// that are not RelVal.  The first capture is the CMSSW release
+/// string.
+Regexp rxrundepmc("^/(?!RelVal)[^/]+/.*rundepMC.*$");
+
+/// Regular expression to recognise release validation Run Dependent
+/// Monte Carlo samples.  The first capture is the CMSSW release
+/// string.
+Regexp rxrelvalrundepmc("^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*rundepMC.*$");
+
 static const std::string MEINFOBOUNDARY("____MEINFOBOUNDARY____");
 static const std::string MEROOTBOUNDARY("____MEROOTBOUNDARY____");
 static const size_t ALL_SAMPLES = ~(size_t)0;
@@ -371,6 +383,10 @@ classifyMonitorElement(DQMStore & /* store */,
       return ME_CLASS_BAD;
 
     if ((si.type == TYPE_RELVAL || si.type == TYPE_MC) && runnr != 1)
+      return ME_CLASS_BAD;
+
+    if ((si.type == TYPE_RELVAL_RUNDEPMC || si.type == TYPE_RUNDEPMC)
+        && runnr == 1)
       return ME_CLASS_BAD;
 
     std::string category(name, sys+1, cat-sys-1);
@@ -683,8 +699,17 @@ fileInfoFromName(FileInfo &fi, SampleInfo &si)
     ASSERT(si.runnr >= 0);
     if (si.runnr > 1)
     {
-      si.type = TYPE_DATA;
-      return true;
+      if (rxrelvalrundepmc.match(si.dataset, 0, 0, &m)) {
+        si.type = TYPE_RELVAL_RUNDEPMC;
+        si.version = m.matchString(si.dataset, 1);
+        return true;
+      } else if (rxrundepmc.match(si.dataset, 0, 0, &m)) {
+        si.type = TYPE_RUNDEPMC;
+        return true;
+      } else {
+        si.type = TYPE_DATA;
+        return true;
+      }
     }
     else if (rxrelval.match(si.dataset, 0, 0, &m))
     {
@@ -716,6 +741,7 @@ fileInfoFromName(FileInfo &fi, SampleInfo &si)
 static bool
 verifyFileInfo(const FileInfo &fi)
 {
+  RegexpMatch m;
   // Check we have correctly assigned a sample to the file name.
   if (fi.path.empty())
   {
@@ -786,14 +812,15 @@ verifyFileInfo(const FileInfo &fi)
     return true;
 
   case TYPE_RELVAL:
+  case TYPE_RELVAL_RUNDEPMC:
     // Check that data classified as a relval matched expected
     // conventions: offline with a dataset, cmssw version name was
     // found, and dataset name matches relval convention.
-    if (si.runnr != 1)
+    if (si.runnr != 1 && !rxrelvalrundepmc.match(si.dataset, 0, 0, &m))
     {
       std::cerr << fi.path.name()
 		<< ": file type is 'relval' but run number is non-zero ("
-		<< si.runnr << ")\n";
+		<< si.runnr << ") and sample is not a valid Run Dependent MC.\n";
       return false;
     }
 
@@ -830,6 +857,42 @@ verifyFileInfo(const FileInfo &fi)
       std::cerr << fi.path.name()
 		<< ": file type is 'mc' but run number is non-zero ("
 		<< si.runnr << ")\n";
+      return false;
+    }
+
+    if (! si.version.empty())
+    {
+      std::cerr << fi.path.name()
+		<< ": file type is 'mc' but it has non-empty version '"
+		<< si.version << "' (only relval can have a version)\n";
+      return false;
+    }
+
+    if (online || ! offline)
+    {
+      std::cerr << fi.path.name()
+		<< ": file type is 'mc' but file name does not match"
+		<< " expected convention\n";
+      return false;
+    }
+
+    if (offline && si.dataset.compare(0, 7, "/RelVal") == 0)
+    {
+      std::cerr << fi.path.name()
+		<< ": file type is 'mc' but file name is relval\n";
+      return false;
+    }
+
+    return true;
+
+  case TYPE_RUNDEPMC:
+    // Check that data classified as Run Dependent simulation data
+    // matched expected conventions: offline with a dataset name, and
+    // it wasn't relval and has runnumber > 1.
+    if (si.runnr == 1)
+    {
+      std::cerr << fi.path.name()
+		<< ": file type is 'rundep_mc' but run number is 1\n";
       return false;
     }
 
@@ -1475,7 +1538,9 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 	  << ", type '"
 	  << (si.type == TYPE_DATA ? "data"
 	      : si.type == TYPE_RELVAL ? "relval"
-	      : si.type == TYPE_MC ? "mc" : "other")
+	      : si.type == TYPE_MC ? "mc"
+              : si.type == TYPE_RELVAL_RUNDEPMC ? "relval_rundepmc"
+              : si.type == TYPE_RUNDEPMC ? "rundep mc" : "other")
 	  << "', runnr " << si.runnr
 	  << ", version '" << si.version
 	  << "', dataset '" << si.dataset

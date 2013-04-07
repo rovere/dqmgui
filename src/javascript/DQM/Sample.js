@@ -574,7 +574,7 @@ GUI.Plugin.DQMSample = new function() {
     return content;
   };
 
-  this.expand = function(el,type,key, by)
+  this.expand = function(el, type, key, by)
   {
     var cur = _data.current;
 
@@ -628,7 +628,7 @@ GUI.Plugin.DQMSample = new function() {
     var selver = (selds && cur.version == s.version);
     result += _(template,
                 { type: s.type, run: s.run, dsname: s.dataset,
-                  val: (s.type.match(/.*relval.*/) ? s.version.replace(/^CMSSW_/, "") : s.run),
+                  val: (s.type.match(/.*relval.*/) ? s.version.replace(/^CMSSW_/, "")+"("+s.run+")" : s.run),
                   style: (selrun ? _selemstyle : ""),
                   importversion: s.importversion});
     return result;
@@ -659,7 +659,8 @@ GUI.Plugin.DQMSample = new function() {
             + "</a></div>"));
 
     var opts = { type: s.type, run: s.run, dsname: s.dataset,
-                 val: (type.indexOf("offline_") >= 0 ? _sanitise(s.dataset) : s.run),
+                 val: (type.indexOf("offline_data") >= 0 ? _sanitise(s.dataset) : (
+                     type.indexOf("offline_relval") >= 0 ? _sanitise(s.dataset)+"("+s.run+")" : s.run)),
                  importversion: s.importversion,
                  begin: (selds ? _selem : ""),
                  end: (selds ? "</em>" : "") };

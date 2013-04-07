@@ -39,7 +39,8 @@ def logme(msg, *args):
 def orderFiles(a, b):
   diff = 0
   classOrder = ['online_data', 'offline_data', 'simulated',
-                'relval_data', 'relval_mc']
+                'relval_data', 'relval_mc', 'relval_rundepmc',
+                'simulated_rundep']
   if a['infofile'].endswith('.pb.dqminfo'):
     if b['infofile'].endswith('.pb.dqminfo'):
       diff = 0
