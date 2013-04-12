@@ -735,6 +735,9 @@ class DQMWorkspace:
     if "Play" not in (w.name for w in self.gui.workspaces):
       self.gui.workspaces.append(DQMPlayWorkspace(self.gui))
 
+    if "ComparisonSample" not in (w.name for w in self.gui.workspaces):
+      self.gui.workspaces.append(DQMComparisonSampleWorkspace(self.gui))
+
   # Initialise a new session.
   def initialiseSession(self, session):
     for (var, value) in self.sessiondef.iteritems():
@@ -1463,3 +1466,13 @@ class DQMPlayWorkspace(Accelerator.DQMPlayWorkspace, DQMWorkspace):
       return self._state(session)
     else:
       return "Ta."
+# --------------------------------------------------------------------
+class DQMComparisonSampleWorkspace(Accelerator.DQMComparisonSampleWorkspace, DQMWorkspace):
+  def __init__(self, gui, rank = -1, category = "Internal", name = "ComparisonSample"):
+    Accelerator.DQMComparisonSampleWorkspace.__init__(self, gui, name)
+    DQMWorkspace.__init__(self, gui, rank, category, name)
+
+  # Return JSON object for the current session state.
+  def sessionState(self, session, *args, **kwargs):
+    return self._state(session)
+

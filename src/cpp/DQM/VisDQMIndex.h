@@ -175,9 +175,11 @@ public:
   static const uint64_t MASTER_CMSSW_VERSION   	   = ((uint64_t) 3) << 32;
   static const uint64_t MASTER_OBJECT_NAME     	   = ((uint64_t) 4) << 32;
   static const uint64_t MASTER_TSTREAMERINFO   	   = ((uint64_t) 5) << 32;
+  static const uint64_t MASTER_COMP_SAMPLE_RECORD  = ((uint64_t) 6) << 32;
 
   static const uint16_t MASTER_FILE_INFO           = 0;
   static const uint16_t MASTER_FILE_DATA           = 1;
+  static const uint16_t MASTER_FILE_INFO_CMP       = 2;
 
   static const uint32_t SUMMARY_PROP_TYPE_MASK 	   = 0x000000ff;
   static const uint32_t SUMMARY_PROP_TYPE_SCALAR   = 0x0000000f;
@@ -316,6 +318,56 @@ public:
     /** Minimum and maximum bounds for X, Y and Z axes. */
     double		bounds[3][2];
   };
+
+  // ------------------------------------------------------------
+  /** Information about one Comparison sample. */
+  struct ComparisonSample
+  {
+    /** The unix time stamp of the first import to the DQM index. */
+    uint64_t		firstImportTime;
+
+    /** The unix time stamp of the most recent import to the DQM index. */
+    uint64_t		lastImportTime;
+
+    /** The number of times the specific comparison sample has been
+        regenerated. */
+    uint32_t		version;
+
+    /** The file index of the summary of the comparison. The upper 16
+	bits identify the file index and the lower 16 the version of
+	that file. */
+    uint32_t		file;
+
+    /** The index in the MASTER_SAMPLE_RECORD table of the samples
+        that have been used to produce the current
+        ComparisonSample. The indices are always stored in sorted
+        order, lower to higher, to speed-up look-up procedures. */
+    uint32_t            sample_id[2];
+
+    /** The samples' kind of sample, used to distinguish between all
+        possible comparison use cases, data-data, relval-relval,
+        etc...*/
+    uint32_t            type[2];
+  };
+
+  // ------------------------------------------------------------
+  /** Information about one monitor element in a sample. */
+  struct ComparisonSummary
+  {
+    /** Store results for up to 10 different possible comparisons. The
+        index in the results vector is driveb by the KINDOFTEST
+        enum. */
+    double results[10];
+  };
+
+  /** Classification of all the possible kind of comparison we can perform. */
+  enum KindOfComparison
+  {
+    COMP_KOLMOGOROV, //< Kolmogorov-Smirnov test
+    COMP_CHI2,       //< Chi-2 compatibility test
+    COMP_BIN2BIN     //< Bin-to-Bin comparison test
+  };
+
 
   // ------------------------------------------------------------
   VisDQMIndex(const lat::Filename &path, VisDQMCache *cache = 0);

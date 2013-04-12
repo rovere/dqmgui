@@ -205,6 +205,8 @@ VisDQMIndex::size(uint16_t kind, uint16_t index, uint16_t version)
     sprintf(buf, "info/%03d/%05d-%05d.dqm", index / 1000, index, version);
   else if (kind == MASTER_FILE_DATA)
     sprintf(buf, "data/%03d/%05d-%05d.dqm", index / 1000, index, version);
+  else if (kind == MASTER_FILE_INFO_CMP)
+    sprintf(buf, "cinfo/%03d/%05d-%05d.dqm", index / 1000, index, version);
   else
     throw VisDQMError(0, path_.name(),
 		      StringFormat("request to open unrecognised file"
@@ -248,6 +250,8 @@ VisDQMIndex::open(uint16_t kind,
     sprintf(buf, "info/%03d/%05d-%05d.dqm", index / 1000, index, version);
   else if (kind == MASTER_FILE_DATA)
     sprintf(buf, "data/%03d/%05d-%05d.dqm", index / 1000, index, version);
+  else if (kind == MASTER_FILE_INFO_CMP)
+    sprintf(buf, "cinfo/%03d/%05d-%05d.dqm", index / 1000, index, version);
   else
     throw VisDQMError(0, path_.name(),
 		      StringFormat("request to open unrecognised file"

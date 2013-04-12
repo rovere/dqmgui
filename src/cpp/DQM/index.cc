@@ -63,7 +63,8 @@ enum TaskType
   TASK_DUMP,		 //< Dump the index contents.
   TASK_STREAM,		 //< Stream a sample from the index into an intermediate .dat file.
   TASK_STREAMPB,         //< Stream a sample from the index into an intermediate ProtocolBuffer .pb file.
-  TASK_FIXSTREAMERS      //< Add missing streamerinfo to oldest ones.
+  TASK_FIXSTREAMERS,     //< Add missing streamerinfo to oldest ones.
+  TASK_COMPARE           //< Statistically compare two samples from the index.
 };
 
 /** Things user can choose to dump out. */
@@ -318,7 +319,6 @@ void UncompressMessage(const CompressedMessage& source, Message* dest) {
   if (!dest->ParseFromCodedStream(&input_coded))
     throw VisDQMError(0, "UncompressMessage","failed to uncompress message");
 }
-
 
 // ----------------------------------------------------------------------
 /** Classify and extract monitor element object properties from @a obj
@@ -602,6 +602,141 @@ classifyMonitorElementRange(void *arg)
 
   return 0;
 }
+
+struct MonitorElementComparisonInfo
+{
+  IndexKey     key;
+  double       results[10];
+};
+
+// ----------------------------------------------------------------------
+/** Doc to be written */
+static void
+compareMonitorElement(std::map<IndexKey, size_t> &store,
+                      StringAtomTree &root_objects,
+                      std::vector<MonitorElementComparisonInfo> &cinfo,
+                      bool same_sample_comparison,
+                      size_t max_sample)
+//                       const size_t mod_element,
+//                       const size_t num_tasks)
+{
+  int j = 1;
+  std::map<IndexKey, size_t>::iterator ki = store.begin();
+  for (; ki != store.end(); ++ki, ++j) {
+//     if ((j % num_tasks) != mod_element)
+//       continue;
+//     DEBUG(2, "Assigning task " << j%num_tasks
+//           << " to thread " << mod_element
+//           << " for key " << std::hex << ki->first << std::dec << "\n");
+    IndexKey f(ki->first);
+    if (f.sampleidx() == max_sample
+        && (!same_sample_comparison))
+      break;
+
+    IndexKey s(max_sample,
+               f.type(),
+               f.lumiend(),
+               f.objnameidx());
+    if (store.find(s) != store.end()) {
+      cinfo.push_back(MonitorElementComparisonInfo());
+      MonitorElementComparisonInfo &meci = cinfo.back();
+      meci.key = IndexKey(0, f.type(), f.lumiend(), f.objnameidx());
+      for (int j = 0; j < 10; ++j)
+        meci.results[j] = -1.;
+      TBufferFile buf(TBufferFile::kRead,
+                      root_objects.key(store[f]).size(),
+                      (void*)&(root_objects.key(store[f])[0]),
+                      kFALSE);
+      buf.Reset();
+      TObject *obj = extractNextObject(buf);
+      TBufferFile buf1(TBufferFile::kRead,
+                       root_objects.key(store[s]).size(),
+                       (void*)&(root_objects.key(store[s])[0]),
+                       kFALSE);
+      buf1.Reset();
+      TObject *obj1 = extractNextObject(buf1);
+      TH1 *h;
+      TH1 *h1;
+      if (obj && obj1) {
+        if ((h = dynamic_cast<TH1 *>(obj)) &&
+            (h1 = dynamic_cast<TH1 *>(obj1)) &&
+            (h->GetEntries() >0) &&
+            (h1->GetEntries() > 0) &&
+            (h->Integral() >0) &&
+            (h1->Integral() > 0) &&
+            (h->GetXaxis()->GetNbins() == h1->GetXaxis()->GetNbins())) {
+          meci.results[VisDQMIndex::COMP_KOLMOGOROV] = h->KolmogorovTest(h1);
+          meci.results[VisDQMIndex::COMP_CHI2] = h->Chi2Test(h1);
+        }
+        if ((h = dynamic_cast<TH1 *>(obj)) &&
+            (h1 = dynamic_cast<TH1 *>(obj1)) &&
+            checkConsistency(h, h1)) {
+          size_t nbinsx = h->GetNbinsX();
+          size_t nbinsy = h->GetNbinsY();
+          size_t nbinsz = h->GetNbinsZ();
+          size_t nbins = ((nbinsx + 1)
+                          *(nbinsy > 1 ? nbinsy + 1 : nbinsy)
+                          *(nbinsz > 1 ? nbinsz + 1 : nbinsz));
+          uint64_t n_ok_bins = 0;
+          for (size_t i = 0; i < nbins; ++i) {
+            double hbin = h->GetBinContent(i);
+            double h1bin = h1->GetBinContent(i);
+            double bindiff = hbin - h1bin;
+            if (abs(bindiff) < 0.000001)
+              n_ok_bins += 1;
+          }
+          meci.results[VisDQMIndex::COMP_BIN2BIN] = (double)n_ok_bins/(double)nbins;
+        } else {
+          DEBUG(1, "No Bin2Bin comparison\n");
+        }
+        DEBUG(2, "Computed comparison "
+              << meci.results[VisDQMIndex::COMP_KOLMOGOROV] << " "
+              << meci.results[VisDQMIndex::COMP_CHI2] << " "
+              << meci.results[VisDQMIndex::COMP_BIN2BIN]
+              << " for key " << std::hex << f << std::dec
+              << "\n");
+      }
+    }
+  }
+}
+
+// struct MECompareTask
+// {
+//   std::map<IndexKey, size_t>		&store;
+//   StringAtomTree                        &root_objects;
+//   std::vector<MonitorElementComparisonInfo>	minfo;
+//   pthread_t				thread;
+//   bool                                  same_sample_comparison;
+//   size_t                                max_sample;
+//   size_t                                mod_element;
+//   size_t                                num_tasks;
+//   MECompareTask(std::map<IndexKey, size_t> &s,
+//                 StringAtomTree &ro,
+//                 bool ssc,
+//                 size_t ms,
+//                 size_t m,
+//                 size_t t)
+//       : store(s),
+//         root_objects(ro),
+//         same_sample_comparison(ssc),
+//         max_sample(ms),
+//         mod_element(m),
+//         num_tasks(t)
+//   {}
+// };
+
+// static void *
+// compareMonitorElementRange(void *arg)
+// {
+//   MECompareTask &task = *(MECompareTask *) arg;
+//   DEBUG(1, "comparing in thread " << std::hex << (unsigned long) pthread_self()
+// 	<< std::dec << "\n");
+
+//   compareMonitorElement(task.store, task.root_objects, task.minfo,
+//                         task.same_sample_comparison, task.max_sample,
+//                         task.mod_element, task.num_tasks);
+//   return 0;
+// }
 
 // ----------------------------------------------------------------------
 /** Extract a numeric run number from a regexp string match into @a
@@ -1235,6 +1370,130 @@ extend(VisDQMIndex &ix,
   }
 }
 
+// ----------------------------------------------------------------------
+/** Add comparison results to comparison sample info file. */
+static void
+extendComparison(VisDQMIndex &ix,
+                 VisDQMIndex::ComparisonSample &s,
+                 uint64_t nsample,
+                 std::vector<MonitorElementComparisonInfo> &cinfo,
+                 std::list<Filename> &oldfiles,
+                 std::list<Filename> &newfiles)
+{
+  // There is no need to order the element of the cinfo vector since
+  // this contains the ordered list of comparisons as derived from the
+  // samples stored in the index, that are already ordered.  We need,
+  // though, to update the key information to adapt it either to a new
+  // comparison sample or to the current one to be updated.
+  for (size_t i = 0, e = cinfo.size(); i < e; ++i)
+  {
+    IndexKey tmp(nsample,
+		 cinfo[i].key.type(),
+		 cinfo[i].key.lumiend(),
+		 cinfo[i].key.objnameidx());
+    cinfo[i].key = tmp;
+    DEBUG(3, "Updating key to " << std::hex << tmp << std::dec
+          << " with values " << cinfo[i].results[0] << ", "
+          << cinfo[i].results[1] << ", " << cinfo[i].results[2] << "\n");
+  }
+
+  // Copy data to comparison info file, keeping data in key order.
+  VisDQMFile *rfile = ix.open(VisDQMIndex::MASTER_FILE_INFO_CMP,
+                              s.file >> 16,
+                              s.file & 0xffff,
+                              VisDQMFile::OPEN_READ);
+  VisDQMFile *wfile = ix.open(VisDQMIndex::MASTER_FILE_INFO_CMP,
+                              s.file >> 16,
+                              (s.file & 0xffff)
+                              + (rfile ? 1 : 0),
+                              VisDQMFile::OPEN_WRITE);
+
+  DEBUG(1, "writing out new info file " << VisDQMIndex::MASTER_FILE_INFO_CMP
+        << ": in [" << (s.file >> 16)
+        << ':' << (s.file & 0xffff)
+        << "]=" << (rfile ? rfile->path().name() : "(none)")
+        << " out " << wfile->path() << '\n');
+
+  VisDQMFile::ReadHead rdhead(rfile, IndexKey(0, 0));
+  VisDQMFile::WriteHead wrhead(wfile);
+  uint64_t idx = 0;
+  IndexKey rkey;
+  void *rstart;
+  void *rend;
+  void *wstart;
+  void *wend;
+
+  // Keep writing out new entries as long as we haven't written out
+  // all the new comparison elements; when we are updating, we may be
+  // inserting and replacing monitor elements in any sequence.
+  while (idx < cinfo.size())
+  {
+    // Transfer keys we are not updating.
+    DEBUG(2, "transferring previous keys up to "
+          << idx << ':' << std::hex << cinfo[idx].key
+          << std::dec << '\n');
+    wrhead.xfer(rdhead, cinfo[idx].key, &rkey, &rstart, &rend);
+
+    // Now write new keys, or replace old comparisons.
+    while (idx < cinfo.size()
+           && (rdhead.isdone()
+               || rkey >= cinfo[idx].key))
+    {
+      MonitorElementComparisonInfo &info = cinfo[idx];
+      // Write out the comparison summary description for this Monitor
+      // element pair.
+      DEBUG(3, (rkey == info.key ? "updating" : "inserting")
+            << " comparison summary for " << idx << ':'
+            << std::hex << info.key << std::dec << " "
+            << sizeof(VisDQMIndex::ComparisonSummary) << " bytes\n");
+      wrhead.allocate(info.key,
+                      myroundup(sizeof(VisDQMIndex::ComparisonSummary),
+                                sizeof(uint64_t)),
+                      &wstart, &wend);
+      VisDQMIndex::ComparisonSummary *s = (VisDQMIndex::ComparisonSummary *) wstart;
+      memcpy(wstart, &info.results[0], 10*sizeof(double));
+//       for (int j = 0; j < 10; ++j) {
+//         DEBUG(3, "Transferring result " << info.results[j]
+//               << " for key " << std::hex << info.key << std::dec << "\n");
+//         s->results[j] = info.results[j];
+//       }
+      // Now move to the next comparison element.  If we are updating
+      // rather than inserting, move the read head past this object.
+      ++idx;
+
+      if (! rdhead.isdone() && rkey == info.key)
+      {
+        rdhead.next();
+        if (! rdhead.isdone())
+          rdhead.get(&rkey, &rstart, &rend);
+      }
+    }
+    // OK, we've written everything out, bulk transfer the rest.
+    DEBUG(2, "transferring rest of original contents\n");
+    wrhead.xfer(rdhead, IndexKey(~0, ~0), &rkey, &rstart, &rend);
+    rdhead.finish();
+    wrhead.finish();
+
+    // Close input and output files.  If we wrote out a new file,
+    // update the sample to indicate we have a new file version.  The
+    // caller will update other samples sharing this same data file.
+    if (rfile)
+    {
+      oldfiles.push_back(rfile->path());
+      rfile->close();
+
+      // Increment LSB 16, wrapping overflow within those bits.
+      s.file = (s.file & 0xffff0000)
+          | ((s.file + 1) & 0x0000ffff);
+    }
+
+    newfiles.push_back(wfile->path());
+    wfile->close();
+    delete rfile;
+    delete wfile;
+  }
+}
+
 /** Read a file streamed out of the index. */
 static void
 readFileStream(FileInfo &fi,
@@ -1826,6 +2085,29 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 
       DEBUG(1, "adding " << (streamers.size()-1) << " streamers\n");
       writeStrings(wrhead, streamers, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+
+      // Copying comparison samples
+      std::vector<VisDQMIndex::ComparisonSample> cmp_samples;
+      cmp_samples.reserve(10000);
+      int i = 0;
+      for (VisDQMFile::ReadHead rdhead
+	     (master, IndexKey(0, VisDQMIndex::MASTER_COMP_SAMPLE_RECORD));
+	   ! rdhead.isdone(); rdhead.next(), ++i)
+      {
+	// Extract next comparison sample.  Stop when we hit other tables.
+	void *rdbegin, *rdend;
+	IndexKey key;
+	rdhead.get(&key, &rdbegin, &rdend);
+	if ((key.catalogIndex()) != VisDQMIndex::MASTER_COMP_SAMPLE_RECORD)
+	  break;
+
+	cmp_samples.push_back(*(VisDQMIndex::ComparisonSample *)rdbegin);
+	VisDQMIndex::ComparisonSample &s = cmp_samples.back();
+	void *wrbegin, *wrend;
+	wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_COMP_SAMPLE_RECORD + i),
+			sizeof(VisDQMIndex::ComparisonSample), &wrbegin, &wrend);
+	memcpy(wrbegin, &s, sizeof(VisDQMIndex::ComparisonSample));
+      }
 
       DEBUG(1, "committing output\n");
       wrhead.finish();
@@ -2581,7 +2863,8 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 {
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
-  std::list<VisDQMIndex::Sample> samples;
+  std::vector<VisDQMIndex::Sample> samples;
+  std::vector<VisDQMIndex::ComparisonSample> cmp_samples;
   StringAtomTree vnames(10000);
   StringAtomTree dsnames(100000);
   StringAtomTree pathnames(1000000);
@@ -2589,6 +2872,7 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
   StringAtomTree streamers(100);
   DQMNet::QReports qreports;
 
+  samples.reserve(200000);
   // Read the master catalogue. We need all the info anyway.
   DEBUG(1, "starting index read\n");
   ix.beginRead(master);
@@ -2604,6 +2888,21 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
     else
       break;
   }
+  // Read the comparison sample catalogue.
+  for (VisDQMFile::ReadHead rdhead(master,
+                                   IndexKey(0, VisDQMIndex::MASTER_COMP_SAMPLE_RECORD));
+       ! rdhead.isdone(); rdhead.next())
+  {
+    void *begin;
+    void *end;
+    IndexKey key;
+
+    rdhead.get(&key, &begin, &end);
+    if ((key.catalogIndex()) == VisDQMIndex::MASTER_COMP_SAMPLE_RECORD)
+      cmp_samples.push_back(*(const VisDQMIndex::ComparisonSample *)begin);
+    else
+      break;
+  }
 
   readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
   readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -2612,8 +2911,10 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
   readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
 
   // Now output the selected parts, walking over one sample at a time.
-  std::list<VisDQMIndex::Sample>::iterator si;
-  std::list<VisDQMIndex::Sample>::iterator se;
+  std::vector<VisDQMIndex::Sample>::iterator si;
+  std::vector<VisDQMIndex::Sample>::iterator se;
+  std::vector<VisDQMIndex::ComparisonSample>::iterator csi;
+  std::vector<VisDQMIndex::ComparisonSample>::iterator cse;
 
   // Dump master catalogue contents.
   if (what == DUMP_ALL || what == DUMP_CATALOGUE)
@@ -2648,6 +2949,32 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	  << " processed-time=" << si->processedTime
 	  << '\n';
 
+    csi = cmp_samples.begin();
+    cse = cmp_samples.end();
+    for (size_t n = 0; csi != cse; ++csi, ++n)
+      std::cout
+	  << "COMPARISON-SAMPLE #" << n
+	  << " first-import=" << csi->firstImportTime
+	  << " last-import=" << csi->lastImportTime
+	  << " import-version=" << csi->version
+          << " sample-1=#" << csi->sample_id[0]
+          << " sample-2=#" << csi->sample_id[1]
+	  << " info-file=#"
+	  << ((csi->file >> 16) & 0xffff)
+	  << ':' << (csi->file & 0xffff)
+          << " type-1=" << csi->type[0]
+          << " type-2=" << csi->type[1]
+          << " dataset-name-1=#:" << samples[csi->sample_id[0]].datasetNameIdx
+          << '/' << dsnames.key(samples[csi->sample_id[0]].datasetNameIdx)
+          << " runnr-1=" << samples[csi->sample_id[0]].runNumber
+	  << " cmssw-version-1='" << vnames.key(samples[csi->sample_id[0]].cmsswVersion).c_str()
+          << "' /" << dsnames.key(samples[csi->sample_id[0]].datasetNameIdx)
+          << " dataset-name-2=#:" << samples[csi->sample_id[1]].datasetNameIdx
+          << '/' << dsnames.key(samples[csi->sample_id[1]].datasetNameIdx)
+          << " runnr-2=" << samples[csi->sample_id[1]].runNumber
+	  << " cmssw-version-2='" << vnames.key(samples[csi->sample_id[1]].cmsswVersion).c_str()
+	  << "'\n";
+
     for (size_t i = 1, e = pathnames.size(); i != e; ++i)
       std::cout << "SOURCE-FILE #" << i
 		<< "='" << pathnames.key(i) << "'\n";
@@ -2675,7 +3002,7 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
     }
   }
 
-  // Dump summary information for every monitor element.
+  // Dump summary information for every monitor element/comparison sample.
   if (what == DUMP_ALL || what == DUMP_INFO)
   {
     si = samples.begin();
@@ -2795,6 +3122,57 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
       }
 
       std::cout << "END INFO #" << n << '\n';
+    }
+    // Dump comparison sample information.
+    csi = cmp_samples.begin();
+    cse = cmp_samples.end();
+    for (size_t n = 0; csi != cse; ++csi, ++n)
+    {
+      std::cout << "BEGIN COMPARISON INFO #" << n << '\n';
+      if (VisDQMFile *f
+	  = ix.open(VisDQMIndex::MASTER_FILE_INFO_CMP,
+		    csi->file >> 16,
+		    csi->file & 0xffff,
+		    VisDQMFile::OPEN_READ))
+      {
+	IndexKey sample(n, 0, 0, 0);
+	for (VisDQMFile::ReadHead rdhead(f, sample);
+	     ! rdhead.isdone(); rdhead.next())
+	{
+	  IndexKey key;
+	  void *begin;
+	  void *end;
+
+	  rdhead.get(&key, &begin, &end);
+	  if (key.sampleidx() == n)
+	  {
+	    VisDQMIndex::ComparisonSummary *s = (VisDQMIndex::ComparisonSummary *) begin;
+	    std::cout
+	      << "COMPARISON ME [sample:" << key.sampleidx() << ", category:" << key.type()
+	      << ", lumiend:" << key.lumiend() << ", nameidx:" << key.objnameidx()
+	      << "] name='" << objnames.key(key.objnameidx())
+	      << "' results=[";
+            for (int r = 0; r < 10; ++r) {
+              std::cout << s->results[r];
+              if (r < 9)
+                std::cout << ", ";
+            }
+            std::cout << "]\n";
+	  }
+	  else
+	    break;
+	}
+
+	delete f;
+      }
+      else
+      {
+	std::cout << "WARNING: data file ["
+		  << (csi->file >> 16) << ':'
+		  << (csi->file & 0xffff)
+		  << " disappeared before it could be read\n";
+      }
+      std::cout << "END COMPARISON INFO #" << n << '\n';
     }
   }
 
@@ -3269,6 +3647,305 @@ streamoutProtocolBuffer(const Filename &indexdir, size_t sampleid)
   return EXIT_SUCCESS;
 }
 
+static
+int compareSamples(const Filename &indexdir,
+                   const size_t s1,
+                   const size_t s2) {
+
+  // Prepare but do not yet open the index.  Remember the time when we
+  // started importing samples to the index; use a single time for all
+  // the imports at a same time.
+  VisDQMIndex ix(indexdir);
+  uint64_t now = Time::current().ns();
+
+  VisDQMFile *master = 0;
+  VisDQMFile *newmaster = 0;
+  std::list<Filename> newfiles;
+  std::list<Filename> oldfiles;
+  std::vector<VisDQMIndex::Sample> samples;
+  std::vector<VisDQMIndex::Sample>::iterator si;
+  std::vector<VisDQMIndex::Sample>::iterator se;
+  std::vector<VisDQMIndex::ComparisonSample> cmp_samples;
+  samples.reserve(10000);
+  cmp_samples.reserve(10000);
+  StringAtomTree root_objects(1024*1024);
+  std::map<IndexKey, size_t> key_to_root_object;
+  std::map<IndexKey, size_t>::iterator ki;
+
+  try
+  {
+    // Start index update transaction.
+    DEBUG(1, "starting index update\n");
+    ix.beginUpdate(master, newmaster);
+    newfiles.push_back(newmaster->path());
+    for (VisDQMFile::ReadHead rdhead(master, IndexKey(0, 0));
+         !rdhead.isdone(); rdhead.next())
+    {
+      void *begin;
+      void *end;
+      IndexKey key;
+
+      rdhead.get(&key, &begin, &end);
+      if ((key.catalogIndex()) == VisDQMIndex::MASTER_SAMPLE_RECORD)
+        samples.push_back(*(const VisDQMIndex::Sample *)begin);
+      else
+        break;
+    }
+
+    // Grab various strings tables from the master file.
+    DEBUG(1, "reading string tables\n");
+    StringAtomTree vnames(10000);
+    StringAtomTree dsnames(100000);
+    StringAtomTree pathnames(1000000);
+    StringAtomTree objnames(2500000);
+    StringAtomTree streamers(100);
+
+    readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+    readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+    readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+    readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+    readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+
+    // Make sure the first CMSSW version is always empty string.
+    if (StringAtom(&vnames, "").index() != 0)
+    {
+      std::cerr << indexdir << ": error: inconsistent index, the first"
+                << " cmssw version is not an empty string\n";
+      abort();
+    }
+
+    // Loop over all samples and compare the selected two.
+    si = samples.begin();
+    se = samples.end();
+    uint32_t found = 0;
+    for (size_t n = 0; si != se; ++si, ++n)
+    {
+      // Skip non-selected and empty/deleted samples.
+      if ((n != s1 && n != s2)
+          || si->numObjects == 0)
+        continue;
+      found++;
+      std::cout << "BEGIN DATA #" << n << '\n';
+      loadStreamerInfo(streamers.key(si->streamerInfoIdx));
+
+      if (VisDQMFile *f
+          = ix.open(VisDQMIndex::MASTER_FILE_DATA,
+                    si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16,
+                    si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff,
+                    VisDQMFile::OPEN_READ))
+      {
+        IndexKey sample(n, 0, 0, 0);
+        for (VisDQMFile::ReadHead rdhead(f, sample);
+             ! rdhead.isdone(); rdhead.next())
+        {
+          IndexKey key;
+          void *begin;
+          void *end;
+
+          rdhead.get(&key, &begin, &end);
+          if (key.sampleidx() == n)
+          {
+            // Skip Lumisection-based stuff.
+            if (key.type() > 0)
+              continue;
+            size_t len = (char *) end - (char *) begin;
+            std::string rootdata;
+            rootdata.resize(len);
+            memcpy(&rootdata[0], begin, len);
+            key_to_root_object[key] = root_objects.insert(std::string(&rootdata[0],
+                                                                      rootdata.size()));
+          }
+          else
+            break;
+        }
+        delete f;
+      }
+      else
+      {
+        std::cout << "WARNING: data file ["
+                  << (si->files[VisDQMIndex::MASTER_FILE_DATA] >> 16) << ':'
+                  << (si->files[VisDQMIndex::MASTER_FILE_DATA] & 0xffff)
+                  << " disappeared before it could be read\n";
+      }
+    }
+
+    if (found != 2) {
+      throw VisDQMError(0, "Comparison",
+                        StringFormat("WARNING: Unable to locate a valid"
+                                     "sample: sample #%1 has 0 entries "
+                                     "or does not exist.")
+                        .arg(samples[std::min(s1, s2)].numObjects == 0 ?
+                             std::min(s1, s2) : std::max(s1, s2)));
+    }
+
+    DEBUG(1, "locating and copying samples\n");
+    bool present = false;
+    uint32_t datafile = 0;
+    std::vector<MonitorElementComparisonInfo> cinfo;
+    cinfo.reserve(key_to_root_object.size());
+    compareMonitorElement(key_to_root_object, root_objects, cinfo,
+                          (s1 == s2), std::max(s1, s2));
+
+
+    // Read comparison samples
+    for (VisDQMFile::ReadHead rdhead
+             (master, IndexKey(0, VisDQMIndex::MASTER_COMP_SAMPLE_RECORD));
+         ! rdhead.isdone(); rdhead.next())
+    {
+      // Extract next comparison sample.  Stop when we hit other tables.
+      void *rdbegin, *rdend;
+      IndexKey key;
+      rdhead.get(&key, &rdbegin, &rdend);
+      if ((key.catalogIndex()) != VisDQMIndex::MASTER_COMP_SAMPLE_RECORD)
+        break;
+
+      // Add the sample to a list so we can revise file id.
+      cmp_samples.push_back(*(VisDQMIndex::ComparisonSample *)rdbegin);
+      VisDQMIndex::ComparisonSample &s = cmp_samples.back();
+
+      DEBUG(2, "considering pair #" << (cmp_samples.size()-1)
+            << ": ("   << s.sample_id[0]
+            << ", " << s.sample_id[1]
+            << ")\n");
+
+      // If we've not yet seen sample we are looking for, check if
+      // this one matches.  Note that we keep looping to collect all
+      // samples to write them back out.
+      if (! present)
+      {
+        // Check for a match with our dataset spec.
+        present = (s.sample_id[0] == std::min(s1, s2)
+                   && s.sample_id[1] == std::max(s1, s2));
+
+        // If there is a match, update in place and remember which
+        // files we used.  Otherwise keep tracking for the "last" file
+        // used.
+        if (present)
+        {
+          s.lastImportTime = now;
+          s.version++;
+          extendComparison(ix, s, cmp_samples.size()-1, cinfo,
+                           oldfiles, newfiles);
+          datafile = s.file;
+        }
+        else
+        {
+          if (s.file > datafile)
+            datafile = s.file;
+        }
+      }
+    }
+
+    // If this sample wasn't already in the index, add a new one at
+    // the end.  Append data to the last file used in the index,
+    // provided it's not too large; otherwise start a new file.
+    // Remember which data files were modified here.
+    if (! present)
+    {
+      // Start a new data file if the last used file is too large.
+      if (ix.size(VisDQMIndex::MASTER_FILE_INFO_CMP,
+                  datafile >> 16, datafile & 0xffff) > 500000000)
+        datafile = (datafile & 0xffff0000) + 0x10000;
+
+      // Initialise sample data structure.
+      cmp_samples.push_back(VisDQMIndex::ComparisonSample());
+      VisDQMIndex::ComparisonSample &s = cmp_samples.back();
+      memset(&s, 0, sizeof(VisDQMIndex::ComparisonSample));
+
+      DEBUG(2, "adding new sample #" << (cmp_samples.size()-1)
+            << ", info-file #" << (datafile >> 16)
+            << ':' << (datafile & 0xffff)
+            << '\n');
+
+      s.firstImportTime = now;
+      s.lastImportTime = now;
+      s.version = 1;
+      s.file = datafile;
+      s.sample_id[0] = std::min(s1, s2);
+      s.sample_id[1] = std::max(s1, s2);
+      for (int i = 0; i < 2; ++i) {
+        FileInfo fi;
+        SampleInfo si;
+        fi.path = fi.fullpath = pathnames.key(samples[s.sample_id[i]].sourceFileIdx);
+        if (fileInfoFromName(fi, si)) {
+          s.type[i] = si.type;
+        }
+      }
+      extendComparison(ix, s, cmp_samples.size()-1, cinfo,
+                       oldfiles, newfiles);
+      datafile = s.file;
+    }
+
+    // Now scan all samples and update the file version on the ones
+    // which shared a data file we just updated (and bumped version).
+    for (size_t i = 0, e = cmp_samples.size(); i != e; ++i)
+      if ((cmp_samples[i].file & 0xffff0000) == (datafile & 0xffff0000))
+        cmp_samples[i].file = datafile;
+
+    // Write out the samples and other tables and commit transaction.
+    VisDQMFile::WriteHead wrhead(newmaster);
+    for (size_t i = 0, e = samples.size(); i != e; ++i)
+    {
+      void *wrbegin, *wrend;
+      wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD + i),
+                      sizeof(VisDQMIndex::Sample), &wrbegin, &wrend);
+      memcpy(wrbegin, &samples[i], sizeof(VisDQMIndex::Sample));
+    }
+
+    DEBUG(1, "adding " << (pathnames.size()-1) << " path names\n");
+    writeStrings(wrhead, pathnames, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+
+    DEBUG(1, "adding " << (dsnames.size()-1) << " dataset names\n");
+    writeStrings(wrhead, dsnames, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+
+    DEBUG(1, "adding " << (vnames.size()-1) << " version names\n");
+    writeStrings(wrhead, vnames, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION), 0);
+
+    DEBUG(1, "adding " << (objnames.size()-1) << " object names\n");
+    writeStrings(wrhead, objnames, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+
+    DEBUG(1, "adding " << (streamers.size()-1) << " streamers\n");
+    writeStrings(wrhead, streamers, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+
+    // Write out the comparison samples
+    for (size_t i = 0, e = cmp_samples.size(); i != e; ++i)
+    {
+      void *wrbegin, *wrend;
+      wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_COMP_SAMPLE_RECORD + i),
+                      sizeof(VisDQMIndex::ComparisonSample), &wrbegin, &wrend);
+      memcpy(wrbegin, &cmp_samples[i], sizeof(VisDQMIndex::ComparisonSample));
+    }
+
+    DEBUG(1, "committing output\n");
+    wrhead.finish();
+    ix.commitUpdate();
+    newfiles.clear();
+
+    // Remove old data file versions now.
+    std::list<Filename>::iterator fni, fne;
+    for (fni = oldfiles.begin(), fne = oldfiles.end(); fni != fne; ++fni)
+    {
+      DEBUG(1, "removing old file " << fni->name() << std::endl);
+      Filename::remove(*fni, false, true);
+    }
+  }
+  catch (std::exception &err)
+  {
+    std::list<Filename>::iterator i, e;
+    for (i = newfiles.begin(), e = newfiles.end(); i != e; ++i)
+    {
+      DEBUG(1, "undoing new file " << i->name() << std::endl);
+      Filename::remove(*i, false, true);
+    }
+    if (master)
+    {
+      DEBUG(1, "cancelling index transaction\n");
+      ix.cancelUpdate();
+      return EXIT_FAILURE;
+    }
+  }
+}
+
 // ----------------------------------------------------------------------
 /** Show a message on how to use this program. */
 static int
@@ -3283,7 +3960,8 @@ showusage(void)
 	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n  "
 	    << app.name() << " [OPTIONS] stream --sample SAMPLE-ID INDEX-DIRECTORY\n  "
 	    << app.name() << " [OPTIONS] streampb --sample SAMPLE-ID INDEX-DIRECTORY\n  "
-	    << app.name() << " [OPTIONS] fixstreamers INDEX-DIRECTORY\n";
+	    << app.name() << " [OPTIONS] fixstreamers INDEX-DIRECTORY ";
+	    << app.name() << " [OPTIONS] compare --sample1 SAMPLE-ID1 --sample2 SAMPLE-ID2 INDEX-DIRECTORY\n";
   return EXIT_FAILURE;
 }
 
@@ -3307,7 +3985,8 @@ int main(int argc, char **argv)
   Filename indexdir;
   int32_t runnr = -1;
   std::string dataset;
-  size_t sampleid = ALL_SAMPLES;
+  size_t sampleid  = ALL_SAMPLES;
+  size_t sampleid2 = ALL_SAMPLES;
   std::list<SampleInfo> samples;
   std::list<FileInfo> files;
   std::list<Filename> mergeix;
@@ -3354,6 +4033,8 @@ int main(int argc, char **argv)
       ++arg, task = TASK_STREAMPB;
     else if (! strcmp(argv[arg], "fixstreamers"))
       ++arg, task = TASK_FIXSTREAMERS;
+    else if (! strcmp(argv[arg], "compare"))
+      ++arg, task = TASK_COMPARE;
     else
     {
       std::cerr << app.name() << ": unrecognised task parameter '"
@@ -3476,6 +4157,43 @@ int main(int argc, char **argv)
       else
       {
 	std::cerr << app.name() << ": --sample option is mandatory when streaming a sample\n";
+	return showusage();
+      }
+    }
+  }
+  else if (task == TASK_COMPARE)
+  {
+    for ( ; arg < argc; ++arg)
+    {
+      if (! strcmp(argv[arg], "--sample1"))
+      {
+	char *end = 0;
+	if (arg < argc-1)
+	  sampleid = strtoul(argv[++arg], &end, 10);
+	else
+	{
+	  std::cerr << app.name() << ": --sample1 option requires a value\n";
+	  return showusage();
+	}
+      }
+      else if (! strcmp(argv[arg], "--sample2"))
+      {
+	char *end = 0;
+	if (arg < argc-1)
+	  sampleid2 = strtoul(argv[++arg], &end, 10);
+	else
+	{
+	  std::cerr << app.name() << ": --sample2 option requires a value\n";
+	  return showusage();
+	}
+      }
+      else if (sampleid != ALL_SAMPLES && sampleid2 != ALL_SAMPLES)
+      {
+        break;
+      }
+      else
+      {
+	std::cerr << app.name() << ": --sample{1,2} option is mandatory when streaming a sample\n";
 	return showusage();
       }
     }
@@ -3734,7 +4452,7 @@ int main(int argc, char **argv)
       }
     }
   }
-  else if (task == TASK_STREAM || task == TASK_STREAMPB)
+  else if (task == TASK_STREAM || task == TASK_STREAMPB || task == TASK_COMPARE)
   {
     if (! indexdir.exists())
     {
@@ -3773,6 +4491,8 @@ int main(int argc, char **argv)
       return streamoutProtocolBuffer(indexdir, sampleid);
     else if (task == TASK_FIXSTREAMERS)
       return fixStreamerInfo(indexdir);
+    else if (task == TASK_COMPARE)
+      return compareSamples(indexdir, sampleid, sampleid2);
     else
     {
       std::cerr << app.name() << ": internal error, unknown task\n";

@@ -10,6 +10,7 @@
 #  include "TStreamerInfo.h"
 #  include "TClass.h"
 #  include "TROOT.h"
+#  include "TH1.h"
 # endif
 # include <iostream>
 # include <cstdio>
@@ -251,6 +252,47 @@ buildExtendedStreamerInfo(std::string &data)
   data.resize(buf.Length());
   memcpy(&data[0], buf.Buffer(), buf.Length());
 }
+
+bool checkAxisLimits(const TAxis *a1, const TAxis *a2 )
+{
+   // Check that the axis limits of the histograms are the same if a
+   // first and last bin is passed the axis is compared between the
+   // given range
+
+  if ( ((a1->GetXmin() - a2->GetXmin()) < 1.E-12) &&
+       ((a1->GetXmax() - a2->GetXmax()) < 1.E-12) ) {
+    return true;
+  }
+  return false;
+}
+
+bool checkConsistency(const TH1* h1, const TH1* h2)
+{
+   // Check histogram compatibility
+   if (h1 == h2) return true;
+
+   // returns kTRUE if number of bins and bin limits are identical
+   Int_t nbinsx = h1->GetNbinsX();
+   Int_t nbinsy = h1->GetNbinsY();
+   Int_t nbinsz = h1->GetNbinsZ();
+
+   // Check whether the histograms have the same number of bins.
+   if (nbinsx != h2->GetNbinsX()
+       || nbinsy != h2->GetNbinsY()
+       || nbinsz != h2->GetNbinsZ()) {
+      return false;
+   }
+
+   bool ret = true;
+
+   // check axis limits
+   ret &= checkAxisLimits(h1->GetXaxis(), h2->GetXaxis());
+   ret &= checkAxisLimits(h1->GetYaxis(), h2->GetYaxis());
+   ret &= checkAxisLimits(h1->GetZaxis(), h2->GetZaxis());
+
+   return ret;
+}
+
 #endif // VISDQM_NO_ROOT
 
 #endif // DQM_VISDQMTOOLS_H

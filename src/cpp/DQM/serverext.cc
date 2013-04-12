@@ -328,6 +328,7 @@ struct VisDQMShownRow;
 struct VisDQMStatus;
 struct VisDQMEventNum;
 struct VisDQMSample;
+struct VisDQMComparisonSample;
 struct VisDQMRegexp;
 class VisDQMSource;
 
@@ -340,6 +341,7 @@ typedef ext::hash_map<StringAtom, VisDQMStatus>		     VisDQMStatusMap;
 typedef std::map<StringAtom, VisDQMDrawOptions>		     VisDQMDrawOptionMap;
 typedef std::list<VisDQMEventNum>		 	     VisDQMEventNumList;
 typedef std::vector<VisDQMSample>		 	     VisDQMSamples;
+typedef std::vector<VisDQMComparisonSample>	 	     VisDQMComparisonSamples;
 typedef std::map<std::string, VisDQMRegexp>                  VisDQMRegexps;
 
 struct VisDQMAxisOptions
@@ -456,6 +458,15 @@ struct VisDQMSample
   {
     VisDQMSample(SAMPLE_ANY, 0);
   }
+};
+
+struct VisDQMComparisonSample
+{
+  VisDQMSample		samples[2];
+  VisDQMSource		*origin;
+  VisDQMComparisonSample()
+    : origin(0)
+  {samples[0] = samples[1] = VisDQMSample();}
 };
 
 static const char *sampleTypeLabel[] =
@@ -1168,6 +1179,36 @@ samplesToJSON(VisDQMSamples &samples)
   return result;
 }
 
+static std::string
+samplesToJSON(VisDQMComparisonSamples &samples)
+{
+  std::string result;
+
+  size_t size = 0;
+  VisDQMComparisonSamples::iterator i, e;
+  for (i = samples.begin(), e = samples.end(); i != e; ++i)
+    size += 100 + i->samples[0].dataset.size()
+        + i->samples[1].dataset.size();
+  result.reserve(size);
+
+  const char *comma = "";
+  for (i = samples.begin(), e = samples.end(); i != e; ++i)
+  {
+    result += comma;
+    result += "{";
+    for (int k = 0; k < 2; ++k) {
+      result += StringFormat("\"item_%1\": ")
+          .arg(k);
+      sampleToJSON(i->samples[k], result);
+      if (k == 0)
+        result += ", ";
+    }
+    result += "}";
+    comma = ",";
+  }
+  return result;
+}
+
 static VisDQMSample
 sessionSample(const py::dict &session)
 {
@@ -1291,6 +1332,10 @@ public:
 
   virtual void
   samples(VisDQMSamples & /* samples */)
+    {}
+
+  virtual void
+  comp_samples(VisDQMComparisonSamples & /* comp_samples */)
     {}
 
   virtual void
@@ -3617,6 +3662,7 @@ class VisDQMArchiveSource : public VisDQMSource
   typedef shared_ptr<VisDQMFile>		VisDQMFilePtr;
   typedef std::vector<size_t>			IdMap;
   typedef std::vector<VisDQMIndex::Sample>	SampleList;
+  typedef std::vector<VisDQMIndex::ComparisonSample>	CompSampleList;
   typedef std::map<uint32_t, VisDQMFilePtr>	FileMap;
 
   Regexp		rxonline_;
@@ -3627,6 +3673,7 @@ class VisDQMArchiveSource : public VisDQMSource
   VisDQMCache		cache_;
   VisDQMIndex		index_;
   SampleList		samples_;
+  CompSampleList	comp_samples_;
   StringAtomTree	vnames_; // (10000);
   StringAtomTree	dsnames_; // (100000);
   StringAtomTree	objnames_; // (2500000);
@@ -3655,6 +3702,7 @@ class VisDQMArchiveSource : public VisDQMSource
       dsnames_.clear();
       vnames_.clear();
       samples_.clear();
+      comp_samples_.clear();
       watch_.clear();
       retry_ = false;
     }
@@ -3680,6 +3728,20 @@ class VisDQMArchiveSource : public VisDQMSource
 	rdhead.get(&key, &begin, &end);
 	if (key.catalogIndex() == VisDQMIndex::MASTER_SAMPLE_RECORD)
 	  samples_.push_back(*(const VisDQMIndex::Sample *)begin);
+	else
+	  break;
+      }
+      for (VisDQMFile::ReadHead rdhead(master,
+                                       IndexKey(0, VisDQMIndex::MASTER_COMP_SAMPLE_RECORD));
+	   ! rdhead.isdone(); rdhead.next())
+      {
+	void *begin;
+	void *end;
+	IndexKey key;
+
+	rdhead.get(&key, &begin, &end);
+	if (key.catalogIndex() == VisDQMIndex::MASTER_COMP_SAMPLE_RECORD)
+	  comp_samples_.push_back(*(const VisDQMIndex::ComparisonSample *)begin);
 	else
 	  break;
       }
@@ -3836,6 +3898,14 @@ public:
     {
       sprintf(buff, "%" PRIu64, value);
     }
+
+  inline VisDQMSampleType
+  gettype(const VisDQMIndex::Sample &si, const std::string &dataset) {
+    return si.cmsswVersion > 0 ? SAMPLE_OFFLINE_RELVAL
+        : si.runNumber == 1 ? SAMPLE_OFFLINE_MC
+        : rxonline_.search(dataset) < 0 ? SAMPLE_OFFLINE_DATA
+        : SAMPLE_ONLINE_DATA;
+  }
 
   virtual void
   getdata(const VisDQMSample &sample,
@@ -4547,12 +4617,60 @@ public:
 	  s.version = vnames_.key(si->cmsswVersion);
 	  s.importversion = si->importVersion;
 	  s.runnr = si->runNumber;
-	  s.type = (si->cmsswVersion > 0 ? SAMPLE_OFFLINE_RELVAL
-		    : si->runNumber == 1 ? SAMPLE_OFFLINE_MC
-		    : rxonline_.search(s.dataset) < 0 ? SAMPLE_OFFLINE_DATA
-		    : SAMPLE_ONLINE_DATA);
+	  s.type = gettype(*si, s.dataset);
 	  s.origin = this;
 	  s.time = si->processedTime;
+	}
+      }
+      catch (Error &e)
+      {
+	fileReadFailure(-1, e.explain().c_str());
+      }
+      catch (std::exception &e)
+      {
+	fileReadFailure(-1, e.what());
+      }
+      catch (...)
+      {
+	fileReadFailure(-1, "(unknown error)");
+      }
+    }
+
+  virtual void
+  comp_samples(VisDQMComparisonSamples &comp_samples)
+    {
+      try
+      {
+	// Reload index if necessary.
+	maybeReloadIndex();
+
+	// Locate the requested sample.
+	RDLock rdgate(&lock_);
+	CompSampleList::const_iterator csi;
+	CompSampleList::const_iterator cse;
+	comp_samples.reserve(comp_samples.size() + comp_samples_.size());
+	for (csi = comp_samples_.begin(), cse = comp_samples_.end(); csi != cse; ++csi)
+	{
+          VisDQMIndex::Sample idx_ss[2];
+          for (int k = 0; k < 2; ++k)
+            idx_ss[k] = samples_[csi->sample_id[k]];
+          // If at least one of the referenced samples has been
+          // deleted, discard the comparison sample too.
+          if (idx_ss[0].numObjects == 0 || idx_ss[1].numObjects == 0)
+            continue;
+
+	  comp_samples.push_back(VisDQMComparisonSample());
+	  VisDQMComparisonSample &s = comp_samples.back();
+          s.origin = this;
+          for (int k = 0; k < 2; ++k) {
+            VisDQMSample &ss = s.samples[k];
+            ss.dataset = dsnames_.key(idx_ss[k].datasetNameIdx);
+            ss.version = vnames_.key(idx_ss[k].cmsswVersion);
+            ss.importversion = idx_ss[k].importVersion;
+            ss.runnr = idx_ss[k].runNumber;
+            ss.type = gettype(idx_ss[k], dsnames_.key(idx_ss[k].datasetNameIdx));
+            ss.time = idx_ss[k].processedTime;
+          }
 	}
       }
       catch (Error &e)
@@ -5245,6 +5363,58 @@ private:
 
       return result;
     }
+};
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+class VisDQMComparisonSampleWorkspace : public VisDQMWorkspace
+{
+ public:
+  VisDQMComparisonSampleWorkspace(py::object gui, const std::string &name)
+    : VisDQMWorkspace(gui, name)
+    {}
+
+  virtual ~VisDQMComparisonSampleWorkspace(void)
+    {}
+
+  virtual std::string
+  state(py::dict session) {
+    std::vector<VisDQMSource *> srclist;
+    sources(srclist);
+    Time startTime = Time::current();
+    gui_.attr("_noResponseCaching")();
+
+    VisDQMSample sample(sessionSample(session));
+    // Now do the hard stuff, out of python.
+    {
+      PyReleaseInterpreterLock nogil;
+      VisDQMSamples  samples;
+      VisDQMComparisonSamples  comp_samples;
+
+      // Request both samples and comparison samples from backends. In
+      // fact only the 'archive' source supports comparison samples,
+      // so we filter on it, if registered.
+      for (size_t i = 0, e = srclist.size(); i != e; ++i)
+        if (strcmp(srclist[i]->plotter(), "archive") == 0)
+          srclist[i]->samples(samples);
+
+      for (size_t i = 0, e = srclist.size(); i != e; ++i)
+        if (strcmp(srclist[i]->plotter(), "archive") == 0)
+          srclist[i]->comp_samples(comp_samples);
+
+
+      StringFormat result
+	  = StringFormat("([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, 'serverTime':%4},"
+			 "{'kind':'DQMComparisonSample', "
+			 " \"items\":[%3]}])")
+	  .arg(sample.type == SAMPLE_LIVE ? 30 : 300)
+	  .arg(guiTimeStamp_, 0, 'f')
+	  .arg(samplesToJSON(comp_samples));
+      return result.arg((Time::current() - startTime).ns() * 1e-6, 0, 'f');
+    }
+  }
+private:
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -6411,6 +6581,11 @@ BOOST_PYTHON_MODULE(Accelerator)
 	     py::bases<VisDQMWorkspace>, boost::noncopyable>
     ("DQMSampleWorkspace", py::init<py::object, std::string>())
     .def("_state", &VisDQMSampleWorkspace::state);
+
+  py::class_<VisDQMComparisonSampleWorkspace, shared_ptr<VisDQMComparisonSampleWorkspace>,
+             py::bases<VisDQMWorkspace>, boost::noncopyable>
+      ("DQMComparisonSampleWorkspace", py::init<py::object, std::string>())
+      .def("_state", &VisDQMComparisonSampleWorkspace::state);
 
   py::class_<VisDQMSummaryWorkspace, shared_ptr<VisDQMSummaryWorkspace>,
 	     py::bases<VisDQMWorkspace>, boost::noncopyable>
