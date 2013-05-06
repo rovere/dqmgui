@@ -64,5 +64,5 @@ index.o: DQM/index.cc DQM/StreamSample.pb.cc
 libDQMGUI.so: $(LIB_OBJ); $(LIB_LINK)
 Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
-visDQMIndex: $(INDEX_OBJ) libDQMGUI.so; $(INDEX_LINK)
-visDQMRender: $(RENDER_OBJ) libDQMGUI.so; $(RENDER_LINK)
+visDQMIndex: $(INDEX_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(INDEX_LINK)
+visDQMRender: $(RENDER_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(RENDER_LINK)

@@ -62,7 +62,8 @@ enum TaskType
   TASK_MERGE,            //< Merge an index to another.
   TASK_DUMP,		 //< Dump the index contents.
   TASK_STREAM,		 //< Stream a sample from the index into an intermediate .dat file.
-  TASK_STREAMPB          //< Stream a sample from the index into an intermediate ProtocolBuffer .pb file.
+  TASK_STREAMPB,         //< Stream a sample from the index into an intermediate ProtocolBuffer .pb file.
+  TASK_FIXSTREAMERS      //< Add missing streamerinfo to oldest ones.
 };
 
 /** Things user can choose to dump out. */
@@ -1505,7 +1506,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
   // Grab streamer info before we've opened any ROOT files.
   std::string streamerinfoFromRoot;
   std::string streamerinfoFromStream;
-  buildStreamerInfo(streamerinfoFromRoot);
+  buildExtendedStreamerInfo(streamerinfoFromRoot);
   DEBUG(2, streamerinfoFromRoot.size() << " bytes of streamer info captured\n");
 
   // Prepare but do not yet open the index.  Remember the time when we
@@ -2447,6 +2448,132 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
   return EXIT_SUCCESS;
 }
 
+
+/** Fix the streamerInfo in the index. By policy we overwrite only the
+latest streamer info present in the old index, since it is the one
+referring to the ROOT version bundled with the DQM GUI. We have no
+hope to solve the streamerInfo problem on a more general ground,
+unless we patch the index several times, once per streamerInfo,
+building the DQM GUI against the correct version of ROOT. Currently
+both Offline, RelVal and Dev production servers have only one unique
+registered streamerInfo; the Online one has 2, and we will patch only
+the latest one. We cannot patch all the streamerInfo with the same
+extended streamers, since this will compress the size of the p-trie
+for the streamers, possibly making some streamerinfo pointers in the
+registered samples NULL. */
+static int
+fixStreamerInfo(const Filename &indexdir)
+{
+  // Grab streamer info before we've opened any ROOT files.
+  std::string partial_streamerinfoFromRoot;
+  buildExtendedStreamerInfo(partial_streamerinfoFromRoot);
+  DEBUG(2, partial_streamerinfoFromRoot.size()
+        << " bytes of additional streamer info captured\n");
+
+  // Prepare but do not yet open the target index.
+  VisDQMIndex ix(indexdir);
+  VisDQMFile *master = 0;
+  VisDQMFile *newmaster = 0;
+  try
+  {
+    // Start index update transaction.
+    DEBUG(1, "starting index update\n");
+    ix.beginUpdate(master, newmaster);
+
+    // Grab various strings tables from the master files.
+    // Build mapping tables from imported index to target.
+    DEBUG(1, "reading string tables\n");
+    StringAtomTree vnames(10000);
+    StringAtomTree dsnames(100000);
+    StringAtomTree pathnames(1000000);
+    StringAtomTree objnames(2500000);
+    StringAtomTree streamers(100);
+    StringAtomTree extended_streamers(100);
+
+    readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+    readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+    readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
+    readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+    readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+    for (size_t i = 1, e = streamers.size(); i != e; ++i) {
+      const std::string &original = streamers.key(i);
+      if (i == (e - 1)) {
+        extended_streamers.insert(partial_streamerinfoFromRoot);
+      } else {
+        extended_streamers.insert(original);
+      }
+    }
+
+    // Make sure the first CMSSW version is always empty string.
+    if (StringAtom(&vnames, "").index() != 0)
+    {
+      std::cerr << indexdir << ": error: inconsistent index, the first"
+                << " cmssw version is not an empty string\n";
+      abort();
+    }
+
+    std::vector<VisDQMIndex::Sample> samples;
+    samples.reserve(30000);
+
+    for (VisDQMFile::ReadHead rdhead
+             (master, IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD));
+         ! rdhead.isdone(); rdhead.next())
+    {
+      // Extract next sample.  Stop when we hit other tables.
+      void *rdbegin, *rdend;
+      IndexKey key;
+      rdhead.get(&key, &rdbegin, &rdend);
+      if ((key.catalogIndex()) != VisDQMIndex::MASTER_SAMPLE_RECORD)
+        break;
+
+      // Add the sample to a list so we can revise file id.
+      samples.push_back(*(VisDQMIndex::Sample *)rdbegin);
+    }
+
+    // Write out the samples and other tables and commit transaction.
+    VisDQMFile::WriteHead wrhead(newmaster);
+    for (size_t i = 0, e = samples.size(); i != e; ++i)
+    {
+      void *wrbegin, *wrend;
+      wrhead.allocate(IndexKey(0, VisDQMIndex::MASTER_SAMPLE_RECORD + i),
+                      sizeof(VisDQMIndex::Sample), &wrbegin, &wrend);
+      memcpy(wrbegin, &samples[i], sizeof(VisDQMIndex::Sample));
+    }
+
+    DEBUG(1, "adding " << (pathnames.size()-1) << " path names\n");
+    writeStrings(wrhead, pathnames, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
+
+    DEBUG(1, "adding " << (dsnames.size()-1) << " dataset names\n");
+    writeStrings(wrhead, dsnames, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
+
+    DEBUG(1, "adding " << (vnames.size()-1) << " version names\n");
+    writeStrings(wrhead, vnames, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION), 0);
+
+    DEBUG(1, "adding " << (objnames.size()-1) << " object names\n");
+    writeStrings(wrhead, objnames, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
+
+    DEBUG(1, "adding " << (streamers.size()-1) << " streamers\n");
+    writeStrings(wrhead, extended_streamers, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+
+    DEBUG(1, "committing output\n");
+    wrhead.finish();
+    ix.commitUpdate();
+  }
+
+  // If we had an error, report it, roll back as much as possible,
+  // cancel index transaction, and quit.
+  catch (std::exception &err)
+  {
+    if (master)
+    {
+      DEBUG(1, "cancelling index transaction\n");
+      ix.cancelUpdate();
+      return EXIT_FAILURE;
+    }
+  }
+  return EXIT_SUCCESS;
+}
+
 // ----------------------------------------------------------------------
 /** Dump parts of a DQM GUI index.  */
 static int
@@ -3155,7 +3282,8 @@ showusage(void)
 	    << app.name() << " [OPTIONS] merge INDEX-DIRECTORY [IMPORT-INDEX-DIRECTORY...]\n  "
 	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n  "
 	    << app.name() << " [OPTIONS] stream --sample SAMPLE-ID INDEX-DIRECTORY\n  "
-	    << app.name() << " [OPTIONS] streampb --sample SAMPLE-ID INDEX-DIRECTORY\n";
+	    << app.name() << " [OPTIONS] streampb --sample SAMPLE-ID INDEX-DIRECTORY\n  "
+	    << app.name() << " [OPTIONS] fixstreamers INDEX-DIRECTORY\n";
   return EXIT_FAILURE;
 }
 
@@ -3224,6 +3352,8 @@ int main(int argc, char **argv)
       ++arg, task = TASK_STREAM;
     else if (! strcmp(argv[arg], "streampb"))
       ++arg, task = TASK_STREAMPB;
+    else if (! strcmp(argv[arg], "fixstreamers"))
+      ++arg, task = TASK_FIXSTREAMERS;
     else
     {
       std::cerr << app.name() << ": unrecognised task parameter '"
@@ -3372,6 +3502,28 @@ int main(int argc, char **argv)
     if (indexdir.exists())
     {
       std::cerr << indexdir.name() << ": directory already exists\n";
+      return EXIT_FAILURE;
+    }
+
+    DEBUG(1, "index '" << indexdir.name() << "'\n");
+  }
+  else if (task == TASK_FIXSTREAMERS)
+  {
+    if (arg != argc)
+    {
+      std::cerr << app.name() << ": too many arguments to 'fixstreamers' task\n";
+      return showusage();
+    }
+
+    if (! indexdir.exists())
+    {
+      std::cerr << indexdir.name() << ": no such directory\n";
+      return EXIT_FAILURE;
+    }
+
+    if (! indexdir.isDirectory())
+    {
+      std::cerr << indexdir.name() << ": not a directory\n";
       return EXIT_FAILURE;
     }
 
@@ -3619,6 +3771,8 @@ int main(int argc, char **argv)
       return streamout(indexdir, sampleid);
     else if (task == TASK_STREAMPB)
       return streamoutProtocolBuffer(indexdir, sampleid);
+    else if (task == TASK_FIXSTREAMERS)
+      return fixStreamerInfo(indexdir);
     else
     {
       std::cerr << app.name() << ": internal error, unknown task\n";

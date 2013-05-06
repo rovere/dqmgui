@@ -143,17 +143,17 @@ class DQMFileAccess(DQMUpload):
     # Authenticate user in case the authentication happend via a Limited Proxy.
     if 'cms-auth-status' in headers:
       if not self._check_authentication():
-        self._log_authentication_failure_and_throw()
+        self._log_authentication_failure_and_exit()
       if headers['Cms-Authn-Method'] == 'X509LimitedProxy':
         if 'Cms-Authz-t0-operator' not in headers \
                and 'Cms-Authz-production-operator' not in headers:
-          self._log_authentication_failure_and_throw()
+          self._log_authentication_failure_and_exit()
         if 'Cms-Authz-t0-operator' in headers:
           if 'group:dataops' not in headers['Cms-Authz-t0-operator'].split(' '):
-            self._log_authentication_failure_and_throw()
+            self._log_authentication_failure_and_exit()
         if 'Cms-Authz-production-operator' in headers:
           if 'group:dataops' not in headers['Cms-Authz-production-operator'].split(' '):
-            self._log_authentication_failure_and_throw()
+            self._log_authentication_failure_and_exit()
 
     # Argument validation.
     if file == None \

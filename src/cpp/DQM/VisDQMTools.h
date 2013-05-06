@@ -9,6 +9,7 @@
 #  include "TBufferFile.h"
 #  include "TStreamerInfo.h"
 #  include "TClass.h"
+#  include "TROOT.h"
 # endif
 # include <iostream>
 # include <cstdio>
@@ -212,6 +213,40 @@ buildStreamerInfo(std::string &data)
   TBufferFile buf(TBufferFile::kWrite);
   for (const char **name = classes; *name; ++name)
     buf.WriteObject(TClass::GetClass(*name)->GetStreamerInfo());
+
+  data.resize(buf.Length());
+  memcpy(&data[0], buf.Buffer(), buf.Length());
+}
+
+/** Build a streamer info data blob corresponding to the current ROOT
+    version into @a data.  This represents the ROOT version of the
+    presently running program, not the version of the ROOT objects
+    read in: ROOT will convert whatever we read into the version we
+    run now.  This function should be called before any ROOT files
+    have been opened as file opens may modify the streamer info. This
+    function properly saves all the classes needed to decode the ROOT
+    objects handled by the DQM GUI, including all base classes of the
+    objects themselves and of all their streamed members. */
+inline void
+buildExtendedStreamerInfo(std::string &data)
+{
+  static const char *classes[] =
+    {
+      "TH1F", "TH1S", "TH1D", "TH1I",
+      "TH2F", "TH2S", "TH2D", "TH2I",
+      "TH3F", "TH3S", "TH3D", "TH3I",
+      "TProfile", "TProfile2D",
+      0
+    };
+
+  TBufferFile buf(TBufferFile::kWrite);
+  for (const char **name = classes; *name; ++name)
+    TClass::GetClass(*name)->GetStreamerInfo();
+
+  TIter next(gROOT->GetListOfStreamerInfo());
+  TStreamerInfo * si;
+  while ((si = (TStreamerInfo*)next()))
+    buf.WriteObject(si);
 
   data.resize(buf.Length());
   memcpy(&data[0], buf.Buffer(), buf.Length());
