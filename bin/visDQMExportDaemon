@@ -13,7 +13,8 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 INDEX = sys.argv[1]     # Location of the DQM GUI index from which we export samples.
 WORKDIR = sys.argv[2]   # Working directory of the current agent where cache and temporary files are stored.
 FILEREPO = sys.argv[3]  # Main file repository where all finished stream files will be moved.
-NEXT = sys.argv[4:]     # Directory for the next agent in chain.
+FILTER   = sys.argv[4]  # Generic filter to select only specific samples based on predefined criteria. "True" will apply no selection.
+NEXT = sys.argv[5:]     # Directory for the next agent in chain.
 WAITTIME = 5            # Daemon cycle time.
 MAXEXPORTTHREADS = 5    # Maximum number of concurrent thread to run to export sample out of the index
 MAXDATFILES = 500       # Maximum number of .(dat|pb) files that can be present in the EXPORTDIR before pausing the streaming threads
@@ -205,10 +206,18 @@ class SampleManager():
         if s.numObjects == 0:
           logme("WARNING: discarding empty sample %d, %s, %s", \
                 s.id, s.dataset, s.runNumber)
-        else:
+        select = False
+        try:
+          select = eval(FILTER, {}, s.__dict__)
+        except:
+          logme("WARNING: wrongly formatted filter %s.\nDiscarding all samples.", FILTER)
+        if select:
           # Insert samples in reverse order, so that they will be processed in the correct order,
           # from more recent to oldest.
           self.SAMPLES.insert(0,s)
+        else:
+          logme("WARNING: discarding sample %d, %s, %s", \
+                s.id, s.dataset, s.runNumber)
     self.updateCache()
 
   def updateCache(self):
