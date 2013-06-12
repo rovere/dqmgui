@@ -359,7 +359,7 @@ for sample in find_matching_samples(options):
       if 'subdir' in item:
         print " %s/%s" % (path, (options.long_listing and " = directory") or "")
         if options.write:
-          tfile_cd(path,ofile)
+          tfile_cd(path, ofile)
 
       # We are treating an int/double/string
       elif 'value' in item:
