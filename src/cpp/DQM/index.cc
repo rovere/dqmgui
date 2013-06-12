@@ -235,7 +235,7 @@ Regexp rxoffline("^(?:.*/)?DQM_V\\d+_R(\\d+)((?:__[-A-Za-z0-9_]+){3})\\.(dat|pb|
 
 /// Regular expression to recognise release validation dataset names.
 /// The first capture is the CMSSW release string.
-Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9])+(?:_pre[0-9]+)?)[-_].*$");
+Regexp rxrelval("^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$");
 
 /// Regular expression to recognise Run Dependent Monte Carlo samples
 /// that are not RelVal.  The first capture is the CMSSW release
