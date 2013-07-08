@@ -18,7 +18,7 @@
 					<folderInfo id="org.eclipse.cdt.msvc.exe.debug.778281750." name="/" resourcePath="">
 						<toolChain id="org.eclipse.cdt.msvc.toolchain.exe.debug.1639357513" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.exe.debug">
 							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.exe.debug.1142551773" superClass="org.eclipse.cdt.msvc.targetPlatform.exe.debug"/>
-							<builder buildPath="${workspace_loc:/cms-project}/Debug" id="org.eclipse.cdt.msvc.builder.1239876718" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="org.eclipse.cdt.msvc.builder"/>
+							<builder buildPath="${workspace_loc:/cms-project}/Debug" enableAutoBuild="true" id="org.eclipse.cdt.msvc.builder.1239876718" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="org.eclipse.cdt.msvc.builder"/>
 							<tool id="org.eclipse.cdt.msvc.cl.c.exe.debug.763592235" name="C Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.c.exe.debug">
 								<option id="org.eclipse.cdt.msvc.cl.option.optimization.992112428" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization" value="org.eclipse.cdt.msvc.cl.option.optimization.default" valueType="enumerated"/>
 								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.401397710" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat" value="org.eclipse.cdt.msvc.cl.option.debugFormat.complete" valueType="enumerated"/>
@@ -40,13 +40,14 @@
 								<option id="org.eclipse.cdt.msvc.link.option.debug.1284785929" name="Generate Debug Info (/debug)" superClass="org.eclipse.cdt.msvc.link.option.debug" value="true" valueType="boolean"/>
 								<option id="org.eclipse.cdt.msvc.link.option.libraries.2036998576" name="Libraries" superClass="org.eclipse.cdt.msvc.link.option.libraries" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libCore.lib&quot;"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libMathCore.lib&quot;"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGpad.lib&quot;"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGed.lib&quot;"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libHist.lib&quot;"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGraf.lib&quot;"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGui.lib&quot;"/>
+-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libMathCore.lib&quot;"/>
+-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGpad.lib&quot;"/>
+-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGed.lib&quot;"/>
+-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libHist.lib&quot;"/>
+-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGraf.lib&quot;"/>
+-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGui.lib&quot;"/>
 								</option>
+								<option id="org.eclipse.cdt.msvc.link.option.libpath.943358147" name="Additional Libpath (/libpath)" superClass="org.eclipse.cdt.msvc.link.option.libpath" valueType="stringList"/>
 								<inputType id="org.eclipse.cdt.msvc.link.inputType.1568144199" superClass="org.eclipse.cdt.msvc.link.inputType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.msvc.lib.177828791" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>

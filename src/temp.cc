@@ -21,12 +21,8 @@ TH1D* generateGausHistogram(Int_t id) {
 	Double_t xlow = -5;
 	Double_t xup = 5;
 
-	std::string histogramId = "histogram";
+	std::string histogramId = "histogram_";
 	histogramId.append(std::to_string(id));
-
-
-	std::cout << histogramId.c_str();
-
 
 	TH1D *histogram = new TH1D(histogramId.c_str(), "Amazing Histogram", nbins, xlow, xup);
 	histogram->FillRandom("gaus", 20000);
@@ -38,10 +34,10 @@ TH1D* generateGausHistogram(Int_t id) {
 void drawHistogramStack() {
 	THStack *histogramStack = new THStack("histogramStack", "Stacked Histograms");
 
-	Int_t colours[] = {kRed, kGreen, kBlue, kYellow};
+	const Int_t colours[] = {kRed, kGreen, kBlue, kYellow};
+	const Int_t numberOfColours = sizeof(colours) / sizeof(Int_t);
 
-
-	for(Int_t i = 0 ; i < sizeof(colours); i++) {
+	for(Int_t i = 0 ; i < numberOfColours; i++) {
 		TH1D *histogram = generateGausHistogram(i);
 		histogram->SetFillColor(colours[i]);
 		histogramStack->Add(histogram);
@@ -51,6 +47,10 @@ void drawHistogramStack() {
 	histogramStack->Draw();
 }
 
+
+void temp() {
+	drawHistogramStack();
+}
 
 #ifndef __CINT__
 int main() {
