@@ -10,7 +10,7 @@
 #include <TRandom.h>
 
 
-void test() {
+void plotSimpleGraph() {
 	TF1 *plot = new TF1("tmp", "sin(x)", 0, 6.3);
 	plot->Draw();
 }
@@ -45,13 +45,13 @@ void drawHistogramStack() {
 	}
 
 	histogramStack->Draw();
+
+	TH1D *histogram2 = new TH1D("h2", "2", 1000, -5, 5);
+	histogram2->FillRandom("gaus", 200000);
+	histogram2->Draw("same");
 }
 
-
-void temp() {
-	drawHistogramStack();
-}
-
+/*
 #ifndef __CINT__
 int main() {
 	TApplication application("App", 0, 0);
@@ -66,3 +66,4 @@ int main() {
 	return(0);
 }
 # endif
+*/
