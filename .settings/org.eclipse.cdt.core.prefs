@@ -4,3 +4,4 @@ environment/project/org.eclipse.cdt.msvc.exe.debug.1139884087/INCLUDE/operation=
 environment/project/org.eclipse.cdt.msvc.exe.debug.1139884087/INCLUDE/value=C\:\\Program Files (x86)\\Windows Kits\\8.0\\Include;C\:\\Program Files (x86)\\Windows Kits\\8.0\\Include\\gl;C\:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\Include;${ROOTSYS}/include
 environment/project/org.eclipse.cdt.msvc.exe.debug.1139884087/append=true
 environment/project/org.eclipse.cdt.msvc.exe.debug.1139884087/appendContributed=true
+indexer/indexerId=org.eclipse.cdt.core.nullindexer

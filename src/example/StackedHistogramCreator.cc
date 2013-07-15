@@ -14,11 +14,9 @@
 #include <THStack.h>
 #include <TObject.h>
 #include <cassert>
-//#include <cassert>
 #include <iostream>
 #include <list>
-//#include <string>
-#include <xstring>
+#include <string>
 
 
 namespace example {

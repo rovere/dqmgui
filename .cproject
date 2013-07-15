@@ -12,64 +12,40 @@
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" description="" id="org.eclipse.cdt.msvc.exe.debug.1139884087" name="Debug" parent="org.eclipse.cdt.msvc.exe.debug">
 					<folderInfo id="org.eclipse.cdt.msvc.exe.debug.1139884087." name="/" resourcePath="">
-						<toolChain id="org.eclipse.cdt.msvc.toolchain.exe.debug.1043589440" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.exe.debug">
-							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.exe.debug.1760451328" superClass="org.eclipse.cdt.msvc.targetPlatform.exe.debug"/>
-							<builder buildPath="${workspace_loc:/prototype}/Debug" id="org.eclipse.cdt.msvc.builder.753802635" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="org.eclipse.cdt.msvc.builder"/>
-							<tool id="org.eclipse.cdt.msvc.cl.c.exe.debug.1928830786" name="C Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.c.exe.debug">
-								<option id="org.eclipse.cdt.msvc.cl.option.optimization.791275516" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization" value="org.eclipse.cdt.msvc.cl.option.optimization.default" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.319182049" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat" value="org.eclipse.cdt.msvc.cl.option.debugFormat.complete" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.includes.1378680237" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
-								</option>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.c.766056025" superClass="org.eclipse.cdt.msvc.cl.inputType.c"/>
+						<toolChain id="org.eclipse.cdt.msvc.toolchain.dll.debug.1056123287" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.dll.debug" unusedChildren="org.eclipse.cdt.msvc.cl.c.dll.debug">
+							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.dll.debug.342692183" superClass="org.eclipse.cdt.msvc.targetPlatform.dll.debug"/>
+							<builder buildPath="${workspace_loc:/prototype}/Debug" id="org.eclipse.cdt.msvc.builder.1992613676" name="CDT Internal Builder.Debug" superClass="org.eclipse.cdt.msvc.builder"/>
+							<tool id="org.eclipse.cdt.msvc.rc.dll.debug.1076910390" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.dll.debug">
+								<inputType id="org.eclipse.cdt.msvc.rc.inputType.1777224733" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
 							</tool>
-							<tool id="org.eclipse.cdt.msvc.cl.exe.debug.726378805" name="C++ Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.exe.debug">
-								<option id="org.eclipse.cdt.msvc.cl.option.optimization.2083084430" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization" value="org.eclipse.cdt.msvc.cl.option.optimization.default" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.386522464" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat" value="org.eclipse.cdt.msvc.cl.option.debugFormat.complete" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.includes.162298114" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
-								</option>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.785821858" superClass="org.eclipse.cdt.msvc.cl.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.rc.exe.debug.1996200677" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.exe.debug">
-								<option id="org.eclipse.cdt.msvc.rc.option.includes.381237093" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.rc.option.includes" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
-								</option>
-								<inputType id="org.eclipse.cdt.msvc.rc.inputType.92783650" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.link.exe.debug.1569197912" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.exe.debug">
-								<option id="org.eclipse.cdt.msvc.link.option.debug.1062720101" name="Generate Debug Info (/debug)" superClass="org.eclipse.cdt.msvc.link.option.debug" value="true" valueType="boolean"/>
-								<option id="org.eclipse.cdt.msvc.link.option.libraries.2081613823" superClass="org.eclipse.cdt.msvc.link.option.libraries" valueType="libs">
+							<tool id="org.eclipse.cdt.msvc.link.dll.debug.1248992109" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.dll.debug">
+								<option id="org.eclipse.cdt.msvc.link.option.libraries.920263557" superClass="org.eclipse.cdt.msvc.link.option.libraries" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libCore.lib&quot;"/>
--									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libMathCore.lib&quot;"/>
--									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGpad.lib&quot;"/>
--									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGed.lib&quot;"/>
--									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libHist.lib&quot;"/>
--									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGraf.lib&quot;"/>
--									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGui.lib&quot;"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libMathCore.lib&quot;"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGpad.lib&quot;"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGed.lib&quot;"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libHist.lib&quot;"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGraf.lib&quot;"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="&quot;${ROOTSYS}/lib/libGui.lib&quot;"/>
 								</option>
-								<inputType id="org.eclipse.cdt.msvc.link.inputType.1142993038" superClass="org.eclipse.cdt.msvc.link.inputType"/>
+								<option id="org.eclipse.cdt.msvc.link.option.debug.828339203" superClass="org.eclipse.cdt.msvc.link.option.debug" value="true" valueType="boolean"/>
+								<inputType id="org.eclipse.cdt.msvc.link.inputType.2086976329" superClass="org.eclipse.cdt.msvc.link.inputType"/>
 							</tool>
-							<tool id="org.eclipse.cdt.msvc.lib.264011516" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>
+							<tool id="org.eclipse.cdt.msvc.lib.1288555444" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>
+							<tool id="org.eclipse.cdt.msvc.cl.dll.debug.1922344024" name="C++ Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.dll.debug">
+								<option id="org.eclipse.cdt.msvc.cl.option.includes.1058085504" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath">
+									<listOptionValue builtIn="false" value="C:/root/include"/>
+								</option>
+								<option id="org.eclipse.cdt.msvc.cl.option.optimization.2023697616" superClass="org.eclipse.cdt.msvc.cl.option.optimization" value="org.eclipse.cdt.msvc.cl.option.optimization.default" valueType="enumerated"/>
+								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.607496743" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat" value="org.eclipse.cdt.msvc.cl.option.debugFormat.complete" valueType="enumerated"/>
+								<inputType id="org.eclipse.cdt.msvc.cl.inputType.1306346724" superClass="org.eclipse.cdt.msvc.cl.inputType"/>
+							</tool>
 						</toolChain>
 					</folderInfo>
-					<folderInfo id="org.eclipse.cdt.msvc.exe.debug.1139884087.707621444" name="/" resourcePath="src">
-						<toolChain id="org.eclipse.cdt.msvc.toolchain.exe.debug.1274681341" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.exe.debug" unusedChildren="">
-							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.exe.debug" superClass="org.eclipse.cdt.msvc.targetPlatform.exe.debug"/>
-							<tool id="org.eclipse.cdt.msvc.cl.c.exe.debug.1659375788" name="C Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.c.exe.debug.1928830786">
-								<option id="org.eclipse.cdt.msvc.cl.option.includes.838345750" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath"/>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.c.766136118" superClass="org.eclipse.cdt.msvc.cl.inputType.c"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.cl.exe.debug.1015715003" name="C++ Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.exe.debug.726378805">
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.495456578" superClass="org.eclipse.cdt.msvc.cl.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.rc.exe.debug.468888185" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.exe.debug.1996200677">
-								<inputType id="org.eclipse.cdt.msvc.rc.inputType.1328106086" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.link.exe.debug.455139727" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.exe.debug.1569197912"/>
-							<tool id="org.eclipse.cdt.msvc.lib.1508908356" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib.264011516"/>
-						</toolChain>
-					</folderInfo>
+					<sourceEntries>
+						<entry excluding="src|test" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
@@ -116,6 +92,10 @@
 							<tool id="org.eclipse.cdt.msvc.lib.66060442" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>
 						</toolChain>
 					</folderInfo>
+					<sourceEntries>
+						<entry excluding="src|test" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
@@ -125,6 +105,20 @@
 		<project id="prototype.org.eclipse.cdt.msvc.projectType.exe.80604731" name="Executable" projectType="org.eclipse.cdt.msvc.projectType.exe"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/prototype"/>
+		</configuration>
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/prototype"/>
+		</configuration>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings">
+		<doc-comment-owner id="org.eclipse.cdt.ui.doxygen">
+			<path value=""/>
+		</doc-comment-owner>
+	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.release.1118658093;org.eclipse.cdt.msvc.exe.release.1118658093.;org.eclipse.cdt.msvc.cl.c.exe.release.881205185;org.eclipse.cdt.msvc.cl.inputType.c.1592889670">
@@ -136,16 +130,14 @@
 		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.debug.1139884087;org.eclipse.cdt.msvc.exe.debug.1139884087.;org.eclipse.cdt.msvc.cl.c.exe.debug.1928830786;org.eclipse.cdt.msvc.cl.inputType.c.766056025">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
 		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.debug.1139884087;org.eclipse.cdt.msvc.exe.debug.1139884087.;org.eclipse.cdt.msvc.cl.dll.debug.314068798;org.eclipse.cdt.msvc.cl.inputType.1205340960">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
+		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.release.1118658093;org.eclipse.cdt.msvc.exe.release.1118658093.;org.eclipse.cdt.msvc.cl.exe.release.100315440;org.eclipse.cdt.msvc.cl.inputType.2060687084">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
 		</scannerConfigBuildInfo>
-	</storageModule>
-	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Release">
-			<resource resourceType="PROJECT" workspacePath="/prototype"/>
-		</configuration>
-		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/prototype"/>
-		</configuration>
+		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.debug.1139884087;org.eclipse.cdt.msvc.exe.debug.1139884087.;org.eclipse.cdt.msvc.cl.dll.debug.1594251751;org.eclipse.cdt.msvc.cl.inputType.1555288665">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
+		</scannerConfigBuildInfo>
 	</storageModule>
 </cproject>

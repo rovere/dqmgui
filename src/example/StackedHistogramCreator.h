@@ -4,14 +4,9 @@
  *  Created on: 10 Jul 2013
  *      Author: Colin - CERN
  */
-
-//#include <TCanvas.h>
 #include <TH1.h>
-//#include <THStack.h>
 #include <list>
-//#include <list>
-//#include <string>
-#include <xstring>
+#include <string.h>
 
 class TApplication;
 class TCanvas;

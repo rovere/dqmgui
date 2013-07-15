@@ -5,7 +5,7 @@
 #include <Rtypes.h>
 #include <TApplication.h>
 #include <TCanvas.h>
-#include <TH1.h>
+#include <TH1F.h>
 #include <TObject.h>
 #include <TPaveLabel.h>
 #include <cassert>
