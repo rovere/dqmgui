@@ -21,12 +21,14 @@
 
 namespace example {
 	const std::string StackedHistogramCreator::DEFAULT_STACK_LABEL = "MC vs Data";			// FIXME: Localisation required?
-	const std::string StackedHistogramCreator::DEFAULT_STACK_NAME = "MonteCarloVsData";		// XXX: Does this have to be globally unique - what exactly is a label?
+	const std::string StackedHistogramCreator::DEFAULT_STACK_NAME = "MC vs Data";			// XXX: Does this have to be globally unique - what exactly is a label?
 
 	const Int_t StackedHistogramCreator::DEFAULT_COLOURS[] = {kRed, kGreen, kBlue, kYellow, kTeal, kGray, kOrange};
 	const Int_t StackedHistogramCreator::COLOUR_BLACK = kBlack;
 
-
+	///
+	///
+	///
 	StackedHistogramCreator::StackedHistogramCreator(
 			TH1D dataHistogram,
 			std::list<TH1D> monteCarloHistogramList)
@@ -41,33 +43,42 @@ namespace example {
 		StackedHistogramCreator::normaliseHistograms(&this->monteCarloHistogramList);
 	}
 
-
+	///
+	///
+	///
 	void StackedHistogramCreator::drawAllHistograms() {
-		this->addAllToHistogramStack(this->monteCarloHistogramList);
+		this->addAllToHistogramStack(&this->monteCarloHistogramList);
+		this->histogramStack->Draw();
 
-//		TH1D *normalisedDataHistogram = this->normaliseHistogram(this->dataHistogram);
-//		normalisedDataHistogram->Draw("same");
-//		this->histogramStack->Draw();
+		this->normaliseHistogram(&this->dataHistogram, 1);
+		this->dataHistogram.SetLineColor(1);
+		this->dataHistogram.SetLineWidth(5);
+//		this->dataHistogram.SetLineStyle(9);
+		this->dataHistogram.Draw("SAME");
 	}
 
-
+	///
+	///
 	///
 	void StackedHistogramCreator::normaliseHistograms(std::list<TH1D> *histograms) {
 		std::list<TH1D>::iterator it = histograms->begin();
+		Int_t numberOfHistograms = histograms->size();
 
 		while(it != histograms->end()) {
 			TH1D *histogram = &(*it);
-			StackedHistogramCreator::normaliseHistogram(histogram);
+			StackedHistogramCreator::normaliseHistogram(histogram, numberOfHistograms);
 			it++;
 		}
 	}
 
-	// Calls to this could probably be
-	void StackedHistogramCreator::normaliseHistogram(TH1D *histogram) {
+	///
+	///
+	///
+	void StackedHistogramCreator::normaliseHistogram(TH1D *histogram, Int_t totalHistogramsInStack) {
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {
-			Double_t inverseIntegral = 1 / integral;
+			Double_t inverseIntegral = 1 / (integral * totalHistogramsInStack);
 			histogram->Scale(inverseIntegral);
 		}
 		else {
@@ -75,7 +86,9 @@ namespace example {
 		}
 	}
 
-
+	///
+	///
+	///
 	Int_t StackedHistogramCreator::getNextColour() {
 		const Int_t numberOfColours = sizeof(DEFAULT_COLOURS) / sizeof(Int_t);
 
@@ -93,7 +106,9 @@ namespace example {
 		return(colour);
 	}
 
-
+	///
+	///
+	///
 	void StackedHistogramCreator::addToHistogramStack(TH1D &histogram) {
 		std::cout << &(histogram) << '\n';
 
@@ -104,10 +119,14 @@ namespace example {
 		this->histogramStack->Add(&histogram);
 	}
 
-	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D> &histograms) {
-		std::list<TH1D>::iterator it = histograms.begin();
 
-		while(it != histograms.end()) {
+	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D> *histograms) {
+		std::cout << "Size: " << histograms->size() << "|\n";
+
+
+		std::list<TH1D>::iterator it = histograms->begin();
+
+		while(it != histograms->end()) {
 			TH1D *histogram = &(*it);
 
 			std::cout << histogram << "|\n";

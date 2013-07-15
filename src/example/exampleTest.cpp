@@ -21,6 +21,7 @@
 #include "StackedHistogramCreator.h"
 
 
+
 namespace example {
 	static const Int_t DEFAULT_HISTOGRAM_OBSERVABLES = 20000;
 
@@ -36,7 +37,7 @@ namespace example {
 		std::string histogramId = "histogram_";
 		histogramId.append(std::to_string(id));
 
-		TH1D *histogram = new TH1D(histogramId.c_str(), "Amazing Histogram", nbins, xlow, xup);
+		TH1D *histogram = new TH1D(histogramId.c_str(), "Gaussian Histogram", nbins, xlow, xup);
 		histogram->FillRandom("gaus", totalObservations);
 
 		return(histogram);
@@ -67,7 +68,7 @@ namespace example {
 	/// Runs an example of the histogram display program.
 	void runExample(Int_t numberOfSignalHistograms, Int_t numberOfNoiseHistograms) {
 		TApplication *application = new TApplication("App", 0, 0);
-		TPaveLabel *hello = new TPaveLabel(0.2, 0.4, 0.8, 0.6, "Hello World");
+//		TPaveLabel *tPaveLabel = new TPaveLabel(0.2, 0.4, 0.8, 0.6, "TPaveLabel not set");
 
 		TCanvas *canvas = new TCanvas("c", "Test Application", 400, 400);
 		TH1D dataHistogram = *generateGausHistogram(-1);
@@ -75,7 +76,6 @@ namespace example {
 
 		StackedHistogramCreator *creator = new example::StackedHistogramCreator(
 				dataHistogram, histograms);
-
 		creator->drawAllHistograms();
 
 		canvas->Update();
@@ -86,14 +86,7 @@ namespace example {
 
 #ifndef __CINT__
 int main(int argc, const char* argv[]) {
-
-	example::runExample(1, 4);
-
-//	Int_t option;
-//	while((option = getopt(argc, argv, "abc:")) != -1) {
-//
-//	}
-
+	example::runExample(1, 2);
 
 
 	std::cout << "Complete";
