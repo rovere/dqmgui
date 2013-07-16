@@ -12,11 +12,10 @@ class TApplication;
 class TCanvas;
 class THStack;
 
-
 #ifndef STACKEDHISTOGRAMCREATOR_H_
 #define STACKEDHISTOGRAMCREATOR_H_
 namespace example {
-	/// TODO
+	/// TODO: Document
 	///
 	///
 	class StackedHistogramCreator {
@@ -26,9 +25,9 @@ namespace example {
 		/// Default name for the histogram stack
 		static const std::string DEFAULT_STACK_NAME;
 
-		/// TODO: Document
+		/// List of default colours
 		static const Int_t DEFAULT_COLOURS[];
-		/// TODO: Document
+		/// The black colour.
 		static const Int_t COLOUR_BLACK;
 
 		THStack *histogramStack;
@@ -74,6 +73,5 @@ namespace example {
 		/// @param histograms a pointer to a list of histograms to add to the stack
 		void addAllToHistogramStack(std::list<TH1D> *histograms);
 	};
-
 }
 #endif

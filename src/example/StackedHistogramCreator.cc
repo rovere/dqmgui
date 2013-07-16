@@ -51,7 +51,7 @@ namespace example {
 		this->histogramStack->Draw();
 
 		this->normaliseHistogram(&this->dataHistogram, 1);
-		this->dataHistogram.SetLineColor(1);
+		this->dataHistogram.SetLineColor(COLOUR_BLACK);
 		this->dataHistogram.SetLineWidth(5);
 //		this->dataHistogram.SetLineStyle(9);
 		this->dataHistogram.Draw("SAME");
@@ -110,8 +110,6 @@ namespace example {
 	///
 	///
 	void StackedHistogramCreator::addToHistogramStack(TH1D &histogram) {
-		std::cout << &(histogram) << '\n';
-
 		Int_t colour = getNextColour();
 
 		histogram.SetFillColor(colour);
@@ -119,18 +117,14 @@ namespace example {
 		this->histogramStack->Add(&histogram);
 	}
 
-
+	///
+	///
+	///
 	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D> *histograms) {
-		std::cout << "Size: " << histograms->size() << "|\n";
-
-
 		std::list<TH1D>::iterator it = histograms->begin();
 
 		while(it != histograms->end()) {
 			TH1D *histogram = &(*it);
-
-			std::cout << histogram << "|\n";
-
 			this->addToHistogramStack(*histogram);
 			it++;
 		}

@@ -14,7 +14,7 @@
 					<folderInfo id="org.eclipse.cdt.msvc.exe.debug.1139884087." name="/" resourcePath="">
 						<toolChain id="org.eclipse.cdt.msvc.toolchain.dll.debug.1056123287" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.dll.debug" unusedChildren="org.eclipse.cdt.msvc.cl.c.dll.debug">
 							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.dll.debug.342692183" superClass="org.eclipse.cdt.msvc.targetPlatform.dll.debug"/>
-							<builder buildPath="${workspace_loc:/prototype}/Debug" enableAutoBuild="true" id="org.eclipse.cdt.msvc.builder.1992613676" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="org.eclipse.cdt.msvc.builder"/>
+							<builder buildPath="${workspace_loc:/prototype}/Debug" enableAutoBuild="true" id="org.eclipse.cdt.build.core.internal.builder.1808113108" superClass="org.eclipse.cdt.build.core.internal.builder"/>
 							<tool id="org.eclipse.cdt.msvc.rc.dll.debug.1076910390" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.dll.debug">
 								<inputType id="org.eclipse.cdt.msvc.rc.inputType.1777224733" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
 							</tool>
@@ -113,7 +113,6 @@
 			<resource resourceType="PROJECT" workspacePath="/prototype"/>
 		</configuration>
 	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings">
 		<doc-comment-owner id="org.eclipse.cdt.ui.doxygen">
 			<path value=""/>
@@ -142,5 +141,8 @@
 		<scannerConfigBuildInfo instanceId="org.eclipse.cdt.msvc.exe.debug.1139884087;org.eclipse.cdt.msvc.exe.debug.1139884087.;org.eclipse.cdt.msvc.cl.dll.debug.1594251751;org.eclipse.cdt.msvc.cl.inputType.1555288665">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
 		</scannerConfigBuildInfo>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
+		<buildTargets/>
 	</storageModule>
 </cproject>

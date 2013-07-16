@@ -1,7 +1,3 @@
-
-
-//#include <ctype.h>
-
 #include <Rtypes.h>
 #include <TApplication.h>
 #include <TCanvas.h>
@@ -9,10 +5,7 @@
 #include <TObject.h>
 #include <TPaveLabel.h>
 #include <cassert>
-//#include <cassert>
-//#include <iostream>
 #include <iostream>
-//#include <list>
 #include <list>
 #include <new>
 #include <string>
@@ -20,10 +13,8 @@
 
 #include "StackedHistogramCreator.h"
 
-
-
 namespace example {
-	static const Int_t DEFAULT_HISTOGRAM_OBSERVABLES = 20000;
+	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 20000;
 
 	/// Generates a histogram with a Gaussian frequency distribution.
 	/// @param id the identification number of the histogram (used by ROOT)
@@ -44,10 +35,10 @@ namespace example {
 	}
 
 	/// Generates a histogram with a Gaussian frequency distribution
-	/// and {@code DEFAULT_HISTOGRAM_OBSERVABLES} observables.
+	/// and {@code DEFAULT_HISTOGRAM_ENTRIES} entries.
 	/// @see generateGausHistogram(Int_t, Int_t)
 	TH1D* generateGausHistogram(Int_t id) {
-		return(generateGausHistogram(id, DEFAULT_HISTOGRAM_OBSERVABLES));
+		return(generateGausHistogram(id, DEFAULT_HISTOGRAM_ENTRIES));
 	}
 
 	/// Creates a list of pseudo Monte Carlo (MC) simulated histograms.
