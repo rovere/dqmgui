@@ -13,10 +13,14 @@
 #include <TH1.h>
 #include <THStack.h>
 #include <TObject.h>
+//#include <cassert>
 #include <cassert>
-#include <iostream>
+//#include <iostream>
 #include <list>
-#include <string>
+//#include <string>
+#include <xstring>
+
+#include "HistogramNormalisationUtil.h"
 
 
 namespace example {
@@ -40,7 +44,7 @@ namespace example {
 				DEFAULT_STACK_LABEL.c_str(),
 				DEFAULT_STACK_NAME.c_str());
 
-		StackedHistogramCreator::normaliseHistograms(&this->monteCarloHistogramList);
+		HistogramNormalisationUtil::normaliseHistograms(&this->monteCarloHistogramList);
 	}
 
 	///
@@ -50,40 +54,10 @@ namespace example {
 		this->addAllToHistogramStack(&this->monteCarloHistogramList);
 		this->histogramStack->Draw();
 
-		this->normaliseHistogram(&this->dataHistogram, 1);
+		HistogramNormalisationUtil::normaliseHistogram(&this->dataHistogram);
 		this->dataHistogram.SetLineColor(COLOUR_BLACK);
 		this->dataHistogram.SetLineWidth(5);
-//		this->dataHistogram.SetLineStyle(9);
 		this->dataHistogram.Draw("SAME");
-	}
-
-	///
-	///
-	///
-	void StackedHistogramCreator::normaliseHistograms(std::list<TH1D> *histograms) {
-		std::list<TH1D>::iterator it = histograms->begin();
-		Int_t numberOfHistograms = histograms->size();
-
-		while(it != histograms->end()) {
-			TH1D *histogram = &(*it);
-			StackedHistogramCreator::normaliseHistogram(histogram, numberOfHistograms);
-			it++;
-		}
-	}
-
-	///
-	///
-	///
-	void StackedHistogramCreator::normaliseHistogram(TH1D *histogram, Int_t totalHistogramsInStack) {
-		Double_t integral = histogram->Integral();
-
-		if(integral > 0) {
-			Double_t inverseIntegral = 1 / (integral * totalHistogramsInStack);
-			histogram->Scale(inverseIntegral);
-		}
-		else {
-			// Histogram does not contain any samples - no normalisation required
-		}
 	}
 
 	///

@@ -77,8 +77,7 @@ namespace example {
 
 #ifndef __CINT__
 int main(int argc, const char* argv[]) {
-	example::runExample(1, 2);
-
+	example::runExample(1, 10);
 
 	std::cout << "Complete";
 	return(0);

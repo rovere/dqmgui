@@ -48,19 +48,6 @@ namespace example {
 		void drawAllHistograms();
 
 	private:
-		/// Normalise a given list of histograms such that, when stacked, they will
-		/// have a unit area.
-		/// @param histograms a pointer to the list of histograms to be normalised
-		static void normaliseHistograms(std::list<TH1D> *histograms);
-
-		/// Normalises a histogram that is to be included in a stack (or on its own
-		/// if {@code totalHistogramsInStack == 1}) such that all histograms in the
-		///	stack with have a sum area of 1.
-		/// @param histogram a pointer to the histogram to normalise
-		/// @param totalHistogramsInStack the number of histograms in the same stack
-		///								  as the histogram that's been normalised
-		static void normaliseHistogram(TH1D *histogram, Int_t totalHistogramsInStack);
-
 		/// Gets the next colour to be used as a histogram's background colour.
 		/// @return integer representing the colour
 		Int_t getNextColour();
