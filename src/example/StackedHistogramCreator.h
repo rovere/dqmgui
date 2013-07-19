@@ -4,9 +4,15 @@
  *  Created on: 10 Jul 2013
  *      Author: Colin - CERN
  */
+
+#include <Rtypes.h>
 #include <TH1.h>
 #include <list>
-#include <string.h>
+//#include <list>
+//#include <string>
+#include <xstring>
+
+#include "HistogramWeightPair.h"
 
 class TApplication;
 class TCanvas;
@@ -31,18 +37,17 @@ namespace example {
 		static const Int_t COLOUR_BLACK;
 
 		THStack *histogramStack;
+		std::list<HistogramWeightPair> histogramWeightPairs;
 		TH1D dataHistogram;
-		std::list<TH1D> monteCarloHistogramList;
 		Int_t colourIndex;
 
 	public:
 		/// Default constructor.
 		/// @param dataHistogram the histogram that describes the real data
-		/// @param monteCarloHistogramList a list of Monte Carlo histograms that
-		///							  	   each describe sources of noise and signal
+		/// @param histogramWeightPairs TODO
 		StackedHistogramCreator(
 				TH1D dataHistogram,
-				std::list<TH1D> monteCarloHistogramList);
+				std::list<HistogramWeightPair> histogramWeightPairs);
 
 		/// Draws all of the histograms - both the MC and data histogram(s).
 		void drawAllHistograms();
@@ -57,8 +62,12 @@ namespace example {
 		void addToHistogramStack(TH1D &histogram);
 
 		/// Adds all of the histograms given to the histogram stack.
-		/// @param histograms a pointer to a list of histograms to add to the stack
-		void addAllToHistogramStack(std::list<TH1D> *histograms);
+		/// @param histograms the list of histograms to add to the stack
+		void addAllToHistogramStack(std::list<TH1D*> histograms);
+
+		/// Gets all of the histograms, regardless of weight.
+		/// @return all histograms to be drawn in the stack
+		std::list<TH1D*> getAllHistograms();
 	};
 }
 #endif

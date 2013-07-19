@@ -1,3 +1,14 @@
+#include <cassert>
+
+#include "HistogramWeightPair.h"
+
+#include <cassert>
+
+#include <TH1.h>
+#include <cassert>
+#include <iostream>
+#include <list>
+
 #include <Rtypes.h>
 #include <TApplication.h>
 #include <TCanvas.h>
@@ -14,7 +25,9 @@
 #include "StackedHistogramCreator.h"
 
 namespace example {
-	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 20000;
+	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 50000;
+
+	Int_t nextHistogramId = 0;
 
 	/// Generates a histogram with a Gaussian frequency distribution.
 	/// @param id the identification number of the histogram (used by ROOT)
@@ -48,7 +61,7 @@ namespace example {
 		std::list<TH1D> histograms;
 
 		for(Int_t i = 0 ; i < numberOfHistograms; i++) {
-			TH1D *histogram = generateGausHistogram(i);
+			TH1D *histogram = generateGausHistogram(++nextHistogramId);
 			histograms.push_back(*histogram);
 		}
 
@@ -56,17 +69,32 @@ namespace example {
 		return(histograms);
 	}
 
+	/// TODO: Comment
+	TH1D* createMCHistogram() {
+		return(generateGausHistogram(++nextHistogramId));
+	}
+
 	/// Runs an example of the histogram display program.
-	void runExample(Int_t numberOfSignalHistograms, Int_t numberOfNoiseHistograms) {
+	void runExample(Int_t numberOfMCHistograms, Double_t weights[]) {
+//		assert((sizeof(weights) / sizeof(Double_t)) == numberOfMCHistograms);
+
 		TApplication *application = new TApplication("App", 0, 0);
 //		TPaveLabel *tPaveLabel = new TPaveLabel(0.2, 0.4, 0.8, 0.6, "TPaveLabel not set");
 
 		TCanvas *canvas = new TCanvas("c", "Test Application", 400, 400);
 		TH1D dataHistogram = *generateGausHistogram(-1);
-		std::list<TH1D> histograms = createMCHistogramList(numberOfSignalHistograms + numberOfNoiseHistograms);
+		std::list<HistogramWeightPair> histogramWeightPairs;
+
+		for(Int_t i = 0; i < numberOfMCHistograms; i++) {
+			TH1D *histogram = createMCHistogram();
+			Double_t weight = weights[i];
+
+			HistogramWeightPair *histogramWeightPair = new HistogramWeightPair(histogram, weight);
+			histogramWeightPairs.push_back(*histogramWeightPair);
+		}
 
 		StackedHistogramCreator *creator = new example::StackedHistogramCreator(
-				dataHistogram, histograms);
+				dataHistogram, histogramWeightPairs);
 		creator->drawAllHistograms();
 
 		canvas->Update();
@@ -77,7 +105,12 @@ namespace example {
 
 #ifndef __CINT__
 int main(int argc, const char* argv[]) {
-	example::runExample(1, 10);
+	Double_t weights[] = {0.6, 0.1, 0.3};
+	Int_t numberOfWeights = sizeof(weights) / sizeof(Double_t);
+
+//	std::cout << numberOfWeights;
+
+	example::runExample(numberOfWeights, weights);
 
 	std::cout << "Complete";
 	return(0);

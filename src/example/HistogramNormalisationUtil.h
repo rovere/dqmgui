@@ -8,8 +8,11 @@
 #ifndef HISTOGRAMNORMALISATIONUTIL_H_
 #define HISTOGRAMNORMALISATIONUTIL_H_
 
-#include <Rtypes.h>
+//#include <Rtypes.h>
 #include <list>
+//#include <list>
+
+namespace example { class HistogramWeightPair; }
 
 class TH1D;
 
@@ -21,19 +24,14 @@ namespace example {
 
 			/// Normalise a given list of histograms such that, when stacked, they will
 			/// have a unit area.
-			/// @param histograms a pointer to the list of histograms to be normalised
-			static void normaliseHistograms(std::list<TH1D> *histograms);
+			/// @param histogramWeightPairs TODO
+			static void normaliseHistograms(std::list<HistogramWeightPair> *histogramWeightPairs);
 
 		private:
-			/// Normalises a histogram that is to be included in a stack (or on its own
-			/// if {@code totalHistogramsInStack == 1}) such that all histograms in the
-			///	stack with have a sum area of 1.
-			/// @param histogram a pointer to the histogram to normalise
-			/// @param totalHistogramsInStack TODO
-			static void normaliseHistogram(TH1D *histogram, Double_t totalHistogramsInStack);
-
-			/// TODO: Comment
-			static Int_t getEntriesInHistograms(std::list<TH1D> *histograms);
+			/// Normalises a histogram that is to be included in a stack such that all
+			/// histograms in the stack with have a sum area of 1. TODO: Update
+			/// @param histogramWeightPair TODO
+			static void normaliseHistogram(HistogramWeightPair histogramWeightPair);
 	};
 }
 #endif

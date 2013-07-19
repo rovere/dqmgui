@@ -13,15 +13,16 @@
 #include <TH1.h>
 #include <THStack.h>
 #include <TObject.h>
-//#include <cassert>
 #include <cassert>
-//#include <iostream>
+//#include <cassert>
+//#include <list>
 #include <list>
 //#include <string>
 #include <xstring>
+#include <iostream>
 
 #include "HistogramNormalisationUtil.h"
-
+#include "HistogramWeightPair.h"
 
 namespace example {
 	const std::string StackedHistogramCreator::DEFAULT_STACK_LABEL = "MC vs Data";			// FIXME: Localisation required?
@@ -35,27 +36,31 @@ namespace example {
 	///
 	StackedHistogramCreator::StackedHistogramCreator(
 			TH1D dataHistogram,
-			std::list<TH1D> monteCarloHistogramList)
+			std::list<HistogramWeightPair> histogramWeightPairs)
 				: dataHistogram(dataHistogram),
-				  monteCarloHistogramList(monteCarloHistogramList),
+				  histogramWeightPairs(histogramWeightPairs),
 				  colourIndex(0) {
 
 		this->histogramStack = new THStack(
 				DEFAULT_STACK_LABEL.c_str(),
 				DEFAULT_STACK_NAME.c_str());
 
-		HistogramNormalisationUtil::normaliseHistograms(&this->monteCarloHistogramList);
+		HistogramNormalisationUtil::normaliseHistograms(&this->histogramWeightPairs);
 	}
 
 	///
 	///
 	///
 	void StackedHistogramCreator::drawAllHistograms() {
-		this->addAllToHistogramStack(&this->monteCarloHistogramList);
+		std::list<TH1D*> histograms = this->getAllHistograms();
+
+		// XXX: It is assumed that all of the histograms have been normalised at this point...
+		this->addAllToHistogramStack(histograms);
 		this->histogramStack->Draw();
 
 		HistogramNormalisationUtil::normaliseHistogram(&this->dataHistogram);
 		this->dataHistogram.SetLineColor(COLOUR_BLACK);
+		this->dataHistogram.SetLineStyle(2);
 		this->dataHistogram.SetLineWidth(5);
 		this->dataHistogram.Draw("SAME");
 	}
@@ -94,13 +99,30 @@ namespace example {
 	///
 	///
 	///
-	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D> *histograms) {
-		std::list<TH1D>::iterator it = histograms->begin();
+	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D*> histograms) {
+		std::list<TH1D*>::iterator it = histograms.begin();
 
-		while(it != histograms->end()) {
-			TH1D *histogram = &(*it);
+		while(it != histograms.end()) {
+			TH1D *histogram = (*it);
 			this->addToHistogramStack(*histogram);
 			it++;
 		}
+	}
+
+	///
+	///
+	///
+	std::list<TH1D*> StackedHistogramCreator::getAllHistograms() {
+		std::list<HistogramWeightPair>::iterator it = this->histogramWeightPairs.begin();
+		std::list<TH1D*> histograms;
+
+		while(it != this->histogramWeightPairs.end()) {
+			HistogramWeightPair *histogramWeightPair = &(*it);
+			TH1D *histogram = histogramWeightPair->getHistogram();
+			histograms.push_back(histogram);
+			it++;
+		}
+
+		return(histograms);
 	}
 }

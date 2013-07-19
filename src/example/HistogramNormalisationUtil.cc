@@ -9,29 +9,30 @@
 
 #include <Rtypes.h>
 #include <TH1.h>
-#include <cassert>
-#include <iostream>
+#include <list>
+#include <new>
+
+#include "HistogramWeightPair.h"
 
 namespace example {
 	///
 	///
 	///
 	void HistogramNormalisationUtil::normaliseHistogram(TH1D *histogram) {
-		HistogramNormalisationUtil::normaliseHistogram(histogram, 1);
+		HistogramWeightPair *histogramWeightPair = new HistogramWeightPair(histogram, 1);
+		HistogramNormalisationUtil::normaliseHistogram(*histogramWeightPair);
 	}
 
 	///
 	///
 	///
-	void HistogramNormalisationUtil::normaliseHistograms(std::list<TH1D> *histograms) {
-		Int_t totalEntries = HistogramNormalisationUtil::getEntriesInHistograms(histograms);
+	void HistogramNormalisationUtil::normaliseHistograms(
+			std::list<HistogramWeightPair> *histogramWeightPairs) {
+		std::list<HistogramWeightPair>::iterator it = histogramWeightPairs->begin();
 
-		std::list<TH1D>::iterator it = histograms->begin();
-
-		while(it != histograms->end()) {
-			TH1D *histogram = &(*it);
-			Double_t weight = histogram->GetEntries() / totalEntries;
-			HistogramNormalisationUtil::normaliseHistogram(histogram, weight);
+		while(it != histogramWeightPairs->end()) {
+			HistogramWeightPair histogramWeightPair = *it;
+			HistogramNormalisationUtil::normaliseHistogram(histogramWeightPair);
 			it++;
 		}
 	}
@@ -39,32 +40,18 @@ namespace example {
 	///
 	///
 	///
-	void HistogramNormalisationUtil::normaliseHistogram(TH1D *histogram, Double_t histogramWeight) {
-		assert(histogramWeight <= 1.0);
+	void HistogramNormalisationUtil::normaliseHistogram(HistogramWeightPair histogramWeightPair) {
+		TH1D *histogram = histogramWeightPair.getHistogram();
+		Double_t weight = histogramWeightPair.getWeight();
+
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {
-			Double_t inverseIntegral = (1 / integral) * histogramWeight;
+			Double_t inverseIntegral = (1 / integral) * weight;
 			histogram->Scale(inverseIntegral);
 		}
 		else {
 			// Histogram does not contain any samples - no normalisation required
 		}
-	}
-
-	///
-	///
-	///
-	Int_t HistogramNormalisationUtil::getEntriesInHistograms(std::list<TH1D> *histograms) {
-		std::list<TH1D>::iterator it = histograms->begin();
-		Int_t totalEntries = 0;
-
-		while(it != histograms->end()) {
-			TH1D *histogram = &(*it);
-			totalEntries += histogram->GetEntries();
-			it++;
-		}
-
-		return totalEntries;
 	}
 }
