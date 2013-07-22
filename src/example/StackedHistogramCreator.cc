@@ -77,10 +77,12 @@ namespace prototype {
 	}
 
 	void StackedHistogramCreator::addToHistogramStack(TH1D &histogram) {
+		#ifdef DNDEBUG
 		TObjArray *histogramStack = this->histogramStack->GetStack();
 		Int_t stackSize = (histogramStack == nullptr)
 								? 0
 								: histogramStack->GetSize();
+		#endif
 
 		Int_t colour = getNextColour();
 
@@ -88,15 +90,19 @@ namespace prototype {
 		histogram.SetLineColor(COLOUR_BLACK);
 		this->histogramStack->Add(&histogram);
 
+		#ifdef DNDEBUG
 		Int_t modifiedStackSize = this->histogramStack->GetStack()->GetSize();
 		assert(modifiedStackSize == (stackSize + 1));
+		#endif
 	}
 
 	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D*> histograms) {
+		#ifdef DNDEBUG
 		TObjArray *histogramStack = this->histogramStack->GetStack();
 		Int_t stackSize = (histogramStack == nullptr)
 								? 0
 								: histogramStack->GetSize();
+		#endif
 
 		std::list<TH1D*>::iterator it = histograms.begin();
 
@@ -106,8 +112,10 @@ namespace prototype {
 			it++;
 		}
 
+		#ifdef DNDEBUG
 		Int_t modifiedStackSize = this->histogramStack->GetStack()->GetSize();
 		assert(modifiedStackSize == (stackSize + histograms.size()));
+		#endif
 	}
 
 	std::list<TH1D*> StackedHistogramCreator::getAllHistograms() {

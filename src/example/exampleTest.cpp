@@ -48,7 +48,7 @@ namespace prototype {
 	}
 
 	/// Generates a histogram with a Gaussian frequency distribution
-	/// and {@code DEFAULT_HISTOGRAM_ENTRIES} entries.
+	/// and <code>DEFAULT_HISTOGRAM_ENTRIES</code> entries.
 	/// @see generateGausHistogram(Int_t, Int_t)
 	TH1D* generateGausHistogram(Int_t id) {
 		return(generateGausHistogram(id, DEFAULT_HISTOGRAM_ENTRIES));

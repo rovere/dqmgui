@@ -4,13 +4,13 @@
  *  Created on: 10 Jul 2013
  *      Author: Colin - CERN
  */
+#ifndef STACKEDHISTOGRAMCREATOR_H_
+#define STACKEDHISTOGRAMCREATOR_H_
 
 #include <Rtypes.h>
 #include <TH1.h>
 #include <list>
-//#include <list>
-//#include <string>
-#include <xstring>
+#include <string>
 
 #include "HistogramWeightPair.h"
 
@@ -18,10 +18,8 @@ class TApplication;
 class TCanvas;
 class THStack;
 
-#ifndef STACKEDHISTOGRAMCREATOR_H_
-#define STACKEDHISTOGRAMCREATOR_H_
 namespace prototype {
-	/// TODO: Document
+	/// TODO: Document class.
 	///
 	///
 	class StackedHistogramCreator {
@@ -42,7 +40,7 @@ namespace prototype {
 		std::list<HistogramWeightPair> histogramWeightPairs;
 		/// The data histogram.
 		TH1D dataHistogram;
-		/// The index for {@code DEFAULT_COLOURS} of the colour to be used next.
+		/// The index for <code>DEFAULT_COLOUR</code> of the colour to be used next.
 		Int_t colourIndex;
 
 	public:
@@ -51,7 +49,7 @@ namespace prototype {
 		/// @param histogramWeightPairs a list of pairs of MC histograms and their
 		///								associated weights in the histogram stack
 		///								that is to be created for comparison against
-		///								the {@code dataHistogram}.
+		///								the <code>dataHistogram</code>.
 		StackedHistogramCreator(
 				TH1D dataHistogram,
 				std::list<HistogramWeightPair> histogramWeightPairs);

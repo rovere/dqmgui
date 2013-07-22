@@ -22,29 +22,29 @@ namespace prototype {
 			static const Double_t UNIT_AREA;
 
 		public:
-			/// Normalises a histogram such that it has an area of {@code UNIT_AREA}.
+			/// Normalises a histogram such that it has an area of <code>UNIT_AREA</code>.
 			/// @param histogram pointer to the histogram to normalise.
 			///					 This histogram object is modified
 			static void normaliseHistogram(TH1D *histogram);
 
 			/// Normalise a given list of histograms such that, when stacked, they will
-			/// have an area of {@code UNIT_AREA}. The weight of each histogram in the stack
+			/// have an area of <code>UNIT_AREA</code>. The weight of each histogram in the stack
 			///	(i.e. histograms each influence the resulting stack to different degrees)
-			/// is defined within the {@code HistogramWeightPair} instance.
+			/// is defined within the <code>HistogramWeightPair</code> instance.
 			/// @param histogramWeightPairs a pointer to the pairs of histograms to be normalised
 			///								considering their weights.
-			///								The sum of all the histogram's weights must equal 1
-			///								else an {@code std::invalid_argument} exception shall
+			///								The sum of all the histogram's weights must equal <code>UNIT_AREA</code>
+			///								else an <code>std::invalid_argument</code> exception shall
 			///								be thrown. The histograms within the pair histogram-weight
 			///								pair are modified
 			static void normaliseHistograms(std::list<HistogramWeightPair> *histogramWeightPairs);
 
 		private:
 			/// Normalises a histogram that is to be included in a stack such that all
-			/// histograms in the stack with have an area that sums to {@code UNIT_AREA}.
+			/// histograms in the stack with have an area that sums to <code>UNIT_AREA</code>.
 			/// <p>
 			/// Therefore the area of this histogram after normalisation shall be:
-			/// {@code 1 / histogramWeightPair.getWeight()}.
+			/// <code>1 / histogramWeightPair.getWeight()</code>.
 			/// @param histogramWeightPair a pair containing a histogram that is to be
 			///							   normalised (with respect to a stack of histograms)
 			///							   and the weight of the normalisation
