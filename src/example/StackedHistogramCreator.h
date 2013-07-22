@@ -26,25 +26,32 @@ namespace prototype {
 	///
 	class StackedHistogramCreator {
 	private:
-		/// Default label for the histogram stack
+		/// Default label for the histogram stack.
 		static const std::string DEFAULT_STACK_LABEL;
-		/// Default name for the histogram stack
+		/// Default name for the histogram stack.
 		static const std::string DEFAULT_STACK_NAME;
 
-		/// List of default colours
+		/// List of default colours.
 		static const Int_t DEFAULT_COLOURS[];
 		/// The black colour.
 		static const Int_t COLOUR_BLACK;
 
+		/// The histogram stack to be created.
 		THStack *histogramStack;
+		/// The pairs of histograms to create the histogram stack from.
 		std::list<HistogramWeightPair> histogramWeightPairs;
+		/// The data histogram.
 		TH1D dataHistogram;
+		/// The index for {@code DEFAULT_COLOURS} of the colour to be used next.
 		Int_t colourIndex;
 
 	public:
 		/// Default constructor.
 		/// @param dataHistogram the histogram that describes the real data
-		/// @param histogramWeightPairs TODO
+		/// @param histogramWeightPairs a list of pairs of MC histograms and their
+		///								associated weights in the histogram stack
+		///								that is to be created for comparison against
+		///								the {@code dataHistogram}.
 		StackedHistogramCreator(
 				TH1D dataHistogram,
 				std::list<HistogramWeightPair> histogramWeightPairs);
@@ -58,7 +65,7 @@ namespace prototype {
 		Int_t getNextColour();
 
 		/// Adds a given histogram to the histograms stack.
-		/// @param histogram copy of the histogram to put on the histogram stack
+		/// @param histogram a copy of the histogram to put on the histogram stack
 		void addToHistogramStack(TH1D &histogram);
 
 		/// Adds all of the histograms given to the histogram stack.

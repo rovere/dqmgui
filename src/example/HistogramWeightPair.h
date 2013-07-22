@@ -13,12 +13,14 @@
 class TH1D;
 
 namespace prototype {
-	/// TODO: Comment class
+	/// A model containing a histogram and its associated weight
+	/// in the context of a list of histograms that a histogram
+	/// stack is to be created from.
 	class HistogramWeightPair {
 		private:
 			/// This pair's histogram.
 			TH1D *histogram;
-			/// The weight of the histogram in a histogram stack.
+			/// The weight of this histogram in a histogram stack.
 			Double_t weight;
 
 		public:

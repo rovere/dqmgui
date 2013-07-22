@@ -4,7 +4,6 @@
  *  Created on: 16 Jul 2013
  *      Author: Colin - CERN
  */
-
 #ifndef HISTOGRAMNORMALISATIONUTIL_H_
 #define HISTOGRAMNORMALISATIONUTIL_H_
 
@@ -16,7 +15,7 @@ namespace prototype { class HistogramWeightPair; }
 
 
 namespace prototype {
-	/// TODO: Document class
+	/// Utility class for normalising histograms.
 	class HistogramNormalisationUtil {
 		private:
 			/// Defines the size of a unit area (the area of a normalised histogram)
@@ -48,7 +47,7 @@ namespace prototype {
 			/// {@code 1 / histogramWeightPair.getWeight()}.
 			/// @param histogramWeightPair a pair containing a histogram that is to be
 			///							   normalised (with respect to a stack of histograms)
-			///							  and the weight of the normalisation
+			///							   and the weight of the normalisation
 			static void normaliseHistogram(HistogramWeightPair histogramWeightPair);
 	};
 }

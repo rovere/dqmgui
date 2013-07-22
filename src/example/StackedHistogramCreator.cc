@@ -4,6 +4,7 @@
  *  Created on: 10 Jul 2013
  *      Author: Colin - CERN
  */
+#define DNDEBUG
 
 #include "StackedHistogramCreator.h"
 
@@ -14,26 +15,22 @@
 #include <THStack.h>
 #include <TObject.h>
 #include <cassert>
-//#include <cassert>
-//#include <list>
 #include <list>
-//#include <string>
-#include <xstring>
+#include <string>
 #include <iostream>
 
 #include "HistogramNormalisationUtil.h"
 #include "HistogramWeightPair.h"
 
 namespace prototype {
-	const std::string StackedHistogramCreator::DEFAULT_STACK_LABEL = "MC vs Data";			// FIXME: Localisation required?
-	const std::string StackedHistogramCreator::DEFAULT_STACK_NAME = "MC vs Data";			// XXX: Does this have to be globally unique - what exactly is a label?
+	const std::string StackedHistogramCreator::DEFAULT_STACK_LABEL = "MC vs Data";	// FIXME: Localisation required?
+	const std::string StackedHistogramCreator::DEFAULT_STACK_NAME = "MC vs Data";	// XXX: Does this have to be globally unique - what exactly is a label?
 
-	const Int_t StackedHistogramCreator::DEFAULT_COLOURS[] = {kRed, kGreen, kBlue, kYellow, kTeal, kGray, kOrange};
+	const Int_t StackedHistogramCreator::DEFAULT_COLOURS[] = {
+			kRed, kGreen, kBlue, kYellow, kTeal, kGray, kOrange};
 	const Int_t StackedHistogramCreator::COLOUR_BLACK = kBlack;
 
-	///
-	///
-	///
+
 	StackedHistogramCreator::StackedHistogramCreator(
 			TH1D dataHistogram,
 			std::list<HistogramWeightPair> histogramWeightPairs)
@@ -48,9 +45,6 @@ namespace prototype {
 		HistogramNormalisationUtil::normaliseHistograms(&this->histogramWeightPairs);
 	}
 
-	///
-	///
-	///
 	void StackedHistogramCreator::drawAllHistograms() {
 		std::list<TH1D*> histograms = this->getAllHistograms();
 
@@ -65,9 +59,6 @@ namespace prototype {
 		this->dataHistogram.Draw("SAME");
 	}
 
-	///
-	///
-	///
 	Int_t StackedHistogramCreator::getNextColour() {
 		const Int_t numberOfColours = sizeof(DEFAULT_COLOURS) / sizeof(Int_t);
 
@@ -85,21 +76,28 @@ namespace prototype {
 		return(colour);
 	}
 
-	///
-	///
-	///
 	void StackedHistogramCreator::addToHistogramStack(TH1D &histogram) {
+		TObjArray *histogramStack = this->histogramStack->GetStack();
+		Int_t stackSize = (histogramStack == nullptr)
+								? 0
+								: histogramStack->GetSize();
+
 		Int_t colour = getNextColour();
 
 		histogram.SetFillColor(colour);
 		histogram.SetLineColor(COLOUR_BLACK);
 		this->histogramStack->Add(&histogram);
+
+		Int_t modifiedStackSize = this->histogramStack->GetStack()->GetSize();
+		assert(modifiedStackSize == (stackSize + 1));
 	}
 
-	///
-	///
-	///
 	void StackedHistogramCreator::addAllToHistogramStack(std::list<TH1D*> histograms) {
+		TObjArray *histogramStack = this->histogramStack->GetStack();
+		Int_t stackSize = (histogramStack == nullptr)
+								? 0
+								: histogramStack->GetSize();
+
 		std::list<TH1D*>::iterator it = histograms.begin();
 
 		while(it != histograms.end()) {
@@ -107,11 +105,11 @@ namespace prototype {
 			this->addToHistogramStack(*histogram);
 			it++;
 		}
+
+		Int_t modifiedStackSize = this->histogramStack->GetStack()->GetSize();
+		assert(modifiedStackSize == (stackSize + histograms.size()));
 	}
 
-	///
-	///
-	///
 	std::list<TH1D*> StackedHistogramCreator::getAllHistograms() {
 		std::list<HistogramWeightPair>::iterator it = this->histogramWeightPairs.begin();
 		std::list<TH1D*> histograms;
@@ -123,6 +121,7 @@ namespace prototype {
 			it++;
 		}
 
+		assert(histograms.size() == this->histogramWeightPairs.size());
 		return(histograms);
 	}
 }
