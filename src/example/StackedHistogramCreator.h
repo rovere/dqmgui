@@ -20,7 +20,7 @@ class THStack;
 
 #ifndef STACKEDHISTOGRAMCREATOR_H_
 #define STACKEDHISTOGRAMCREATOR_H_
-namespace example {
+namespace prototype {
 	/// TODO: Document
 	///
 	///

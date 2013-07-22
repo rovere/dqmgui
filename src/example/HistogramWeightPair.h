@@ -9,20 +9,26 @@
 #define HISTOGRAMWEIGHTPAIR_H_
 
 #include <Rtypes.h>
-#include <TH1.h>
-#include <utility>
 
-namespace example {
+class TH1D;
+
+namespace prototype {
 	/// TODO: Comment class
 	class HistogramWeightPair {
+		private:
+			/// This pair's histogram.
+			TH1D *histogram;
+			/// The weight of the histogram in a histogram stack.
+			Double_t weight;
+
 		public:
 			/// Default constructor.
-			/// @param histogram the histogram
+			/// @param histogram a pointer to this pair's histogram
 			/// @param weight the histogram's weighting in the stack
 			HistogramWeightPair(TH1D *histogram, Double_t weight);
 
 			/// Gets the histogram.
-			/// @return the histogram
+			/// @return a pointer to this pair's histogram
 			TH1D* getHistogram();
 
 			/// Gets the histogram's weight, considering the entire stack
@@ -31,16 +37,12 @@ namespace example {
 			Double_t getWeight();
 
 			/// Sets the histogram.
-			/// @param histogram the histogram
+			/// @param histogram a pointer to this pair's histogram
 			void setHistogram(TH1D *histogram);
 
 			/// Sets the histogram's weight, considering the entire stack.
 			/// @param weight the histogram's weighting in the stack
 			void setWeight(Double_t weight);
-
-		private:
-			TH1D *histogram;
-			Double_t weight;
 	};
 }
 #endif

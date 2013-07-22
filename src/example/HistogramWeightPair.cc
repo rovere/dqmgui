@@ -10,7 +10,7 @@
 #include <Rtypes.h>
 #include <TH1.h>
 
-namespace example {
+namespace prototype {
 	///
 	HistogramWeightPair::HistogramWeightPair(TH1D *histogram, Double_t weight) {
 		this->setHistogram(histogram);

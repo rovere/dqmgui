@@ -24,7 +24,7 @@
 
 #include "StackedHistogramCreator.h"
 
-namespace example {
+namespace prototype {
 	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 50000;
 
 	Int_t nextHistogramId = 0;
@@ -93,7 +93,7 @@ namespace example {
 			histogramWeightPairs.push_back(*histogramWeightPair);
 		}
 
-		StackedHistogramCreator *creator = new example::StackedHistogramCreator(
+		StackedHistogramCreator *creator = new prototype::StackedHistogramCreator(
 				dataHistogram, histogramWeightPairs);
 		creator->drawAllHistograms();
 
@@ -106,11 +106,9 @@ namespace example {
 #ifndef __CINT__
 int main(int argc, const char* argv[]) {
 	Double_t weights[] = {0.6, 0.1, 0.3};
+
 	Int_t numberOfWeights = sizeof(weights) / sizeof(Double_t);
-
-//	std::cout << numberOfWeights;
-
-	example::runExample(numberOfWeights, weights);
+	prototype::runExample(numberOfWeights, weights);
 
 	std::cout << "Complete";
 	return(0);

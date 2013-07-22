@@ -24,7 +24,7 @@
 #include "HistogramNormalisationUtil.h"
 #include "HistogramWeightPair.h"
 
-namespace example {
+namespace prototype {
 	const std::string StackedHistogramCreator::DEFAULT_STACK_LABEL = "MC vs Data";			// FIXME: Localisation required?
 	const std::string StackedHistogramCreator::DEFAULT_STACK_NAME = "MC vs Data";			// XXX: Does this have to be globally unique - what exactly is a label?
 
