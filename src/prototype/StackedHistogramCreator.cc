@@ -20,7 +20,6 @@
 #include <iostream>
 
 #include "HistogramNormalisationUtil.h"
-#include "HistogramWeightPair.h"
 
 namespace prototype {
 	const std::string StackedHistogramCreator::DEFAULT_STACK_LABEL = "MC vs Data";	// FIXME: Localisation required?
@@ -33,16 +32,16 @@ namespace prototype {
 
 	StackedHistogramCreator::StackedHistogramCreator(
 			TH1D dataHistogram,
-			std::list<HistogramWeightPair> histogramWeightPairs)
+			std::list<HistogramDisplayData> histogramWeightPairs)
 				: dataHistogram(dataHistogram),
-				  histogramWeightPairs(histogramWeightPairs),
+				  histogramDisplayData(histogramWeightPairs),
 				  colourIndex(0) {
 
 		this->histogramStack = new THStack(
 				DEFAULT_STACK_LABEL.c_str(),
 				DEFAULT_STACK_NAME.c_str());
 
-		HistogramNormalisationUtil::normaliseHistograms(&this->histogramWeightPairs);
+		HistogramNormalisationUtil::normaliseHistograms(&this->histogramDisplayData);
 	}
 
 	void StackedHistogramCreator::drawAllHistograms() {
@@ -119,17 +118,17 @@ namespace prototype {
 	}
 
 	std::list<TH1D*> StackedHistogramCreator::getAllHistograms() {
-		std::list<HistogramWeightPair>::iterator it = this->histogramWeightPairs.begin();
+		std::list<HistogramDisplayData>::iterator it = this->histogramDisplayData.begin();
 		std::list<TH1D*> histograms;
 
-		while(it != this->histogramWeightPairs.end()) {
-			HistogramWeightPair *histogramWeightPair = &(*it);
+		while(it != this->histogramDisplayData.end()) {
+			HistogramDisplayData *histogramWeightPair = &(*it);
 			TH1D *histogram = histogramWeightPair->getHistogram();
 			histograms.push_back(histogram);
 			it++;
 		}
 
-		assert(histograms.size() == this->histogramWeightPairs.size());
+		assert(histograms.size() == this->histogramDisplayData.size());
 		return(histograms);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * HistogramWeightPair.h
+ * HistogramDisplayData.h
  *
  *  Created on: 19 Jul 2013
  *      Author: Colin - CERN
@@ -13,10 +13,11 @@
 class TH1D;
 
 namespace prototype {
-	/// A model containing a histogram and its associated weight
+	/// A model containing the data required to display a histogram,
+	/// including the histogram to be displayed and its associated weight
 	/// in the context of a list of histograms that a histogram
 	/// stack is to be created from.
-	class HistogramWeightPair {
+	class HistogramDisplayData {
 		private:
 			/// This pair's histogram.
 			TH1D *histogram;
@@ -25,9 +26,9 @@ namespace prototype {
 
 		public:
 			/// Default constructor.
-			/// @param histogram a pointer to this pair's histogram
+			/// @param histogram a pointer to this data's histogram
 			/// @param weight the histogram's weighting in the stack
-			HistogramWeightPair(TH1D *histogram, Double_t weight);
+			HistogramDisplayData(TH1D *histogram, Double_t weight);
 
 			/// Gets the histogram.
 			/// @return a pointer to this pair's histogram
@@ -39,7 +40,7 @@ namespace prototype {
 			Double_t getWeight();
 
 			/// Sets the histogram.
-			/// @param histogram a pointer to this pair's histogram
+			/// @param histogram a pointer to this  data's histogram
 			void setHistogram(TH1D *histogram);
 
 			/// Sets the histogram's weight, considering the entire stack.

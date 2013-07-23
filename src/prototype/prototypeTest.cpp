@@ -1,6 +1,9 @@
 #include <cassert>
 
-#include "HistogramWeightPair.h"
+#include "models/HistogramDisplayData.h"
+
+#include <cassert>
+
 
 #include <cassert>
 
@@ -83,13 +86,13 @@ namespace prototype {
 
 		TCanvas *canvas = new TCanvas("c", "Test Application", 400, 400);
 		TH1D dataHistogram = *generateGausHistogram(-1);
-		std::list<HistogramWeightPair> histogramWeightPairs;
+		std::list<HistogramDisplayData> histogramWeightPairs;
 
 		for(Int_t i = 0; i < numberOfMCHistograms; i++) {
 			TH1D *histogram = createMCHistogram();
 			Double_t weight = weights[i];
 
-			HistogramWeightPair *histogramWeightPair = new HistogramWeightPair(histogram, weight);
+			HistogramDisplayData *histogramWeightPair = new HistogramDisplayData(histogram, weight);
 			histogramWeightPairs.push_back(*histogramWeightPair);
 		}
 

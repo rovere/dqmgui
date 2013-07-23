@@ -1,3 +1,10 @@
+#include <cassert>
+
+#include <cassert>
+#include <list>
+
+#include "models/HistogramDisplayData.h"
+
 /*
  * HistogramNormalisationUtil.cpp
  *
@@ -16,24 +23,24 @@
 #include <stdexcept>
 
 #include "HistogramNormalisationUtil.h"
-#include "HistogramWeightPair.h"
+#include "models/HistogramDisplayData.h"
 
 namespace prototype {
 	const Double_t HistogramNormalisationUtil::UNIT_AREA = 1.0;
 
 	void HistogramNormalisationUtil::normaliseHistogram(TH1D *histogram) {
-		HistogramWeightPair *histogramWeightPair = new HistogramWeightPair(
+		HistogramDisplayData *histogramDisplayData = new HistogramDisplayData(
 				histogram, UNIT_AREA);
-		HistogramNormalisationUtil::normaliseHistogram(*histogramWeightPair);
+		HistogramNormalisationUtil::normaliseHistogram(*histogramDisplayData);
 	}
 
 	void HistogramNormalisationUtil::normaliseHistograms(
-			std::list<HistogramWeightPair> *histogramWeightPairs) {
-		std::list<HistogramWeightPair>::iterator it = histogramWeightPairs->begin();
+			std::list<HistogramDisplayData> *histogramWeightPairs) {
+		std::list<HistogramDisplayData>::iterator it = histogramWeightPairs->begin();
 		Double_t weightSum = 0;
 
 		while(it != histogramWeightPairs->end()) {
-			HistogramWeightPair histogramWeightPair = *it;
+			HistogramDisplayData histogramWeightPair = *it;
 			// TODO: This is likely a reasonably computational expensive function call.
 			//		 For efficiency gains, consider executing the below in a new thread
 			//		 and then waiting for all threads to complete.
@@ -50,7 +57,7 @@ namespace prototype {
 		}
 	}
 
-	void HistogramNormalisationUtil::normaliseHistogram(HistogramWeightPair histogramWeightPair) {
+	void HistogramNormalisationUtil::normaliseHistogram(HistogramDisplayData histogramWeightPair) {
 		TH1D *histogram = histogramWeightPair.getHistogram();
 		Double_t weight = histogramWeightPair.getWeight();
 		Double_t integral = histogram->Integral();

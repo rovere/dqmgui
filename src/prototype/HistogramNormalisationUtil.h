@@ -11,7 +11,7 @@
 #include <list>
 
 class TH1D;
-namespace prototype { class HistogramWeightPair; }
+namespace prototype { class HistogramDisplayData; }
 
 
 namespace prototype {
@@ -37,7 +37,7 @@ namespace prototype {
 			///								else an <code>std::invalid_argument</code> exception shall
 			///								be thrown. The histograms within the pair histogram-weight
 			///								pair are modified
-			static void normaliseHistograms(std::list<HistogramWeightPair> *histogramWeightPairs);
+			static void normaliseHistograms(std::list<HistogramDisplayData> *histogramWeightPairs);
 
 		private:
 			/// Normalises a histogram that is to be included in a stack such that all
@@ -48,7 +48,7 @@ namespace prototype {
 			/// @param histogramWeightPair a pair containing a histogram that is to be
 			///							   normalised (with respect to a stack of histograms)
 			///							   and the weight of the normalisation
-			static void normaliseHistogram(HistogramWeightPair histogramWeightPair);
+			static void normaliseHistogram(HistogramDisplayData histogramWeightPair);
 	};
 }
 #endif

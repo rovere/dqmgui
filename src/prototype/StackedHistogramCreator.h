@@ -12,7 +12,7 @@
 #include <list>
 #include <string>
 
-#include "HistogramWeightPair.h"
+#include "models/HistogramDisplayData.h"
 
 class TApplication;
 class TCanvas;
@@ -36,8 +36,8 @@ namespace prototype {
 
 		/// The histogram stack to be created.
 		THStack *histogramStack;
-		/// The pairs of histograms to create the histogram stack from.
-		std::list<HistogramWeightPair> histogramWeightPairs;
+		/// The histogram display data to create the histogram stack from.
+		std::list<HistogramDisplayData> histogramDisplayData;
 		/// The data histogram.
 		TH1D dataHistogram;
 		/// The index for <code>DEFAULT_COLOUR</code> of the colour to be used next.
@@ -46,13 +46,13 @@ namespace prototype {
 	public:
 		/// Default constructor.
 		/// @param dataHistogram the histogram that describes the real data
-		/// @param histogramWeightPairs a list of pairs of MC histograms and their
+		/// @param histogramDisplayData a list of pairs of MC histograms and their
 		///								associated weights in the histogram stack
 		///								that is to be created for comparison against
 		///								the <code>dataHistogram</code>.
 		StackedHistogramCreator(
 				TH1D dataHistogram,
-				std::list<HistogramWeightPair> histogramWeightPairs);
+				std::list<HistogramDisplayData> histogramDisplayData);
 
 		/// Draws all of the histograms - both the MC and data histogram(s).
 		void drawAllHistograms();

@@ -1,5 +1,5 @@
 /*
- * HistogramWeightPair.cc
+ * HistogramDisplayData.cc
  *
  *  Created on: 19 Jul 2013
  *      Author: Colin - CERN
@@ -7,27 +7,27 @@
 #include <Rtypes.h>
 #include <TH1.h>
 
-#include "HistogramWeightPair.h"
+#include "HistogramDisplayData.h"
 
 namespace prototype {
-	HistogramWeightPair::HistogramWeightPair(TH1D *histogram, Double_t weight) {
+	HistogramDisplayData::HistogramDisplayData(TH1D *histogram, Double_t weight) {
 		this->setHistogram(histogram);
 		this->setWeight(weight);
 	}
 
-	TH1D* HistogramWeightPair::getHistogram() {
+	TH1D* HistogramDisplayData::getHistogram() {
 		return(this->histogram);
 	}
 
-	Double_t HistogramWeightPair::getWeight() {
+	Double_t HistogramDisplayData::getWeight() {
 		return(this->weight);
 	}
 
-	void HistogramWeightPair::setHistogram(TH1D* histogram) {
+	void HistogramDisplayData::setHistogram(TH1D* histogram) {
 		this->histogram = histogram;
 	}
 
-	void HistogramWeightPair::setWeight(Double_t weight) {
+	void HistogramDisplayData::setWeight(Double_t weight) {
 		if(weight > 1.0) {
 			std::invalid_argument("Histogram weighting cannot be more than 1");
 		}
