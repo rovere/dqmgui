@@ -35,21 +35,21 @@ namespace prototype {
 	}
 
 	void HistogramNormalisationUtil::normaliseHistograms(
-			std::list<HistogramDisplayData> *histogramWeightPairs) {
-		std::list<HistogramDisplayData>::iterator it = histogramWeightPairs->begin();
+			std::list<HistogramDisplayData> histogramDisplayData) {
+		std::list<HistogramDisplayData>::iterator it = histogramDisplayData.begin();
 		Double_t weightSum = 0;
 
-		while(it != histogramWeightPairs->end()) {
-			HistogramDisplayData histogramWeightPair = *it;
+		while(it != histogramDisplayData.end()) {
+			HistogramDisplayData histogramDisplayData = *it;
 			// TODO: This is likely a reasonably computational expensive function call.
 			//		 For efficiency gains, consider executing the below in a new thread
 			//		 and then waiting for all threads to complete.
-			HistogramNormalisationUtil::normaliseHistogram(histogramWeightPair);
-			weightSum += histogramWeightPair.getWeight();
+			HistogramNormalisationUtil::normaliseHistogram(histogramDisplayData);
+			weightSum += histogramDisplayData.getWeight();
 			it++;
 		}
 
-		if(histogramWeightPairs->size() != 0) {
+		if(histogramDisplayData.size() != 0) {
 			if(weightSum != UNIT_AREA) {
 				throw std::invalid_argument(
 						"The sum weight of all histograms to be normalised must equal 1");
@@ -57,9 +57,9 @@ namespace prototype {
 		}
 	}
 
-	void HistogramNormalisationUtil::normaliseHistogram(HistogramDisplayData histogramWeightPair) {
-		TH1D *histogram = histogramWeightPair.getHistogram();
-		Double_t weight = histogramWeightPair.getWeight();
+	void HistogramNormalisationUtil::normaliseHistogram(HistogramDisplayData histogramDisplayData) {
+		TH1D *histogram = histogramDisplayData.getHistogram();
+		Double_t weight = histogramDisplayData.getWeight();
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {

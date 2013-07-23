@@ -18,16 +18,41 @@
 #include "HistogramStackDisplayData.h"
 
 namespace prototype {
+	HistogramStackDisplayData::HistogramStackDisplayData() {
+		;
+	}
+
 	void HistogramStackDisplayData::add(HistogramDisplayData displayData) {
 		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
 		Double_t postTotalWeight = currentTotalWeight + displayData.getWeight();
 
 		if(postTotalWeight > 1.0) {
-			std::invalid_argument("Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
+			std::invalid_argument(
+					"Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
 		}
 
 		this->histogramDisplayData.push_back(displayData);
 		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
+	}
+
+	void HistogramStackDisplayData::add(HistogramStackDisplayData histogramStackDisplayData) {
+		#ifdef DNDEBUG
+		Int_t originalDataSize = this->getAllHistogramDisplayData().size();
+		#endif
+
+		std::list<HistogramDisplayData> allHistogramDisplayData = histogramStackDisplayData
+				.getAllHistogramDisplayData();
+		std::list<HistogramDisplayData>::iterator it = allHistogramDisplayData.begin();
+
+		while(it != allHistogramDisplayData.end()) {
+			HistogramDisplayData histogramDisplayData = (*it);
+			this->add(histogramDisplayData);
+			it++;
+		}
+
+		assert(this->getAllHistogramDisplayData().size() == (originalDataSize + allHistogramDisplayData.size()));
+		assert(this->getHistogramsTotalWeight() <= 1.0);
+		assert(this->getHistogramsTotalWeight() >= 0.0);
 	}
 
 	Double_t HistogramStackDisplayData::getHistogramsTotalWeight() {

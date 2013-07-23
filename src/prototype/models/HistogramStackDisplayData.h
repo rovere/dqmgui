@@ -23,8 +23,12 @@ namespace prototype {
 			HistogramStackDisplayData();
 
 			/// TODO: Comment. Include information about invalid adds.
-			/// @param displayData data instructing how a histogram is to be displayed
-			void add(HistogramDisplayData displayData);
+			/// @param histogramDisplayData data instructing how a histogram is to be displayed
+			void add(HistogramDisplayData histogramDisplayData);
+
+			/// TODO: Comment.
+			/// @param displayData TODO
+			void add(HistogramStackDisplayData histogramStackDisplayData);
 
 			/// TODO: Comment.
 			/// @return TODO

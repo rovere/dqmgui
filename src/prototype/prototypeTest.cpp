@@ -1,9 +1,9 @@
 #include <cassert>
 
-#include "models/HistogramDisplayData.h"
+#include "HistogramNormalisationUtil.h"
 
+#include <THStack.h>
 #include <cassert>
-
 
 #include <cassert>
 
@@ -25,7 +25,9 @@
 #include <string>
 #include <xstring>
 
-#include "StackedHistogramBuilder.h"
+#include "builders/StackedHistogramBuilder.h"
+#include "models/HistogramDisplayData.h"
+#include "models/HistogramStackDisplayData.h"
 
 namespace prototype {
 	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 50000;
@@ -84,23 +86,31 @@ namespace prototype {
 		TApplication *application = new TApplication("App", 0, 0);
 //		TPaveLabel *tPaveLabel = new TPaveLabel(0.2, 0.4, 0.8, 0.6, "TPaveLabel not set");
 
-
-
 		TCanvas *canvas = new TCanvas("c", "Test Application", 400, 400);
 		TH1D dataHistogram = *generateGausHistogram(-1);
-		std::list<HistogramDisplayData> histogramWeightPairs;
+		HistogramStackDisplayData *histogramStackDisplayData = new HistogramStackDisplayData();
 
 		for(Int_t i = 0; i < numberOfMCHistograms; i++) {
 			TH1D *histogram = createMCHistogram();
 			Double_t weight = weights[i];
 
-			HistogramDisplayData *histogramWeightPair = new HistogramDisplayData(histogram, weight);
-			histogramWeightPairs.push_back(*histogramWeightPair);
+			HistogramDisplayData *histogramDisplayData = new HistogramDisplayData(histogram, weight);
+			histogramStackDisplayData->add(*histogramDisplayData);
 		}
 
-//		OldStackedHistogramCreator *creator = new prototype::OldStackedHistogramCreator(
-//				dataHistogram, histogramWeightPairs);
-//		creator->drawAllHistograms();
+		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder();
+		stackedHistogramBuilder->addHistogramStackDisplayData(*histogramStackDisplayData);
+
+
+		THStack histogramStack = stackedHistogramBuilder->build();
+		histogramStack.Draw();
+
+		HistogramNormalisationUtil::normaliseHistogram(&dataHistogram);
+		dataHistogram.SetLineColor(ColourController::COLOUR_BLACK);
+		dataHistogram.SetLineStyle(2);
+		dataHistogram.SetLineWidth(5);
+		dataHistogram.Draw("SAME");
+
 
 		canvas->Update();
 		application->Run();

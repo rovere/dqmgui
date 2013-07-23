@@ -31,13 +31,13 @@ namespace prototype {
 			/// have an area of <code>UNIT_AREA</code>. The weight of each histogram in the stack
 			///	(i.e. histograms each influence the resulting stack to different degrees)
 			/// is defined within the <code>HistogramWeightPair</code> instance.
-			/// @param histogramWeightPairs a pointer to the pairs of histograms to be normalised
-			///								considering their weights.
+			/// @param histogramDisplayData a list of the <code>HistogramDisplayData</code> instances
+			///								containing histograms that are to be normalised considering their weights.
 			///								The sum of all the histogram's weights must equal <code>UNIT_AREA</code>
 			///								else an <code>std::invalid_argument</code> exception shall
-			///								be thrown. The histograms within the pair histogram-weight
-			///								pair are modified
-			static void normaliseHistograms(std::list<HistogramDisplayData> *histogramWeightPairs);
+			///								be thrown. The histograms within <code>histogramDisplayData</code>
+			///								are modified.
+			static void normaliseHistograms(std::list<HistogramDisplayData> histogramDisplayData);
 
 		private:
 			/// Normalises a histogram that is to be included in a stack such that all
@@ -45,10 +45,10 @@ namespace prototype {
 			/// <p>
 			/// Therefore the area of this histogram after normalisation shall be:
 			/// <code>1 / histogramWeightPair.getWeight()</code>.
-			/// @param histogramWeightPair a pair containing a histogram that is to be
-			///							   normalised (with respect to a stack of histograms)
-			///							   and the weight of the normalisation
-			static void normaliseHistogram(HistogramDisplayData histogramWeightPair);
+			/// @param histogramDisplayData a <code>HistogramDisplayData</code> instance
+			///							    containing a histogram that is to be normalised (with respect
+			///								to a stack of histograms) and the weight of the normalisation
+			static void normaliseHistogram(HistogramDisplayData histogramDisplayData);
 	};
 }
 #endif
