@@ -1,8 +1,3 @@
-#include <cassert>
-#include <xstring>
-
-#include "../HistogramNormalisationUtil.h"
-
 /*
  * StackedHistogramCreator.cpp
  *
@@ -11,26 +6,25 @@
  */
 #define DNDEBUG
 
+#include "StackedHistogramBuilder.h"
+
 #include <Rtypes.h>
 #include <TAttFill.h>
 #include <TAttLine.h>
+#include <TCollection.h>
 #include <TH1.h>
+#include <THStack.h>
+#include <TObjArray.h>
+#include <TObject.h>
 #include <cassert>
 #include <list>
 #include <stdexcept>
+#include <xstring>
 
-#include <TObject.h>
-#include <string>
-
-#include <TCollection.h>
-#include <THStack.h>
-#include <TObjArray.h>
-#include <list>
-
+#include "../controllers/ColourController.h"
 #include "../models/HistogramDisplayData.h"
 #include "../models/HistogramStackDisplayData.h"
-#include "StackedHistogramBuilder.h"
-#include "../controllers/ColourController.h"
+#include "../utilities/HistogramNormalisationUtil.h"
 
 namespace prototype {
 	const std::string DEFAULT_STACK_LABEL = "MC vs Data";	// FIXME: Localisation required?
@@ -41,21 +35,21 @@ namespace prototype {
 	}
 
 	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
-		this->displayData.add(data);
+		this->histogramStackDisplayData.add(data);
 	}
 
 	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackDisplayData data) {
-		this->displayData.add(data);
+		this->histogramStackDisplayData.add(data);
 	}
 
 	THStack StackedHistogramBuilder::build() {
-		if(this->displayData.getHistogramsTotalWeight() != 1.0) {
+		if(this->histogramStackDisplayData.getHistogramsTotalWeight() != 1.0) {
 			throw std::invalid_argument(
 					"The sum weight of all histograms in the stack to be builts must equal 1");
 		}
 
 		// XXX: It is not the best idea to do this here - why not normalise histograms when added?
-		HistogramNormalisationUtil::normaliseHistograms(this->displayData.getAllHistogramDisplayData());
+		HistogramNormalisationUtil::normaliseHistograms(this->histogramStackDisplayData.getAllHistogramDisplayData());
 
 		THStack *histogramStack = new THStack();
 		std::list<TH1D*> histograms = this->getAllHistograms();
@@ -108,7 +102,8 @@ namespace prototype {
 	}
 
 	std::list<TH1D*> StackedHistogramBuilder::getAllHistograms() {
-		std::list<HistogramDisplayData> histogramDisplayData = this->displayData.getAllHistogramDisplayData();
+		std::list<HistogramDisplayData> histogramDisplayData = this->
+				histogramStackDisplayData.getAllHistogramDisplayData();
 		std::list<HistogramDisplayData>::iterator it = histogramDisplayData.begin();
 		std::list<TH1D*> histograms;
 

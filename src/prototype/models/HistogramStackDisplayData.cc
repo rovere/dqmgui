@@ -1,6 +1,3 @@
-#include <limits>
-#include <list>
-
 /*
  * HistogramDisplayDataSet.cc
  *
@@ -9,13 +6,14 @@
  */
 #define DNDEBUG
 
+#include "HistogramStackDisplayData.h"
+
 #include <Rtypes.h>
 #include <cassert>
 #include <list>
-#include <limits>
+#include <stdexcept>
 
 #include "HistogramDisplayData.h"
-#include "HistogramStackDisplayData.h"
 
 namespace prototype {
 	HistogramStackDisplayData::HistogramStackDisplayData() {

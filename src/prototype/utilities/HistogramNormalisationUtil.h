@@ -13,7 +13,6 @@
 class TH1D;
 namespace prototype { class HistogramDisplayData; }
 
-
 namespace prototype {
 	/// Utility class for normalising histograms.
 	class HistogramNormalisationUtil {

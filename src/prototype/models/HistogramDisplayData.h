@@ -4,9 +4,8 @@
  *  Created on: 19 Jul 2013
  *      Author: Colin - CERN
  */
-
-#ifndef HISTOGRAMWEIGHTPAIR_H_
-#define HISTOGRAMWEIGHTPAIR_H_
+#ifndef HISTOGRAMDISPLAYDATA_H_
+#define HISTOGRAMDISPLAYDATA_H_
 
 #include <Rtypes.h>
 

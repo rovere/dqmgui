@@ -1,33 +1,20 @@
-#include <cassert>
-
-#include "HistogramNormalisationUtil.h"
-
-#include <THStack.h>
-#include <cassert>
-
-#include <cassert>
-
-#include <TH1.h>
-#include <cassert>
-#include <iostream>
-#include <list>
-
 #include <Rtypes.h>
 #include <TApplication.h>
 #include <TCanvas.h>
-#include <TH1F.h>
+#include <TH1.h>
+#include <THStack.h>
 #include <TObject.h>
-#include <TPaveLabel.h>
 #include <cassert>
 #include <iostream>
 #include <list>
-#include <new>
 #include <string>
 #include <xstring>
 
+#include "builders/DataHistogramBuilder.h"
 #include "builders/StackedHistogramBuilder.h"
 #include "models/HistogramDisplayData.h"
 #include "models/HistogramStackDisplayData.h"
+
 
 namespace prototype {
 	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 50000;
@@ -98,19 +85,15 @@ namespace prototype {
 			histogramStackDisplayData->add(*histogramDisplayData);
 		}
 
+		// (Director pattern)
 		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder();
 		stackedHistogramBuilder->addHistogramStackDisplayData(*histogramStackDisplayData);
-
-
 		THStack histogramStack = stackedHistogramBuilder->build();
 		histogramStack.Draw();
 
-		HistogramNormalisationUtil::normaliseHistogram(&dataHistogram);
-		dataHistogram.SetLineColor(ColourController::COLOUR_BLACK);
-		dataHistogram.SetLineStyle(2);
-		dataHistogram.SetLineWidth(5);
-		dataHistogram.Draw("SAME");
-
+		DataHistogramBuilder *dataHistogramBuilder = new DataHistogramBuilder(&dataHistogram);
+		TH1D formattedDataHistogram = dataHistogramBuilder->build();
+		formattedDataHistogram.Draw("SAME");
 
 		canvas->Update();
 		application->Run();

@@ -4,10 +4,12 @@
  *  Created on: 19 Jul 2013
  *      Author: Colin - CERN
  */
-#include <Rtypes.h>
-#include <TH1.h>
-
 #include "HistogramDisplayData.h"
+
+#include <Rtypes.h>
+#include <stdexcept>
+
+class TH1D;
 
 namespace prototype {
 	HistogramDisplayData::HistogramDisplayData(TH1D *histogram, Double_t weight) {

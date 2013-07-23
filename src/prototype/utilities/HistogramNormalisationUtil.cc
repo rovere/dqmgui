@@ -1,9 +1,19 @@
 #include <cassert>
+#include <new>
 
 #include <cassert>
-#include <list>
+#include <new>
 
-#include "models/HistogramDisplayData.h"
+#include "HistogramNormalisationUtil.h"
+
+#include <Rtypes.h>
+#include <TH1.h>
+#include <cassert>
+#include <limits>
+#include <list>
+#include <stdexcept>
+
+#include "../models/HistogramDisplayData.h"
 
 /*
  * HistogramNormalisationUtil.cpp
@@ -12,18 +22,6 @@
  *      Author: Colin - CERN
  */
 #define DNDEBUG
-
-#include <Rtypes.h>
-#include <TH1.h>
-#include <cassert>
-#include <iostream>
-#include <limits>
-#include <list>
-#include <new>
-#include <stdexcept>
-
-#include "HistogramNormalisationUtil.h"
-#include "models/HistogramDisplayData.h"
 
 namespace prototype {
 	const Double_t HistogramNormalisationUtil::UNIT_AREA = 1.0;

@@ -7,6 +7,7 @@
 #ifndef HISTOGRAMDISPLAYDATASET_H_
 #define HISTOGRAMDISPLAYDATASET_H_
 
+#include <Rtypes.h>
 #include <list>
 
 #include "HistogramDisplayData.h"

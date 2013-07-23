@@ -14,13 +14,14 @@
 
 class TH1D;
 class THStack;
+namespace prototype { class HistogramDisplayData; }
 
 namespace prototype {
 	/// TODO: Document class.
 	class StackedHistogramBuilder {
 		private:
 			/// TODO: Comment.
-			HistogramStackDisplayData displayData;
+			HistogramStackDisplayData histogramStackDisplayData;
 			/// TODO: Comment.
 			ColourController colourController;
 
