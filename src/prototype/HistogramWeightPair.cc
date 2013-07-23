@@ -29,10 +29,10 @@ namespace prototype {
 
 	void HistogramWeightPair::setWeight(Double_t weight) {
 		if(weight > 1.0) {
-			std::invalid_argument("Histogram weight cannot be more than 1");
+			std::invalid_argument("Histogram weighting cannot be more than 1");
 		}
 		else if(weight < 0.0) {
-			std::invalid_argument("Histogram weight cannot be less than 0");
+			std::invalid_argument("Histogram weighting cannot be less than 0");
 		}
 
 		this->weight = weight;

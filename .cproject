@@ -14,7 +14,7 @@
 					<folderInfo id="org.eclipse.cdt.msvc.exe.debug.1139884087." name="/" resourcePath="">
 						<toolChain id="org.eclipse.cdt.msvc.toolchain.dll.debug.1056123287" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.dll.debug" unusedChildren="org.eclipse.cdt.msvc.cl.c.dll.debug">
 							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.dll.debug.342692183" superClass="org.eclipse.cdt.msvc.targetPlatform.dll.debug"/>
-							<builder buildPath="${workspace_loc:/prototype}/Debug" enableAutoBuild="true" id="org.eclipse.cdt.build.core.internal.builder.1808113108" superClass="org.eclipse.cdt.build.core.internal.builder"/>
+							<builder buildPath="${workspace_loc:/prototype}/Debug" enableAutoBuild="true" id="org.eclipse.cdt.build.core.internal.builder.1808113108" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder"/>
 							<tool id="org.eclipse.cdt.msvc.rc.dll.debug.1076910390" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.dll.debug">
 								<inputType id="org.eclipse.cdt.msvc.rc.inputType.1777224733" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
 							</tool>
@@ -43,7 +43,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src|test" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="test|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 					</sourceEntries>
 				</configuration>
@@ -93,7 +93,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src|test" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="test|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 					</sourceEntries>
 				</configuration>
