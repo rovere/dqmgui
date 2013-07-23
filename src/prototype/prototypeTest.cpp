@@ -25,7 +25,7 @@
 #include <string>
 #include <xstring>
 
-#include "StackedHistogramCreator.h"
+#include "StackedHistogramBuilder.h"
 
 namespace prototype {
 	static const Int_t DEFAULT_HISTOGRAM_ENTRIES = 50000;
@@ -84,6 +84,8 @@ namespace prototype {
 		TApplication *application = new TApplication("App", 0, 0);
 //		TPaveLabel *tPaveLabel = new TPaveLabel(0.2, 0.4, 0.8, 0.6, "TPaveLabel not set");
 
+
+
 		TCanvas *canvas = new TCanvas("c", "Test Application", 400, 400);
 		TH1D dataHistogram = *generateGausHistogram(-1);
 		std::list<HistogramDisplayData> histogramWeightPairs;
@@ -96,9 +98,9 @@ namespace prototype {
 			histogramWeightPairs.push_back(*histogramWeightPair);
 		}
 
-		StackedHistogramCreator *creator = new prototype::StackedHistogramCreator(
-				dataHistogram, histogramWeightPairs);
-		creator->drawAllHistograms();
+//		OldStackedHistogramCreator *creator = new prototype::OldStackedHistogramCreator(
+//				dataHistogram, histogramWeightPairs);
+//		creator->drawAllHistograms();
 
 		canvas->Update();
 		application->Run();

@@ -27,7 +27,7 @@ namespace prototype {
 		}
 
 		this->histogramDisplayData.push_back(displayData);
-		assert(this->getHistogramsTotalWeight() == postTotalWeight);
+		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
 	}
 
 	Double_t HistogramStackDisplayData::getHistogramsTotalWeight() {
@@ -43,7 +43,7 @@ namespace prototype {
 		return(totalWeight);
 	}
 
-	std::list<HistogramDisplayData> HistogramStackDisplayData::getHistogramDisplayData() {
+	std::list<HistogramDisplayData> HistogramStackDisplayData::getAllHistogramDisplayData() {
 		return(this->histogramDisplayData);
 	}
 }
