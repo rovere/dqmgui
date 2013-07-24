@@ -12,6 +12,7 @@
 #include <cassert>
 #include <list>
 #include <stdexcept>
+#include <iostream>
 
 #include "HistogramDisplayData.h"
 
@@ -25,7 +26,7 @@ namespace prototype {
 		Double_t postTotalWeight = currentTotalWeight + displayData.getWeight();
 
 		if(postTotalWeight > 1.0) {
-			std::invalid_argument(
+			throw std::invalid_argument(
 					"Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
 		}
 

@@ -20,6 +20,7 @@
 #include <list>
 #include <stdexcept>
 #include <xstring>
+#include <iostream>
 
 #include "../controllers/ColourController.h"
 #include "../models/HistogramDisplayData.h"
@@ -35,21 +36,20 @@ namespace prototype {
 	}
 
 	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
+		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
 		this->histogramStackDisplayData.add(data);
 	}
 
 	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackDisplayData data) {
+		HistogramNormalisationUtil::normaliseWeightedHistograms(data.getAllHistogramDisplayData());
 		this->histogramStackDisplayData.add(data);
 	}
 
 	THStack StackedHistogramBuilder::build() {
 		if(this->histogramStackDisplayData.getHistogramsTotalWeight() != 1.0) {
 			throw std::invalid_argument(
-					"The sum weight of all histograms in the stack to be builts must equal 1");
+					"The sum weight of all histograms in the stack to be built must equal 1");
 		}
-
-		// XXX: It is not the best idea to do this here - why not normalise histograms when added?
-		HistogramNormalisationUtil::normaliseHistograms(this->histogramStackDisplayData.getAllHistogramDisplayData());
 
 		THStack *histogramStack = new THStack();
 		std::list<TH1D*> histograms = this->getAllHistograms();

@@ -19,7 +19,6 @@ namespace prototype {
 	const Int_t ColourController::DEFAULT_COLOURS[] = {
 			kRed, kGreen, kBlue, kYellow, kTeal, kGray, kOrange};
 
-
 	ColourController::ColourController() : colourIndex(0) {
 		;
 	}

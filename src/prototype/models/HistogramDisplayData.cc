@@ -25,16 +25,16 @@ namespace prototype {
 		return(this->weight);
 	}
 
-	void HistogramDisplayData::setHistogram(TH1D* histogram) {
+	void HistogramDisplayData::setHistogram(TH1D *histogram) {
 		this->histogram = histogram;
 	}
 
 	void HistogramDisplayData::setWeight(Double_t weight) {
 		if(weight > 1.0) {
-			std::invalid_argument("Histogram weighting cannot be more than 1");
+			throw std::invalid_argument("Histogram weighting cannot be more than 1");
 		}
 		else if(weight < 0.0) {
-			std::invalid_argument("Histogram weighting cannot be less than 0");
+			throw std::invalid_argument("Histogram weighting cannot be less than 0");
 		}
 
 		this->weight = weight;

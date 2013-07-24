@@ -36,9 +36,8 @@ namespace prototype {
 			///								else an <code>std::invalid_argument</code> exception shall
 			///								be thrown. The histograms within <code>histogramDisplayData</code>
 			///								are modified.
-			static void normaliseHistograms(std::list<HistogramDisplayData> histogramDisplayData);
+			static void normaliseWeightedHistograms(std::list<HistogramDisplayData> histogramDisplayData);
 
-		private:
 			/// Normalises a histogram that is to be included in a stack such that all
 			/// histograms in the stack with have an area that sums to <code>UNIT_AREA</code>.
 			/// <p>
@@ -47,7 +46,7 @@ namespace prototype {
 			/// @param histogramDisplayData a <code>HistogramDisplayData</code> instance
 			///							    containing a histogram that is to be normalised (with respect
 			///								to a stack of histograms) and the weight of the normalisation
-			static void normaliseHistogram(HistogramDisplayData histogramDisplayData);
+			static void normaliseWeightedHistogram(HistogramDisplayData histogramDisplayData);
 	};
 }
 #endif
