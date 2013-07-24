@@ -10,7 +10,7 @@
 #include <TH1.h>
 
 #include "../controllers/ColourController.h"
-#include "../utilities/HistogramNormalisationUtil.h"
+#include "../utils/HistogramNormalisationUtil.h"
 
 
 namespace prototype {

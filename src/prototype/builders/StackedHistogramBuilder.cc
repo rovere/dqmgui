@@ -25,7 +25,7 @@
 #include "../controllers/ColourController.h"
 #include "../models/HistogramDisplayData.h"
 #include "../models/HistogramStackDisplayData.h"
-#include "../utilities/HistogramNormalisationUtil.h"
+#include "../utils/HistogramNormalisationUtil.h"
 
 namespace prototype {
 	const std::string DEFAULT_STACK_LABEL = "MC vs Data";	// FIXME: Localisation required?
