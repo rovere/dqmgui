@@ -28,9 +28,6 @@
 #include "../utils/HistogramNormalisationUtil.h"
 
 namespace prototype {
-	const std::string DEFAULT_STACK_LABEL = "MC vs Data";	// FIXME: Localisation required?
-	const std::string DEFAULT_STACK_NAME = "MC vs Data";	// XXX: Does this have to be globally unique - what exactly is a label?
-
 	StackedHistogramBuilder::StackedHistogramBuilder() {
 		;
 	}

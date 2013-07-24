@@ -49,8 +49,6 @@ namespace prototype {
 
 		canvas->Update();
 		application->Run();
-
-		std::cout << histogramStack.GetHistogram()->Integral();
 	}
 }
 

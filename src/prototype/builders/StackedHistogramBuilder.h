@@ -25,6 +25,11 @@ namespace prototype {
 			/// TODO: Comment.
 			ColourController colourController;
 
+			/// The title of the stacked histogram that is to be built.
+			std::string title;
+			/// The label of the stacked histogram that is to be build.
+			std::string label;
+
 		public:
 			/// Default constructor.
 			StackedHistogramBuilder();
