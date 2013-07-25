@@ -21,15 +21,10 @@
 
 
 namespace prototype {
-	/// Runs an example of the histogram display program.
-	void runExample(Int_t numberOfMCHistograms, Double_t weights[]) {
-		TApplication *application = new TApplication("App", 0, 0);
-
-		TCanvas *canvas = new TCanvas("c", "Test Application", 400, 400);
-		TH1D dataHistogram = *RandomHistogramGenerator::createGausHistogram(-1);
+	HistogramStackDisplayData generateMCStackDisplayData(Double_t weights[]) {
 		HistogramStackDisplayData *histogramStackDisplayData = new HistogramStackDisplayData();
 
-		for(Int_t i = 0; i < numberOfMCHistograms; i++) {
+		for(Int_t i = 0; i < sizeof(weights); i++) {
 			TH1D *histogram = RandomHistogramGenerator::createMCHistogram();
 			Double_t weight = weights[i];
 
@@ -37,9 +32,20 @@ namespace prototype {
 			histogramStackDisplayData->add(*histogramDisplayData);
 		}
 
+		return(*histogramStackDisplayData);
+	}
+
+	/// Runs an example of the histogram display program.
+	void runExample(Double_t weights[]) {
+		TApplication *application = new TApplication("App", 0, 0);
+		TCanvas *canvas = new TCanvas("canvas", "Test Application", 400, 400);
+
+		TH1D dataHistogram = *RandomHistogramGenerator::createGausHistogram(-1);
+		HistogramStackDisplayData histogramStackDisplayData = generateMCStackDisplayData(weights);
+
 		// (Director pattern)
 		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder();
-		stackedHistogramBuilder->addHistogramStackDisplayData(*histogramStackDisplayData);
+		stackedHistogramBuilder->addHistogramStackDisplayData(histogramStackDisplayData);
 		THStack histogramStack = stackedHistogramBuilder->build();
 		histogramStack.Draw();
 
@@ -56,9 +62,7 @@ namespace prototype {
 #ifndef __CINT__
 int main(int argc, const char* argv[]) {
 	Double_t weights[] = {0.6, 0.1, 0.3};
-
-	Int_t numberOfWeights = sizeof(weights) / sizeof(Double_t);
-	prototype::runExample(numberOfWeights, weights);
+	prototype::runExample(weights);
 
 	std::cout << "Complete";
 	return(0);
