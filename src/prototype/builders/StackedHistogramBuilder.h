@@ -4,8 +4,8 @@
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
  */
-#ifndef STACKEDHISTOGRAMCREATOR_H_
-#define STACKEDHISTOGRAMCREATOR_H_
+#ifndef STACKEDHISTOGRAMBUILDER_H_
+#define STACKEDHISTOGRAMBUILDER_H_
 
 #include <list>
 

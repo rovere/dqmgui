@@ -4,8 +4,8 @@
  *  Created on: 19 Jul 2013
  *      Author: Colin - CERN
  */
-#ifndef HISTOGRAMDISPLAYDATA_H_
-#define HISTOGRAMDISPLAYDATA_H_
+#ifndef HISTOGRAMSTACKDISPLAYDATA_H_
+#define HISTOGRAMSTACKDISPLAYDATA_H_
 
 #include <Rtypes.h>
 

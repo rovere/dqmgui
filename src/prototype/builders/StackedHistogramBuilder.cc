@@ -1,13 +1,5 @@
 #include <cassert>
 
-/*
- * StackedHistogramCreator.cpp
- *
- *  Created on: 23 Jul 2013
- *      Author: Colin - CERN
- */
-#define DNDEBUG
-
 #include "StackedHistogramBuilder.h"
 
 #include <Rtypes.h>
@@ -21,13 +13,19 @@
 #include <cassert>
 #include <list>
 #include <stdexcept>
-#include <xstring>
-#include <iostream>
 
 #include "../controllers/ColourController.h"
 #include "../models/HistogramDisplayData.h"
 #include "../models/HistogramStackDisplayData.h"
 #include "../utils/HistogramNormalisationUtil.h"
+
+/*
+ * StackedHistogramCreator.cpp
+ *
+ *  Created on: 23 Jul 2013
+ *      Author: Colin - CERN
+ */
+#define DNDEBUG
 
 namespace prototype {
 	StackedHistogramBuilder::StackedHistogramBuilder() {

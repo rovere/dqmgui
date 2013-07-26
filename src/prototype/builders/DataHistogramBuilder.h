@@ -4,13 +4,12 @@
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
  */
-#ifndef HISTOGRAMBUILDER_H_
-#define HISTOGRAMBUILDER_H_
+#ifndef DATAHISTOGRAMBUILDER_H_
+#define DATAHISTOGRAMBUILDER_H_
 
 #include <TH1.h>
 
 #include "HistogramBuilder.h"
-
 
 namespace prototype {
 	/// TODO: Document class.
