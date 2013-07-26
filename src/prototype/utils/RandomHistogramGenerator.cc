@@ -23,6 +23,7 @@ namespace prototype {
 	}
 
 	TH1D* RandomHistogramGenerator::createGausHistogram(Int_t id, Int_t totalObservations) {
+		// TODO: Remove magic numbers
 		Int_t nbins = 100;
 		Double_t xlow = -5;
 		Double_t xup = 5;

@@ -19,7 +19,6 @@
 #include "models/HistogramDisplayData.h"
 #include "models/HistogramStackDisplayData.h"
 
-
 namespace prototype {
 	HistogramStackDisplayData generateMCStackDisplayData(Double_t weights[]) {
 		HistogramStackDisplayData *histogramStackDisplayData = new HistogramStackDisplayData();

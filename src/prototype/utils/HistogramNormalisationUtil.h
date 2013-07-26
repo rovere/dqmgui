@@ -20,6 +20,10 @@ namespace prototype {
 			/// Defines the size of a unit area (the area of a normalised histogram)
 			static const Double_t UNIT_AREA;
 
+		private:
+			/// Static class: the constructor should not called.
+			HistogramNormalisationUtil();
+
 		public:
 			/// Normalises a histogram such that it has an area of <code>UNIT_AREA</code>.
 			/// @param histogram pointer to the histogram to normalise.

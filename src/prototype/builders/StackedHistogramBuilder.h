@@ -47,7 +47,7 @@ namespace prototype {
 
 		private:
 			/// Adds a given histogram to the given histograms stack.
-			/// @param histogram a copy of the histogram to put on the histogram stack
+			/// @param histogram the histogram to put on the histogram stack
 			/// @param histogramStack TODO
 			void addToHistogramStack(TH1D &histogram, THStack *histogramStack);
 

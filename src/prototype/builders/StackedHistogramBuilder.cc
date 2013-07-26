@@ -1,3 +1,5 @@
+#include <cassert>
+
 /*
  * StackedHistogramCreator.cpp
  *

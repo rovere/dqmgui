@@ -12,11 +12,12 @@
 #include "../controllers/ColourController.h"
 #include "../utils/HistogramNormalisationUtil.h"
 
-
 namespace prototype {
 	DataHistogramBuilder::DataHistogramBuilder(TH1D *histogram)
 			: histogram(histogram) {
 		HistogramNormalisationUtil::normaliseHistogram(histogram);
+
+		// Should TH1D::DrawNormalized() be called instead?
 	}
 
 	TH1D DataHistogramBuilder::build() {

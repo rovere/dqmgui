@@ -7,12 +7,15 @@
 #ifndef HISTOGRAMBUILDER_H_
 #define HISTOGRAMBUILDER_H_
 
-class TH1D;
+#include <TH1.h>
+
+#include "HistogramBuilder.h"
+
 
 namespace prototype {
 	/// TODO: Document class.
 	/// XXX: This class promotes a very strange pattern...
-	class DataHistogramBuilder {
+	class DataHistogramBuilder : public HistogramBuilder<TH1D> {
 		private:
 			/// TODO: Comment.
 			TH1D *histogram;

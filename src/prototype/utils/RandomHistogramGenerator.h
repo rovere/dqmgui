@@ -21,6 +21,10 @@ namespace prototype {
 			/// The ID to give to the next histogram.
 			static Int_t nextHistogramId;
 
+		private:
+			/// Static class: the constructor should not called.
+			RandomHistogramGenerator();
+
 		public:
 			/// Generates a histogram with a Gaussian frequency distribution
 			/// and <code>DEFAULT_HISTOGRAM_ENTRIES</code> entries.
