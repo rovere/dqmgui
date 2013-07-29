@@ -12,7 +12,6 @@
 #include <cassert>
 #include <list>
 #include <stdexcept>
-#include <iostream>
 
 #include "HistogramDisplayData.h"
 

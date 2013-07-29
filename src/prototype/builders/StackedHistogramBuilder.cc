@@ -6,8 +6,6 @@
  */
 #define DNDEBUG
 
-#include <cassert>
-
 #include "StackedHistogramBuilder.h"
 
 #include <Rtypes.h>

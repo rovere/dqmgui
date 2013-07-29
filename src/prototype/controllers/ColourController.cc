@@ -1,10 +1,3 @@
-#include <cassert>
-
-#include "ColourController.h"
-
-#include <Rtypes.h>
-#include <cassert>
-
 /*
  * ColourController.cpp
  *
@@ -12,6 +5,11 @@
  *      Author: Colin - CERN
  */
 #define DNDEBUG
+
+#include "ColourController.h"
+
+#include <Rtypes.h>
+#include <cassert>
 
 namespace prototype {
 	const Int_t ColourController::COLOUR_BLACK = kBlack;

@@ -4,6 +4,7 @@
  *  Created on: 24 Jul 2013
  *      Author: Colin - CERN
  */
+#define DNDEBUG
 
 #include "RandomHistogramGenerator.h"
 
@@ -13,7 +14,6 @@
 #include <cassert>
 #include <list>
 #include <string>
-#include <xstring>
 
 namespace prototype {
 	Int_t RandomHistogramGenerator::nextHistogramId = 0;

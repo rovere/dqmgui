@@ -1,7 +1,4 @@
-#include <iostream>
-#include <new>
-
-#include "utils/RandomHistogramGenerator.h"
+#define DNDEBUG
 
 #include <Rtypes.h>
 #include <TApplication.h>
@@ -9,15 +6,14 @@
 #include <TH1.h>
 #include <THStack.h>
 #include <TObject.h>
-#include <cassert>
 #include <iostream>
-#include <list>
-#include <string>
 
 #include "builders/DataHistogramBuilder.h"
+#include "builders/HistogramBuilder.h"
 #include "builders/StackedHistogramBuilder.h"
 #include "models/HistogramDisplayData.h"
 #include "models/HistogramStackDisplayData.h"
+#include "utils/RandomHistogramGenerator.h"
 
 namespace prototype {
 	HistogramStackDisplayData generateMCStackDisplayData(Double_t weights[]) {

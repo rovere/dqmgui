@@ -6,17 +6,14 @@
  */
 #define DNDEBUG
 
-#include <cassert>
-#include <new>
-
 #include "HistogramNormalisationUtil.h"
 
 #include <Rtypes.h>
 #include <TH1.h>
+#include <cassert>
 #include <limits>
 #include <list>
 #include <stdexcept>
-#include <iostream>
 
 #include "../models/HistogramDisplayData.h"
 

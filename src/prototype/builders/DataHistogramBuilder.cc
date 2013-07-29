@@ -4,6 +4,8 @@
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
  */
+#define DNDEBUG
+
 #include "DataHistogramBuilder.h"
 
 #include <TAttLine.h>

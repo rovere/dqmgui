@@ -4,6 +4,8 @@
  *  Created on: 19 Jul 2013
  *      Author: Colin - CERN
  */
+#define DNDEBUG
+
 #include "HistogramDisplayData.h"
 
 #include <Rtypes.h>

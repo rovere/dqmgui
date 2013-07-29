@@ -4,14 +4,13 @@
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
  */
-
 #ifndef COLOURCONTROLLER_H_
 #define COLOURCONTROLLER_H_
 
 #include <Rtypes.h>
 
 namespace prototype {
-	/// TODO: Document class.
+	/// Controls the colouring of objects.
 	class ColourController {
 		public:
 			/// The colour: black.

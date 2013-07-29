@@ -4,7 +4,6 @@
  *  Created on: 24 Jul 2013
  *      Author: Colin - CERN
  */
-
 #ifndef RANDOMHISTOGRAMGENERATOR_H_
 #define RANDOMHISTOGRAMGENERATOR_H_
 
