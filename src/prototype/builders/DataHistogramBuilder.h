@@ -12,19 +12,20 @@
 #include "HistogramBuilder.h"
 
 namespace prototype {
-	/// TODO: Document class.
-	/// XXX: This class promotes a very strange pattern...
+	/// Builder for the (physical) data histogram.
 	class DataHistogramBuilder : public HistogramBuilder<TH1D> {
 		private:
-			/// TODO: Comment.
+			/// The histogram on which the one that is built shall be
+			/// based on.
 			TH1D *histogram;
 
 		public:
 			/// Default constructor.
-			/// @param histogram TODO
+			/// @param histogram the histogram to base the one that is built on
+			/// XXX: Taking such parameter promotes a very strange pattern...
 			DataHistogramBuilder(TH1D *histogram);
 
-			/// TODO: Comment.
+			/// @see HistogramBuilder<TH1D>.build()
 			TH1D build();
 		};
 	}

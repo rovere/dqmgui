@@ -8,6 +8,7 @@
 #define STACKEDHISTOGRAMBUILDER_H_
 
 #include <list>
+#include <string>
 
 #include "../controllers/ColourController.h"
 #include "../models/HistogramStackDisplayData.h"
@@ -17,12 +18,13 @@ class THStack;
 namespace prototype { class HistogramDisplayData; }
 
 namespace prototype {
-	/// TODO: Document class.
+	/// Builder for stacked histograms.
 	class StackedHistogramBuilder {
 		private:
-			/// TODO: Comment.
+			/// The data associated to the stacked histogram this builder shall build.
 			HistogramStackDisplayData histogramStackDisplayData;
-			/// TODO: Comment.
+			/// The object responsible for controlling the colours this builder uses
+			/// to create a stacked histogram.
 			ColourController colourController;
 
 			/// The title of the stacked histogram that is to be built.
@@ -34,15 +36,27 @@ namespace prototype {
 			/// Default constructor.
 			StackedHistogramBuilder();
 
-			/// TODO: Comment.
-			/// @param data TODO
+			/// Adds data about a histogram that shall be displayed in the histogram
+			/// stack that this builder shall build.
+			/// <p>
+			/// If by adding the histogram, the total weight of all histograms in the
+			/// stack that is to be built exceeds 1.0, a <code>std::invalid_argument</code>
+			/// exception will be thrown.
+			/// @param data the histogram data to add to the histogram stack that is to be
+			///				built
 			void addHistogramDisplayData(HistogramDisplayData data);
 
-			/// TODO: Comment. (Does not overwrite)
-			/// @param data TODO
+			/// Adds data about many histograms that are to be used to build the histogram
+			/// stack.
+			/// <p>
+			/// If by adding the histograms, the total weight of all histograms in the
+			/// stack that is to be built exceeds 1.0, a <code>std::invalid_argument</code>
+			/// exception will be thrown.
+			/// @param data the container of the histogram data to be added to the histogram
+			///				stack when it is built
 			void addHistogramStackDisplayData(HistogramStackDisplayData data);
 
-			/// TODO: Comment.
+			/// @see StackedHistogramBuilder::build()
 			THStack build();
 
 		private:

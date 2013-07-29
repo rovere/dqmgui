@@ -39,7 +39,7 @@ namespace prototype {
 			HistogramDisplayData histogramDisplayData = *it;
 			// TODO: This is likely a reasonably computational expensive function call.
 			//		 For efficiency gains, consider executing the below in a new thread
-			//		 and then waiting for all threads to complete.
+			//		 (if thread safe) and then waiting for all threads to complete.
 			HistogramNormalisationUtil::normaliseWeightedHistogram(histogramDisplayData);
 			weightSum += histogramDisplayData.getWeight();
 			it++;

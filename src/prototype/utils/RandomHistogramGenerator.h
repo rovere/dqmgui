@@ -26,18 +26,19 @@ namespace prototype {
 			RandomHistogramGenerator();
 
 		public:
-			/// Generates a histogram with a Gaussian frequency distribution
+			/// Creates a histogram with a Gaussian frequency distribution
 			/// and <code>DEFAULT_HISTOGRAM_ENTRIES</code> entries.
 			/// @see generateGausHistogram(Int_t, Int_t)
 			static TH1D* createGausHistogram(Int_t id);
 
-			/// Generates a histogram with a Gaussian frequency distribution.
+			/// Creates a histogram with a Gaussian frequency distribution.
 			/// @param id the identification number of the histogram (used by ROOT)
 			/// @param totalObservations the number of observations to include in the histogram
 			/// @return the generated histogram
 			static TH1D* createGausHistogram(Int_t id, Int_t totalObservations);
 
-			/// TODO: Comment
+			/// Creates a single histogram to mimic one created by a Monte Carlo simulation.
+			/// @return the generated histogram
 			static TH1D* createMCHistogram();
 
 			/// Creates a list of pseudo Monte Carlo (MC) simulated histograms.

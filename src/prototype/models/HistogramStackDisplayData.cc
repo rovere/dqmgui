@@ -32,6 +32,8 @@ namespace prototype {
 
 		this->histogramDisplayData.push_back(displayData);
 		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
+		assert(this->getHistogramsTotalWeight() <= 1.0);
+		assert(this->getHistogramsTotalWeight() >= 0.0);
 	}
 
 	void HistogramStackDisplayData::add(HistogramStackDisplayData histogramStackDisplayData) {
@@ -64,6 +66,8 @@ namespace prototype {
 			it++;
 		}
 
+		assert(totalWeight <= 1.0);
+		assert(totalWeight >= 0.0);
 		return(totalWeight);
 	}
 
