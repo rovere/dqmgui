@@ -15,34 +15,36 @@
 #include <list>
 #include <stdexcept>
 
-#include "../models/HistogramDisplayData.h"
+#include "../models/display-data/HistogramData.h"
+#include "../models/display-data/HistogramDisplayData.h"
+#include "../models/display-data/WeightedHistogramData.h"
 
 namespace prototype {
 	const Double_t HistogramNormalisationUtil::UNIT_AREA = 1.0;
 
 	void HistogramNormalisationUtil::normaliseHistogram(TH1D *histogram) {
-		HistogramDisplayData *histogramDisplayData = new HistogramDisplayData(
+		WeightedHistogramData *histogramScalingData = new WeightedHistogramData(
 				histogram, UNIT_AREA);
-		HistogramNormalisationUtil::normaliseWeightedHistogram(*histogramDisplayData);
+		HistogramNormalisationUtil::normaliseWeightedHistogram(*histogramScalingData);
 		assert(std::abs(histogram->Integral() - UNIT_AREA) < (2 * std::numeric_limits<Double_t>::epsilon()));
 	}
 
 	void HistogramNormalisationUtil::normaliseWeightedHistograms(
-			std::list<HistogramDisplayData> histogramDisplayData) {
-		std::list<HistogramDisplayData>::iterator it = histogramDisplayData.begin();
+			std::list<WeightedHistogramData> weightedHistogramData) {
+		std::list<WeightedHistogramData>::iterator it = weightedHistogramData.begin();
 		Double_t weightSum = 0;
 
-		while(it != histogramDisplayData.end()) {
-			HistogramDisplayData histogramDisplayData = *it;
+		while(it != weightedHistogramData.end()) {
+			WeightedHistogramData weightedHistogramData = *it;
 			// TODO: This is likely a reasonably computational expensive function call.
 			//		 For efficiency gains, consider executing the below in a new thread
 			//		 (if thread safe) and then waiting for all threads to complete.
-			HistogramNormalisationUtil::normaliseWeightedHistogram(histogramDisplayData);
-			weightSum += histogramDisplayData.getWeight();
+			HistogramNormalisationUtil::normaliseWeightedHistogram(weightedHistogramData);
+			weightSum += weightedHistogramData.getWeight();
 			it++;
 		}
 
-		if(histogramDisplayData.size() != 0) {
+		if(weightedHistogramData.size() != 0) {
 			if(weightSum != UNIT_AREA) {
 				throw std::invalid_argument(
 						"The sum weight of all histograms to be normalised must equal 1");
@@ -51,9 +53,9 @@ namespace prototype {
 		}
 	}
 
-	void HistogramNormalisationUtil::normaliseWeightedHistogram(HistogramDisplayData histogramDisplayData) {
-		TH1D *histogram = histogramDisplayData.getHistogram();
-		Double_t weight = histogramDisplayData.getWeight();
+	void HistogramNormalisationUtil::normaliseWeightedHistogram(WeightedHistogramData weightedHistogramData) {
+		TH1D *histogram = weightedHistogramData.getHistogram();
+		Double_t weight = weightedHistogramData.getWeight();
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {

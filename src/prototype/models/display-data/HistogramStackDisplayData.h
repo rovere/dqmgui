@@ -18,7 +18,7 @@ namespace prototype {
 		private:
 			/// List of histogram data relating to the histograms that are to be included
 			/// in the stack.
-			std::list<HistogramDisplayData> histogramDisplayData;
+			std::list<HistogramDisplayData> allHistogramDisplayData;
 
 		public:
 			/// Default constructor.
@@ -31,11 +31,11 @@ namespace prototype {
 			/// @param histogramDisplayData data instructing how a histogram is to be displayed
 			void add(HistogramDisplayData histogramDisplayData);
 
-			/// Adds all the <code>HistogramDisplayData</code> data contained in a given
+			/// Adds all the <code>WeightedHistogramData</code> data contained in a given
 			/// <code>HistogramStackDisplayData</code> to this histogram stack's data container.
 			/// If by adding the histogram, the total weight of all histograms in the stack exceeds
 			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
-			/// @param displayData the stack's data to add to this container
+			/// @param histogramStackDisplayData the stack's data to add to this container
 			void add(HistogramStackDisplayData histogramStackDisplayData);
 
 			/// Gets the total weight of all the histograms in this container.

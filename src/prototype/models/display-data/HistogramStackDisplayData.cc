@@ -1,3 +1,8 @@
+#include <cassert>
+#include <list>
+
+#include "HistogramDisplayData.h"
+
 /*
  * HistogramDisplayDataSet.cc
  *
@@ -6,30 +11,28 @@
  */
 #define DNDEBUG
 
-#include "HistogramStackDisplayData.h"
-
 #include <Rtypes.h>
 #include <cassert>
 #include <list>
 #include <stdexcept>
 
-#include "HistogramDisplayData.h"
+#include "HistogramStackDisplayData.h"
 
 namespace prototype {
 	HistogramStackDisplayData::HistogramStackDisplayData() {
 		;
 	}
 
-	void HistogramStackDisplayData::add(HistogramDisplayData displayData) {
+	void HistogramStackDisplayData::add(HistogramDisplayData histogramDisplayData) {
 		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
-		Double_t postTotalWeight = currentTotalWeight + displayData.getWeight();
+		Double_t postTotalWeight = currentTotalWeight + histogramDisplayData.getWeight();
 
 		if(postTotalWeight > 1.0) {
 			throw std::invalid_argument(
 					"Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
 		}
 
-		this->histogramDisplayData.push_back(displayData);
+		this->allHistogramDisplayData.push_back(histogramDisplayData);
 		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
 		assert(this->getHistogramsTotalWeight() <= 1.0);
 		assert(this->getHistogramsTotalWeight() >= 0.0);
@@ -56,10 +59,12 @@ namespace prototype {
 	}
 
 	Double_t HistogramStackDisplayData::getHistogramsTotalWeight() {
-		std::list<HistogramDisplayData>::iterator it = this->histogramDisplayData.begin();
+		// XXX: It would be nice if the list could be casted to WeightedHistogramData as
+		//		we're only interested in seeing the data like this
+		std::list<HistogramDisplayData>::iterator it = this->allHistogramDisplayData.begin();
 		Double_t totalWeight = 0;
 
-		while(it != this->histogramDisplayData.end()) {
+		while(it != this->allHistogramDisplayData.end()) {
 			HistogramDisplayData histogramDisplayData = (*it);
 			totalWeight += histogramDisplayData.getWeight();
 			it++;
@@ -71,6 +76,6 @@ namespace prototype {
 	}
 
 	std::list<HistogramDisplayData> HistogramStackDisplayData::getAllHistogramDisplayData() {
-		return(this->histogramDisplayData);
+		return(this->allHistogramDisplayData);
 	}
 }

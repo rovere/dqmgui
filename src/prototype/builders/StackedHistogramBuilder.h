@@ -8,14 +8,14 @@
 #define STACKEDHISTOGRAMBUILDER_H_
 
 #include <list>
-#include <string>
+#include <xstring>
 
 #include "../controllers/ColourController.h"
-#include "../models/HistogramStackDisplayData.h"
+#include "../models/display-data/HistogramStackDisplayData.h"
 
 class TH1D;
 class THStack;
-namespace prototype { class HistogramDisplayData; }
+namespace prototype { class WeightedHistogramData; }
 
 namespace prototype {
 	/// Builder for stacked histograms.

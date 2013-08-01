@@ -11,8 +11,8 @@
 #include "builders/DataHistogramBuilder.h"
 #include "builders/HistogramBuilder.h"
 #include "builders/StackedHistogramBuilder.h"
-#include "models/HistogramDisplayData.h"
-#include "models/HistogramStackDisplayData.h"
+#include "models/display-data/HistogramDisplayData.h"
+#include "models/display-data/HistogramStackDisplayData.h"
 #include "utils/RandomHistogramGenerator.h"
 
 namespace prototype {
@@ -38,15 +38,15 @@ namespace prototype {
 		TH1D dataHistogram = *RandomHistogramGenerator::createGausHistogram(-1);
 		HistogramStackDisplayData histogramStackDisplayData = generateMCStackDisplayData(weights);
 
+		DataHistogramBuilder *dataHistogramBuilder = new DataHistogramBuilder(&dataHistogram);
+		TH1D formattedDataHistogram = dataHistogramBuilder->build();
+		formattedDataHistogram.Draw();
+
 		// (Director pattern)
 		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder();
 		stackedHistogramBuilder->addHistogramStackDisplayData(histogramStackDisplayData);
 		THStack histogramStack = stackedHistogramBuilder->build();
-		histogramStack.Draw();
-
-		DataHistogramBuilder *dataHistogramBuilder = new DataHistogramBuilder(&dataHistogram);
-		TH1D formattedDataHistogram = dataHistogramBuilder->build();
-		formattedDataHistogram.Draw("SAME");
+		histogramStack.Draw("SAME");
 
 		canvas->Update();
 		application->Run();

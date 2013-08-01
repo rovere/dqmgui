@@ -1,3 +1,10 @@
+#include <cassert>
+
+#include <cassert>
+
+#include "../models/display-data/HistogramData.h"
+#include "../models/display-data/WeightedHistogramData.h"
+
 /*
  * StackedHistogramCreator.cpp
  *
@@ -21,8 +28,8 @@
 #include <stdexcept>
 
 #include "../controllers/ColourController.h"
-#include "../models/HistogramDisplayData.h"
-#include "../models/HistogramStackDisplayData.h"
+#include "../models/display-data/HistogramDisplayData.h"
+#include "../models/display-data/HistogramStackDisplayData.h"
 #include "../utils/HistogramNormalisationUtil.h"
 
 namespace prototype {
@@ -31,12 +38,24 @@ namespace prototype {
 	}
 
 	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
-		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
+//		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
 		this->histogramStackDisplayData.add(data);
 	}
 
 	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackDisplayData data) {
-		HistogramNormalisationUtil::normaliseWeightedHistograms(data.getAllHistogramDisplayData());
+		std::list<HistogramDisplayData> allHistogramDisplayData = data.getAllHistogramDisplayData();
+		std::list<WeightedHistogramData> allWeightedHistogramData;
+
+		std::list<HistogramDisplayData>::iterator it = allHistogramDisplayData.begin();
+
+		while(it != allHistogramDisplayData.end()) {
+			WeightedHistogramData weightedHistogramData = *it;
+			allWeightedHistogramData.push_back(weightedHistogramData);
+		}
+
+		/// TODO: Just call addHistogramDisplayData for each element...
+
+//		HistogramNormalisationUtil::normaliseWeightedHistograms(allWeightedHistogramData);
 		this->histogramStackDisplayData.add(data);
 	}
 

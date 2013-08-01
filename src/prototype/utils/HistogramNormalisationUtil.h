@@ -10,8 +10,9 @@
 #include <Rtypes.h>
 #include <list>
 
+namespace prototype { class WeightedHistogramData; }
+
 class TH1D;
-namespace prototype { class HistogramDisplayData; }
 
 namespace prototype {
 	/// Utility class for normalising histograms.
@@ -34,23 +35,23 @@ namespace prototype {
 			/// have an area of <code>UNIT_AREA</code>. The weight of each histogram in the stack
 			///	(i.e. histograms each influence the resulting stack to different degrees)
 			/// is defined within the <code>HistogramWeightPair</code> instance.
-			/// @param histogramDisplayData a list of the <code>HistogramDisplayData</code> instances
+			/// @param weightedHistogramData a list of the <code>WeightedHistogramData</code> instances
 			///								containing histograms that are to be normalised considering their weights.
 			///								The sum of all the histogram's weights must equal <code>UNIT_AREA</code>
 			///								else an <code>std::invalid_argument</code> exception shall
-			///								be thrown. The histograms within <code>histogramDisplayData</code>
+			///								be thrown. The histograms within <code>weightedHistogramData</code>
 			///								are modified.
-			static void normaliseWeightedHistograms(std::list<HistogramDisplayData> histogramDisplayData);
+			static void normaliseWeightedHistograms(std::list<WeightedHistogramData> weightedHistogramData);
 
 			/// Normalises a histogram that is to be included in a stack such that all
 			/// histograms in the stack with have an area that sums to <code>UNIT_AREA</code>.
 			/// <p>
 			/// Therefore the area of this histogram after normalisation shall be:
 			/// <code>1 / histogramWeightPair.getWeight()</code>.
-			/// @param histogramDisplayData a <code>HistogramDisplayData</code> instance
+			/// @param weightedHistogramData a <code>WeightedHistogramData</code> instance
 			///							    containing a histogram that is to be normalised (with respect
 			///								to a stack of histograms) and the weight of the normalisation
-			static void normaliseWeightedHistogram(HistogramDisplayData histogramDisplayData);
+			static void normaliseWeightedHistogram(WeightedHistogramData weightedHistogramData);
 	};
 }
 #endif
