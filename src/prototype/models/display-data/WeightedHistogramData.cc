@@ -4,6 +4,7 @@
  *  Created on: 1 Aug 2013
  *      Author: Colin - CERN
  */
+#define DNDEBUG
 
 #include "WeightedHistogramData.h"
 

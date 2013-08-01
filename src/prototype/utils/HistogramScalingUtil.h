@@ -23,10 +23,17 @@ namespace prototype {
 
 		public:
 			/// TODO: Comment
-			void scaleHistogram(TH1D histogram, Double_t targetArea);
+			static void scaleHistogram(TH1D *histogram, Double_t targetArea);
 
 			/// TODO: Comment
-			void scaleWeightedHistograms(std::list<WeightedHistogramData> weightedHistogramData);
+			static void scaleWeightedHistograms(
+					std::list<WeightedHistogramData> weightedHistogramData,
+					Double_t targetCombinedArea);
+
+			/// TODO: Comment
+			static void scaleWeightedHistogram(
+					WeightedHistogramData weightedHistogramData,
+					Double_t combinedTargetArea);
 	};
 }
 #endif

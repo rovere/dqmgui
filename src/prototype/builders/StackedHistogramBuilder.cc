@@ -38,25 +38,20 @@ namespace prototype {
 	}
 
 	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
-//		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
+		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
 		this->histogramStackDisplayData.add(data);
 	}
 
 	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackDisplayData data) {
 		std::list<HistogramDisplayData> allHistogramDisplayData = data.getAllHistogramDisplayData();
-		std::list<WeightedHistogramData> allWeightedHistogramData;
 
 		std::list<HistogramDisplayData>::iterator it = allHistogramDisplayData.begin();
 
 		while(it != allHistogramDisplayData.end()) {
-			WeightedHistogramData weightedHistogramData = *it;
-			allWeightedHistogramData.push_back(weightedHistogramData);
+			HistogramDisplayData histogramDisplayData = *it;
+			this->addHistogramDisplayData(histogramDisplayData);
+			it++;
 		}
-
-		/// TODO: Just call addHistogramDisplayData for each element...
-
-//		HistogramNormalisationUtil::normaliseWeightedHistograms(allWeightedHistogramData);
-		this->histogramStackDisplayData.add(data);
 	}
 
 	THStack StackedHistogramBuilder::build() {
