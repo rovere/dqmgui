@@ -33,12 +33,26 @@
 #include "../utils/HistogramNormalisationUtil.h"
 
 namespace prototype {
-	StackedHistogramBuilder::StackedHistogramBuilder() {
-		;
+	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
+		this->setTargetHistogramArea(targetHistogramArea);
+	}
+
+	THStack StackedHistogramBuilder::build() {
+		if(this->histogramStackDisplayData.getHistogramsTotalWeight() != 1.0) {
+			throw std::invalid_argument(
+					"The sum weight of all histograms in the stack to be built must equal 1");
+		}
+
+		THStack *histogramStack = new THStack();
+		std::list<TH1D*> histograms = this->getAllHistograms();
+		this->addAllToHistogramStack(histograms, histogramStack);
+
+		return(*histogramStack);
 	}
 
 	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
-		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
+		// TODO: Consider using cloning here!
+//		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
 		this->histogramStackDisplayData.add(data);
 	}
 
@@ -54,17 +68,29 @@ namespace prototype {
 		}
 	}
 
-	THStack StackedHistogramBuilder::build() {
-		if(this->histogramStackDisplayData.getHistogramsTotalWeight() != 1.0) {
-			throw std::invalid_argument(
-					"The sum weight of all histograms in the stack to be built must equal 1");
+	void StackedHistogramBuilder::setTargetHistogramArea(Double_t targetHistogramArea) {
+		this->targetHistogramArea = targetHistogramArea;
+	}
+
+	std::list<TH1D*> StackedHistogramBuilder::getAllHistograms() {
+		std::list<HistogramDisplayData> histogramDisplayData = this->
+				histogramStackDisplayData.getAllHistogramDisplayData();
+		std::list<HistogramDisplayData>::iterator it = histogramDisplayData.begin();
+		std::list<TH1D*> histograms;
+
+		while(it != histogramDisplayData.end()) {
+			HistogramDisplayData *histogramWeightPair = &(*it);
+			TH1D *histogram = histogramWeightPair->getHistogram();
+			histograms.push_back(histogram);
+			it++;
 		}
 
-		THStack *histogramStack = new THStack();
-		std::list<TH1D*> histograms = this->getAllHistograms();
-		this->addAllToHistogramStack(histograms, histogramStack);
+		assert(histograms.size() == histogramDisplayData.size());
+		return(histograms);
+	}
 
-		return(*histogramStack);
+	Double_t StackedHistogramBuilder::getTargetHistogramArea() {
+		return(this->targetHistogramArea);
 	}
 
 	void StackedHistogramBuilder::addToHistogramStack(TH1D &histogram, THStack *histogramStack) {
@@ -108,22 +134,5 @@ namespace prototype {
 		Int_t modifiedStackSize = histogramStack->GetStack()->GetSize();
 		assert(modifiedStackSize == (stackSize + histograms.size()));
 		#endif
-	}
-
-	std::list<TH1D*> StackedHistogramBuilder::getAllHistograms() {
-		std::list<HistogramDisplayData> histogramDisplayData = this->
-				histogramStackDisplayData.getAllHistogramDisplayData();
-		std::list<HistogramDisplayData>::iterator it = histogramDisplayData.begin();
-		std::list<TH1D*> histograms;
-
-		while(it != histogramDisplayData.end()) {
-			HistogramDisplayData *histogramWeightPair = &(*it);
-			TH1D *histogram = histogramWeightPair->getHistogram();
-			histograms.push_back(histogram);
-			it++;
-		}
-
-		assert(histograms.size() == histogramDisplayData.size());
-		return(histograms);
 	}
 }

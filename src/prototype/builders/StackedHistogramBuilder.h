@@ -23,18 +23,22 @@ namespace prototype {
 		private:
 			/// The data associated to the stacked histogram this builder shall build.
 			HistogramStackDisplayData histogramStackDisplayData;
+
 			/// The object responsible for controlling the colours this builder uses
 			/// to create a stacked histogram.
 			ColourController colourController;
 
-			/// The title of the stacked histogram that is to be built.
-			std::string title;
-			/// The label of the stacked histogram that is to be build.
-			std::string label;
+			/// TODO: Comment
+			Double_t targetHistogramArea;
+
 
 		public:
 			/// Default constructor.
-			StackedHistogramBuilder();
+			/// TODO: Comment param
+			StackedHistogramBuilder(Double_t targetHistogramArea);
+
+			/// @see StackedHistogramBuilder::build()
+			THStack build();
 
 			/// Adds data about a histogram that shall be displayed in the histogram
 			/// stack that this builder shall build.
@@ -56,10 +60,17 @@ namespace prototype {
 			///				stack when it is built
 			void addHistogramStackDisplayData(HistogramStackDisplayData data);
 
-			/// @see StackedHistogramBuilder::build()
-			THStack build();
+			/// TODO: Comment
+			void setTargetHistogramArea(Double_t targetHistogramArea);
 
 		private:
+			/// Gets all of the histograms, regardless of weight.
+			/// @return all histograms to be drawn in the stack
+			std::list<TH1D*> getAllHistograms();
+
+			/// TODO: Comment
+			Double_t getTargetHistogramArea();
+
 			/// Adds a given histogram to the given histograms stack.
 			/// @param histogram the histogram to put on the histogram stack
 			/// @param histogramStack TODO
@@ -69,10 +80,6 @@ namespace prototype {
 			/// @param histograms the list of histograms to add to the stack
 			/// @param histogramStack TODO
 			void addAllToHistogramStack(std::list<TH1D*> histograms, THStack *histogramStack);
-
-			/// Gets all of the histograms, regardless of weight.
-			/// @return all histograms to be drawn in the stack
-			std::list<TH1D*> getAllHistograms();
 	};
 }
 #endif

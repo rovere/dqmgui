@@ -43,7 +43,9 @@ namespace prototype {
 		formattedDataHistogram.Draw();
 
 		// (Director pattern)
-		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder();
+		Double_t targetStackedHistogramArea = dataHistogram.Integral();
+		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder(
+				targetStackedHistogramArea);
 		stackedHistogramBuilder->addHistogramStackDisplayData(histogramStackDisplayData);
 		THStack histogramStack = stackedHistogramBuilder->build();
 		histogramStack.Draw("SAME");
