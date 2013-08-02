@@ -1,9 +1,13 @@
 #include <cassert>
 
+#include "../utils/HistogramScalingUtil.h"
+
+#include <TCollection.h>
+#include <TObjArray.h>
 #include <cassert>
 
-#include "../models/display-data/HistogramData.h"
 #include "../models/display-data/WeightedHistogramData.h"
+#include "../utils/HistogramNormalisationUtil.h"
 
 /*
  * StackedHistogramCreator.cpp
@@ -18,10 +22,8 @@
 #include <Rtypes.h>
 #include <TAttFill.h>
 #include <TAttLine.h>
-#include <TCollection.h>
 #include <TH1.h>
 #include <THStack.h>
-#include <TObjArray.h>
 #include <TObject.h>
 #include <cassert>
 #include <list>
@@ -30,7 +32,6 @@
 #include "../controllers/ColourController.h"
 #include "../models/display-data/HistogramDisplayData.h"
 #include "../models/display-data/HistogramStackDisplayData.h"
-#include "../utils/HistogramNormalisationUtil.h"
 
 namespace prototype {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
@@ -52,7 +53,7 @@ namespace prototype {
 
 	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
 		// TODO: Consider using cloning here!
-//		HistogramNormalisationUtil::normaliseWeightedHistogram(data);
+		HistogramScalingUtil::scaleWeightedHistogram(data, this->getTargetHistogramArea());
 		this->histogramStackDisplayData.add(data);
 	}
 
@@ -69,6 +70,7 @@ namespace prototype {
 	}
 
 	void StackedHistogramBuilder::setTargetHistogramArea(Double_t targetHistogramArea) {
+		assert(targetHistogramArea >= 0);
 		this->targetHistogramArea = targetHistogramArea;
 	}
 

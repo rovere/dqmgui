@@ -1,3 +1,7 @@
+#include <cassert>
+#include <iostream>
+#include <list>
+
 /*
  * HistogramScalingUtil.cpp
  *
@@ -25,13 +29,14 @@ namespace prototype {
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {
-			Double_t inverseIntegral = (targetArea / integral);
+			Double_t inverseIntegral = targetArea / integral;
 			histogram->Scale(inverseIntegral);
 
-			// Note: This assertion is not as simple as using the equality operator.
-			//		 As double is a continuous variable and the equality operator is
-			//		 not smart, the machine's epsilon must be considered (for two doubles).
-			assert(std::abs(histogram->Integral() - targetArea) < (2 * std::numeric_limits<Double_t>::epsilon()));
+			// Note: We cannot assume that integrating the histogram will give exactly the
+			//		 <code>targetArea</code> as we don't know the internals of <code>
+			//		 TH1D::Scale(Double_t)</code> and <code>TH1D::Integral()</code>.
+			//		 Therefore we'll just assume a tolerance of 0.01% is acceptable.
+			assert(std::abs(histogram->Integral() - targetArea) < (targetArea * 0.0001));
 		}
 		else {
 			// Histogram does not contain any samples - no scaling required
@@ -61,7 +66,7 @@ namespace prototype {
 			it++;
 		}
 
-		assert(std::abs(combinedArea - targetCombinedArea) < (2 * std::numeric_limits<Double_t>::epsilon()));
+		assert(std::abs(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001)));
 	}
 
 	void HistogramScalingUtil::scaleWeightedHistogram(
