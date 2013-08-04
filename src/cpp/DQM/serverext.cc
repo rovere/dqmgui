@@ -363,6 +363,7 @@ struct VisDQMLayoutItem
   StringAtom			path;
   std::string			desc;
   VisDQMDrawOptions		drawopts;
+  StringAtomSet                 overlays;
 };
 
 struct VisDQMLayoutRow
@@ -390,6 +391,7 @@ struct VisDQMShownItem
   std::string			desc;
   VisDQMSource			*plotter;
   VisDQMDrawOptions		drawopts;
+  StringAtomSet                 overlays;
 };
 
 struct VisDQMShownRow
@@ -612,6 +614,23 @@ stringToJSON(const std::string &x, bool emptyIsNone = false)
   result += '"';
   return result;
 }
+
+static std::string
+stringsToJSON(const StringAtomSet &overlays, bool emptyIsNone = false)
+{
+  StringAtomSet::const_iterator mi = overlays.begin();
+  StringAtomSet::const_iterator me = overlays.end();
+  std::string result = "[";
+
+  for (; mi != me; ++mi) {
+    if (result.length() > 1 )
+      result += ", ";
+    result += stringToJSON(mi->string());
+  }
+  result += "]";
+  return result;
+}
+
 
 static shared_ptr<Regexp>
 rx(const std::string &match, int options = 0)
@@ -1292,7 +1311,7 @@ struct IMGOPT { std::string label; Regexp &verify; };
 static Regexp RX_OPT_INT("^[0-9]+$");
 static Regexp RX_OPT_FLOAT("^([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)?$");
 static Regexp RX_OPT_DRAWOPT("^[A-Za-z ]*$");
-static Regexp RX_OPT_REFTYPE("^(|object|reference|overlay)$");
+static Regexp RX_OPT_REFTYPE("^(|object|reference|overlay|samesample)$");
 static Regexp RX_OPT_AXISTYPE("^(def|lin|log)$");
 static Regexp RX_OPT_TREND_TYPE("^(num-(entries|bins|bytes)|value|"
 				"[xyz]-(min|max|bins|mean(-rms|-min-max)?))$");
@@ -2959,6 +2978,17 @@ public:
 		col->desc = py::extract<std::string>(colobj.get("description", ""));
 		if (colobj.has_key("draw"))
 		  translateDrawOptions(py::extract<py::dict>(colobj.get("draw")), col->drawopts);
+                if (colobj.has_key("overlays"))
+                {
+                  py::list overlays = py::extract<py::list>(colobj.get("overlays"));
+                  py::ssize_t n = py::len(overlays);
+                  for(py::ssize_t j = 0; j < n; j++)
+                  {
+                    py::extract<std::string> overlay_name(overlays[j]);
+                    if (overlay_name.check())
+                      col->overlays.insert(StringAtom(&stree, overlay_name()));
+                  }
+                }
 	      }
 	      else
 		logwarn()
@@ -5751,21 +5781,22 @@ protected:
       return StringFormat("{'name':%1, 'desc':%2, 'location':\"%3\","
 			  " 'version':\"%4\", 'alarm':%5, 'live':%6,"
 			  " 'xaxis':%7, 'yaxis':%8, 'zaxis':%9,"
-			  " 'drawopts':%10, 'withref':%11}")
-	.arg(stringToJSON(x.name.string(), true))
-	.arg(stringToJSON(x.desc, true))
-	.arg(StringFormat("%1/%2%3")
-	     .arg(x.plotter ? x.plotter->plotter() : "unknown")
-	     .arg(sample.runnr)
-	     .arg(sample.dataset))
-	.arg(vbuf)
-	.arg(x.nalarm)
-	.arg(x.nlive)
-	.arg(axisToJSON(x.drawopts.xaxis))
-	.arg(axisToJSON(x.drawopts.yaxis))
-	.arg(axisToJSON(x.drawopts.zaxis))
-	.arg(stringToJSON(x.drawopts.drawopts))
-	.arg(stringToJSON(x.drawopts.withref));
+			  " 'drawopts':%10, 'withref':%11, 'overlays':%12}")
+          .arg(stringToJSON(x.name.string(), true))
+          .arg(stringToJSON(x.desc, true))
+          .arg(StringFormat("%1/%2%3")
+               .arg(x.plotter ? x.plotter->plotter() : "unknown")
+               .arg(sample.runnr)
+               .arg(sample.dataset))
+          .arg(vbuf)
+          .arg(x.nalarm)
+          .arg(x.nlive)
+          .arg(axisToJSON(x.drawopts.xaxis))
+          .arg(axisToJSON(x.drawopts.yaxis))
+          .arg(axisToJSON(x.drawopts.zaxis))
+          .arg(stringToJSON(x.drawopts.drawopts))
+          .arg(stringToJSON(x.drawopts.withref))
+          .arg(stringsToJSON(x.overlays));
     }
 
   static std::string
@@ -6001,6 +6032,7 @@ protected:
 	      scol->name = col.path;
 	      scol->desc = col.desc;
 	      scol->plotter = lobj.plotter;
+              scol->overlays = col.overlays;
 	      lopts = &col.drawopts;
 
 	      VisDQMDrawOptionMap::const_iterator drawpos = drawopts.find(col.path);

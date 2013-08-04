@@ -269,12 +269,6 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
 	}
       }
 
-      // Only attach to the plot non-default options
-      if (!showstats)
-        xargs += ';showstats=' + showstats;
-      if (showerrbars)
-        xargs += ';showerrbars=' + showerrbars;
-
       var showref = (overlay ? "overlay" : "object");
       if (! dostrip && xargs)
       {
@@ -282,6 +276,18 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
 	xargs = ";obj=" + encodeURIComponent(ob.location+"/"+ob.name) + xargs;
 	ob.nukename = 1;
 	ob.location = "overlay";
+      }
+      else if (ob.overlays.length > 0)
+      {
+        showref = "samesample";
+        ob.nukename = 1;
+        xargs = ";obj=" + encodeURIComponent(ob.location+"/"+ob.name) + xargs;
+        for (var o = 0; o < ob.overlays.length; ++o)
+        {
+          xargs = xargs + ";obj=" + encodeURIComponent(ob.location+"/"+ob.overlays[o]);
+        }
+        ob.real_location = ob.location;
+        ob.location = "overlay";
       }
       else if (dostrip)
       {
@@ -298,6 +304,12 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
 	ob.nukename = 1;
 	showref = "object";
       }
+
+      // Only attach to the plot non-default options
+      if (!showstats)
+        xargs += ';showstats=' + showstats;
+      if (showerrbars)
+        xargs += ';showerrbars=' + showerrbars;
 
       layoutimg(img, container, focus, onclick, showref, size, ob,
 		rowdiv, nrows, row, ncols, col, n, xargs);
@@ -353,7 +365,8 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
 	    }
 	    else
 	    {
-	      var parts = ob.location.split("/");
+	      var parts = ob.overlays.length > 0 ? ob.real_location.split("/")
+                  : ob.location.split("/");
 	      var dataset = parts.splice(2, 3).join("/");
 	      if (parts[0] == "live")
 		parts[0] = "archive";
@@ -366,11 +379,22 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
 	      ob.title = sprintf("Ref #%d, run %s, dataset %s; %s",
 				refidx+1, parts[1], dataset, ob.name);
 	      showref = "object";
+              if (ob.overlays.length > 0)
+              {
+                showref = "samesample";
+                ob.nukename = 1;
+                xargs = ";obj=" + encodeURIComponent(ob.location+"/"+ob.name) + xargs;
+                for (var o = 0; o < ob.overlays.length; ++o)
+                {
+                  xargs = xargs + ";obj=" + encodeURIComponent(ob.location+"/"+ob.overlays[o]);
+                }
+                ob.location = "overlay";
+              }
 	    }
           }
           layoutimg(img, container, focus, null /* omit onclick for ref */,
 		    showref, size, ob, rowdiv, nrows, row, ncols, col,
-		    "ref_" + refcnt + "_" + n, "");
+		    "ref_" + refcnt + "_" + n, xargs);
         }
       }
     }
