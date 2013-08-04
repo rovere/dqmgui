@@ -154,6 +154,12 @@ parseReference(const char *&p, const char *name, size_t len, VisDQMReference &va
       p += 7;
       return true;
     }
+    else if (! strncmp(p, "samesample", 10))
+    {
+      value = DQM_REF_SAMESAMPLE;
+      p += 10;
+      return true;
+    }
   }
   return false;
 }
@@ -1584,7 +1590,10 @@ private:
 		  currentStat->AddText("StandardRef");
 		else
 		{
-		  ss << "Ref "<< n;
+                  if (i.reference == DQM_REF_SAMESAMPLE)
+                    ss << objs[n].name;
+                  else
+                    ss << "Ref "<< n;
 		  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
 		}
 		ss << "Entries = " << ref->GetEntries();
