@@ -8,12 +8,13 @@
 #include <TObject.h>
 #include <iostream>
 
-#include "builders/DataHistogramBuilder.h"
-#include "builders/HistogramBuilder.h"
-#include "builders/StackedHistogramBuilder.h"
-#include "models/display-data/HistogramDisplayData.h"
-#include "models/display-data/HistogramStackDisplayData.h"
-#include "utils/RandomHistogramGenerator.h"
+#include "../cpp/DQM/render/builders/DataHistogramBuilder.h"
+#include "../cpp/DQM/render/builders/HistogramBuilder.h"
+#include "../cpp/DQM/render/builders/StackedHistogramBuilder.h"
+#include "../cpp/DQM/render/models/display-data/HistogramDisplayData.h"
+#include "../cpp/DQM/render/models/display-data/HistogramStackDisplayData.h"
+#include "../cpp/DQM/render/utils/RandomHistogramGenerator.h"
+
 
 namespace prototype {
 	HistogramStackDisplayData generateMCStackDisplayData(Double_t weights[]) {
