@@ -3,13 +3,6 @@
 #include <iostream>
 #include <new>
 
-#include "../cpp/DQM/render/builders/DataHistogramBuilder.h"
-#include "../cpp/DQM/render/builders/HistogramBuilder.h"
-#include "../cpp/DQM/render/builders/StackedHistogramBuilder.h"
-#include "../cpp/DQM/render/models/display-data/HistogramDisplayData.h"
-#include "../cpp/DQM/render/models/display-data/HistogramStackDisplayData.h"
-#include "utils/RandomHistogramGenerator.h"
-
 #include <Rtypes.h>
 #include <TApplication.h>
 #include <TCanvas.h>
@@ -17,6 +10,16 @@
 #include <THStack.h>
 #include <TObject.h>
 #include <iostream>
+#include <xstring>
+
+#include "../cpp/DQM/render/builders/DataHistogramBuilder.h"
+#include "../cpp/DQM/render/builders/HistogramBuilder.h"
+#include "../cpp/DQM/render/builders/StackedHistogramBuilder.h"
+#include "../cpp/DQM/render/models/display-data/HistogramDisplayData.h"
+#include "../cpp/DQM/render/models/display-data/HistogramStackDisplayData.h"
+#include "../cpp/DQM/render/models/StackedHistogramSettings.h"
+#include "../cpp/DQM/render/utils/parsers/StackedHistogramSettingsParser.h"
+#include "utils/RandomHistogramGenerator.h"
 
 namespace prototype {
 	HistogramStackDisplayData generateMCStackDisplayData(Double_t weights[]) {
@@ -58,8 +61,6 @@ namespace prototype {
 	}
 }
 
-
-#ifndef __CINT__
 int main(int argc, const char* argv[]) {
 	Double_t weights[] = {0.6, 0.1, 0.3};
 	prototype::runExample(weights);
@@ -67,4 +68,3 @@ int main(int argc, const char* argv[]) {
 	std::cout << "Complete";
 	return(0);
 }
-# endif
