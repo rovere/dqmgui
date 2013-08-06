@@ -1,4 +1,8 @@
 #define DEBUG(n,x)
+
+#include "DQM/render/utils/parsers/StackedHistogramSettingsParser.h"
+#include "DQM/render/models/StackedHistogramSettings.h"
+
 #include "DQM/DQMRenderPlugin.h"
 #include "DQM/VisDQMRenderTools.h"
 #include "DQM/VisDQMTools.h"
@@ -1496,9 +1500,23 @@ private:
         if (gStyle)
           gStyle->SetOptStat(i.showstats);
 
+        // Parses settings (if any) for drawing a stacked histogram.
+        // <p>
+        // These settings could have been parsed by the function:
+        // <code>parseImageSpec</code> and stored into a modified
+        // <code>VisDQMImgInfo</code> instance. Instead, a custom
+        // parser and data model is used with stacked histogram UIs.
+        // <p>
+        // The justification for this design decision is because
+        // the developer wished to avoid  modifying the legacy
+        // code, which is complex and tightly coupled thus hard to test.
+        StackedHistogramSettings *stackedHistogramSettings =
+        		new StackedHistogramSettingsParser(i.imgspec);
 
-        // Draw the main object on top.
-        ob->Draw(ri.drawOptions.c_str());
+        if(!stackedHistogramSettings->shouldDrawStackedHistogram()) {
+			// Draw the main object on top.
+			ob->Draw(ri.drawOptions.c_str());
+        }
 
         // Maybe draw overlay from reference and other objects.
         for (size_t n = 0; n < numobjs; ++n)
