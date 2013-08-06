@@ -1442,163 +1442,165 @@ private:
         {
           if (TAxis *a = h->GetXaxis())
           {
-	    if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
-	    {
-	      xmin = a->GetXmin();
-	      xmax = a->GetXmax();
-	      a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
-			      isnan(i.xaxis.max) ? xmax : i.xaxis.max);
-	    }
+			if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
+			{
+			  xmin = a->GetXmin();
+			  xmax = a->GetXmax();
+			  a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
+					  isnan(i.xaxis.max) ? xmax : i.xaxis.max);
+			}
 
-	    if (i.xaxis.type == "lin")
-	      c.SetLogx(0);
-	    else if (i.xaxis.type == "log")
-	      c.SetLogx(1);
+			if (i.xaxis.type == "lin")
+			  c.SetLogx(0);
+			else if (i.xaxis.type == "log")
+			  c.SetLogx(1);
           }
 
           if (TAxis *a = h->GetYaxis())
           {
-	    if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
-	    {
-	      ymin = a->GetXmin();
-	      ymax = a->GetXmax();
-	      a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
-			      isnan(i.yaxis.max) ? ymax : i.yaxis.max);
-	    }
+			if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
+			{
+			  ymin = a->GetXmin();
+			  ymax = a->GetXmax();
+			  a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
+					  isnan(i.yaxis.max) ? ymax : i.yaxis.max);
+			}
 
-	    if (i.yaxis.type == "lin")
-	      c.SetLogy(0);
-	    else if (i.yaxis.type == "log")
-	      c.SetLogy(1);
+			if (i.yaxis.type == "lin")
+			  c.SetLogy(0);
+			else if (i.yaxis.type == "log")
+			  c.SetLogy(1);
           }
 
           if (TAxis *a = h->GetZaxis())
           {
-	    if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
-	    {
-	      zmin = a->GetXmin();
-	      zmax = a->GetXmax();
-	      a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
-			      isnan(i.zaxis.max) ? zmax : i.zaxis.max);
-	    }
+			if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
+			{
+			  zmin = a->GetXmin();
+			  zmax = a->GetXmax();
+			  a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
+					  isnan(i.zaxis.max) ? zmax : i.zaxis.max);
+			}
 
-	    if (i.zaxis.type == "lin")
-	      c.SetLogz(0);
-	    else if (i.zaxis.type == "log")
-	      c.SetLogz(1);
+			if (i.zaxis.type == "lin")
+			  c.SetLogz(0);
+			else if (i.zaxis.type == "log")
+			  c.SetLogz(1);
           }
-	  // Increase lineWidth in case there are other objects to
-	  // draw on top of the main one.
-	  if (numobjs > 1)
-	    h->SetLineWidth(2);
+		  // Increase lineWidth in case there are other objects to
+		  // draw on top of the main one.
+		  if (numobjs > 1)
+			h->SetLineWidth(2);
         }
 
-        // Draw the main object on top.
         if (gStyle)
           gStyle->SetOptStat(i.showstats);
+
+
+        // Draw the main object on top.
         ob->Draw(ri.drawOptions.c_str());
 
         // Maybe draw overlay from reference and other objects.
-	for (size_t n = 0; n < numobjs; ++n)
-        {
-	  TObject *refobj = 0;
-	  TPaveStats * currentStat =0;
-	  // Compute colors array size on the fly and use it to loop
-	  // over defined colors in case the number of objects to
-	  // overlay is greater than the available colors
-	  // (n%colorIndex).
-	  int colorIndex = sizeof(colors)/sizeof(int);
-	  if (n == 0 && i.reference == DQM_REF_OVERLAY)
-	    refobj = o.reference;
-	  else if (n > 0)
-	    refobj = objs[n].object;
-
-	  TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
-	  TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
-	  TProfile *refp = dynamic_cast<TProfile *>(refobj);
-	  if (refp)
-          {
-            refp->SetLineColor(colors[n%colorIndex]);
-            refp->SetLineWidth(0);
-            refp->GetListOfFunctions()->Delete();
-            refp->Draw("same hist");
-          }
-          else if (ref1f || ref1d)
-          {
-	    // Perform KS statistical test only on the first available
-	    // reference, excluding the (possible) default one
-	    // injected during the harvesting step.
-	    int color = colors[n%colorIndex];
-	    double norm = 1.;
-            if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-              norm = th1f->GetSumOfWeights();
-            else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-              norm = th1d->GetSumOfWeights();
-
-	    TH1 *ref = (ref1f
-			? static_cast<TH1 *>(ref1f)
-			: static_cast<TH1 *>(ref1d));
-	    if (n==1 && ! isnan(i.ktest))
-	      if (TH1 *h = dynamic_cast<TH1 *>(ob))
-	      {
-		double prob = h->KolmogorovTest(ref);
-		color = prob < i.ktest ? kRed-4 : kGreen-3;
-		char buffer[14];
-		snprintf(buffer, 14, "%6.5f", prob);
-		TText t;
-		t.SetTextColor(color);
-		t.DrawTextNDC(0.45, 0.9, buffer);
-	      }
-
-            ref->SetLineColor(color); ref->SetMarkerColor(color);
-            ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
-            ref->GetListOfFunctions()->Delete();
-	    if (i.showerrbars)
-	      samePlotOptions += " e1 x0";
-	    // Check if the original plot has been flagged as an
-	    // efficieny plot at production time: if this is the case,
-	    // then avoid any kind of normalization that introduces
-	    // fake effects.
-            if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-              nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-            else
-              ref->Draw(samePlotOptions.c_str());
-
-	    if (i.showstats)
-	    {
-	      // Draw stats box for every additional ovelayed reference
-	      // object, appending latest at the bottom of the stats box
-	      // drawn last. FIXME: stats' coordinates are fixed, which
-	      // is ugly, but apparently we cannot have them back from
-	      // ROOT unless we use some public variable (gPad) which I
-	      // do not know if it is thread safe but which I know is
-	      // causing us problems.
-	      currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
-					   0.98, 0.835-n*0.16, "brNDC");
-	      if (currentStat)
-	      {
-		currentStat->SetBorderSize(1);
-		nukem.push_back(currentStat);
-		std::stringstream ss;
-		if (n==0)
-		  currentStat->AddText("StandardRef");
-		else
+        for (size_t n = 0; n < numobjs; ++n)
 		{
-		  ss << "Ref "<< n;
-		  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-		}
-		ss << "Entries = " << ref->GetEntries();
-		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-		ss << "Mean  = " << ref->GetMean();
-		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-		ss << "RMS   = " << ref->GetRMS();
-		currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-		currentStat->SetOptStat(1111);
-		currentStat->SetOptFit(0);
-		currentStat->Draw();
-	      }
-	    }
-          }
+		  TObject *refobj = 0;
+		  TPaveStats * currentStat =0;
+		  // Compute colors array size on the fly and use it to loop
+		  // over defined colors in case the number of objects to
+		  // overlay is greater than the available colors
+		  // (n%colorIndex).
+		  int colorIndex = sizeof(colors)/sizeof(int);
+		  if (n == 0 && i.reference == DQM_REF_OVERLAY)
+			refobj = o.reference;
+		  else if (n > 0)
+			refobj = objs[n].object;
+
+		  TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
+		  TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
+		  TProfile *refp = dynamic_cast<TProfile *>(refobj);
+		  if (refp)
+			  {
+				refp->SetLineColor(colors[n%colorIndex]);
+				refp->SetLineWidth(0);
+				refp->GetListOfFunctions()->Delete();
+				refp->Draw("same hist");
+			  }
+			  else if (ref1f || ref1d)
+			  {
+			// Perform KS statistical test only on the first available
+			// reference, excluding the (possible) default one
+			// injected during the harvesting step.
+			int color = colors[n%colorIndex];
+			double norm = 1.;
+				if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
+				  norm = th1f->GetSumOfWeights();
+				else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
+				  norm = th1d->GetSumOfWeights();
+
+			TH1 *ref = (ref1f
+				? static_cast<TH1 *>(ref1f)
+				: static_cast<TH1 *>(ref1d));
+			if (n==1 && ! isnan(i.ktest))
+			  if (TH1 *h = dynamic_cast<TH1 *>(ob))
+			  {
+			double prob = h->KolmogorovTest(ref);
+			color = prob < i.ktest ? kRed-4 : kGreen-3;
+			char buffer[14];
+			snprintf(buffer, 14, "%6.5f", prob);
+			TText t;
+			t.SetTextColor(color);
+			t.DrawTextNDC(0.45, 0.9, buffer);
+			  }
+
+				ref->SetLineColor(color); ref->SetMarkerColor(color);
+				ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
+				ref->GetListOfFunctions()->Delete();
+			if (i.showerrbars)
+			  samePlotOptions += " e1 x0";
+			// Check if the original plot has been flagged as an
+			// efficieny plot at production time: if this is the case,
+			// then avoid any kind of normalization that introduces
+			// fake effects.
+				if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
+				  nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+				else
+				  ref->Draw(samePlotOptions.c_str());
+
+			if (i.showstats)
+			{
+			  // Draw stats box for every additional ovelayed reference
+			  // object, appending latest at the bottom of the stats box
+			  // drawn last. FIXME: stats' coordinates are fixed, which
+			  // is ugly, but apparently we cannot have them back from
+			  // ROOT unless we use some public variable (gPad) which I
+			  // do not know if it is thread safe but which I know is
+			  // causing us problems.
+			  currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
+						   0.98, 0.835-n*0.16, "brNDC");
+			  if (currentStat)
+			  {
+			currentStat->SetBorderSize(1);
+			nukem.push_back(currentStat);
+			std::stringstream ss;
+			if (n==0)
+			  currentStat->AddText("StandardRef");
+			else
+			{
+			  ss << "Ref "<< n;
+			  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+			}
+			ss << "Entries = " << ref->GetEntries();
+			currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+			ss << "Mean  = " << ref->GetMean();
+			currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+			ss << "RMS   = " << ref->GetRMS();
+			currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+			currentStat->SetOptStat(1111);
+			currentStat->SetOptFit(0);
+			currentStat->Draw();
+			  }
+			}
+		  }
         }
       }
 
