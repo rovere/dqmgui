@@ -10,7 +10,7 @@
 #include <THStack.h>
 #include <TObject.h>
 #include <iostream>
-#include <xstring>
+#include <string>
 
 #include "../cpp/DQM/render/builders/DataHistogramBuilder.h"
 #include "../cpp/DQM/render/builders/HistogramBuilder.h"

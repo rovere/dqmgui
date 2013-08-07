@@ -21,7 +21,7 @@
 #include <vector>
 #include <xmemory0>
 #include <xstddef>
-#include <xstring>
+#include <string>
 #include <xtree>
 #include <cassert>
 
