@@ -15,7 +15,7 @@
 #include "../models/display-data/WeightedHistogramData.h"
 #include "HistogramScalingUtil.h"
 
-namespace prototype {
+namespace render {
 	const Double_t HistogramNormalisationUtil::UNIT_AREA = 1.0;
 
 	void HistogramNormalisationUtil::normaliseHistogram(TH1D *histogram) {

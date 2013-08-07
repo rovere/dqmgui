@@ -15,7 +15,7 @@
 
 #include "HistogramDisplayData.h"
 
-namespace prototype {
+namespace render {
 	HistogramStackDisplayData::HistogramStackDisplayData() {
 		;
 	}

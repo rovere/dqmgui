@@ -28,7 +28,7 @@
 #include "../../models/StackedHistogramSettings.h"
 
 
-namespace prototype {
+namespace render {
 	const Char_t StackedHistogramSettingsParser::SETTINGS_DELIMITER = ';';
 	const Char_t StackedHistogramSettingsParser::KEY_VALUE_DELIMITER = '=';
 	const std::string StackedHistogramSettingsParser::STACKED_HISTOGRAM_CONFIRMATION_KEY = "stacked";

@@ -12,9 +12,9 @@
 #include <vector>
 #include <string>
 
-namespace prototype { class StackedHistogramSettings; }
+namespace render { class StackedHistogramSettings; }
 
-namespace prototype {
+namespace render {
 	/// TODO: Class comment
 	class StackedHistogramSettingsParser {
 		private:

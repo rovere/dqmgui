@@ -11,7 +11,7 @@
 #include <list>
 #include <string>
 
-namespace prototype {
+namespace render {
 	class StackedHistogramSettings {
 		private:
 			Bool_t drawStackedHistogram;

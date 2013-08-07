@@ -13,8 +13,8 @@
 
 class TH1D;
 
-namespace prototype {
-	class WeightedHistogramData : public prototype::HistogramData {
+namespace render {
+	class WeightedHistogramData : public render::HistogramData {
 		private:
 			/// The weight of this histogram in a histogram stack.
 			Double_t weight;

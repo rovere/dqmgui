@@ -12,7 +12,7 @@
 
 #include "HistogramDisplayData.h"
 
-namespace prototype {
+namespace render {
 	/// Data container for a histogram stack.
 	class HistogramStackDisplayData {
 		private:

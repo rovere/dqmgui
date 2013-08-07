@@ -11,11 +11,11 @@
 #include <Rtypes.h>
 #include <list>
 
-namespace prototype { class WeightedHistogramData; }
+namespace render { class WeightedHistogramData; }
 
 class TH1D;
 
-namespace prototype {
+namespace render {
 	class HistogramScalingUtil {
 		private:
 			/// Static class: the constructor should not called.

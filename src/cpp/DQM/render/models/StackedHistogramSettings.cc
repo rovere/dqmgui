@@ -6,7 +6,7 @@
  */
 #include "StackedHistogramSettings.h"
 
-namespace prototype {
+namespace render {
 	StackedHistogramSettings::StackedHistogramSettings() {
 		this->setDrawStackedHistogram(false);
 	}

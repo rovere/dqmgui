@@ -11,7 +11,7 @@
 
 #include "HistogramBuilder.h"
 
-namespace prototype {
+namespace render {
 	/// Builder for the (physical) data histogram.
 	class DataHistogramBuilder : public HistogramBuilder<TH1D> {
 		private:

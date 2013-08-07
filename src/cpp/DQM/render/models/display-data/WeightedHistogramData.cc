@@ -8,7 +8,7 @@
 
 #include "WeightedHistogramData.h"
 
-namespace prototype {
+namespace render {
 	WeightedHistogramData::WeightedHistogramData(TH1D *histogram, Double_t weight) {
 		this->setHistogram(histogram);
 		this->setWeight(weight);

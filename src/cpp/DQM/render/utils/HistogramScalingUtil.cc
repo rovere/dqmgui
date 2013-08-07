@@ -24,7 +24,7 @@
 #include "../models/display-data/HistogramData.h"
 #include "../models/display-data/WeightedHistogramData.h"
 
-namespace prototype {
+namespace render {
 	void HistogramScalingUtil::scaleHistogram(TH1D *histogram, Double_t targetArea) {
 		Double_t integral = histogram->Integral();
 
