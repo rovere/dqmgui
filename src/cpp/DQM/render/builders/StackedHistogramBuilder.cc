@@ -33,7 +33,7 @@
 #include "../models/display-data/HistogramDisplayData.h"
 #include "../models/display-data/HistogramStackDisplayData.h"
 
-namespace prototype {
+namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
 		this->setTargetHistogramArea(targetHistogramArea);
 	}

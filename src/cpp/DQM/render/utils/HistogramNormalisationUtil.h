@@ -10,11 +10,11 @@
 #include <Rtypes.h>
 #include <list>
 
-namespace prototype { class WeightedHistogramData; }
+namespace render { class WeightedHistogramData; }
 
 class TH1D;
 
-namespace prototype {
+namespace render {
 	/// Utility class for normalising histograms.
 	class HistogramNormalisationUtil {
 		private:

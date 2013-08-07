@@ -9,7 +9,7 @@
 
 #include <Rtypes.h>
 
-namespace prototype {
+namespace render {
 	/// Controls the colouring of objects.
 	class ColourController {
 		public:

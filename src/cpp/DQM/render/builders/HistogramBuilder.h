@@ -7,7 +7,7 @@
 #ifndef HISTOGRAMBUILDER_H_
 #define HISTOGRAMBUILDER_H_
 
-namespace prototype {
+namespace render {
 	/// Abstract superclass for all builder classes.
 	/// @param <T> the type of the object that is built
 	template <class T> class HistogramBuilder {

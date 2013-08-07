@@ -8,7 +8,7 @@
 
 #include "HistogramData.h"
 
-namespace prototype {
+namespace render {
 	HistogramData::HistogramData() {
 		this->histogram = nullptr;
 	}

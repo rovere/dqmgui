@@ -15,9 +15,9 @@
 
 class TH1D;
 class THStack;
-namespace prototype { class WeightedHistogramData; }
+namespace render { class WeightedHistogramData; }
 
-namespace prototype {
+namespace render {
 	/// Builder for stacked histograms.
 	class StackedHistogramBuilder {
 		private:

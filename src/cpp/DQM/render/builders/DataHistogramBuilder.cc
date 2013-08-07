@@ -14,7 +14,7 @@
 #include "../controllers/ColourController.h"
 #include "../utils/HistogramNormalisationUtil.h"
 
-namespace prototype {
+namespace render {
 	DataHistogramBuilder::DataHistogramBuilder(TH1D *histogram)
 			: histogram(histogram) {
 		// TODO: Consider cloning here!

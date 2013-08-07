@@ -10,6 +10,6 @@
 
 class TH1D;
 
-namespace prototype {
+namespace render {
 	;
 }

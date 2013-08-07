@@ -11,7 +11,7 @@
 #include <Rtypes.h>
 #include <cassert>
 
-namespace prototype {
+namespace render {
 	const Int_t ColourController::COLOUR_BLACK = kBlack;
 
 	const Int_t ColourController::DEFAULT_COLOURS[] = {

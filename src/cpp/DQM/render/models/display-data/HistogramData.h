@@ -9,7 +9,7 @@
 
 class TH1D;
 
-namespace prototype {
+namespace render {
 	/// TODO: Class documentation
 	class HistogramData {
 		private:

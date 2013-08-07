@@ -13,12 +13,12 @@
 
 class TH1D;
 
-namespace prototype {
+namespace render {
 	/// A model containing the data required to display a histogram,
 	/// including the histogram to be displayed and its associated weight
 	/// in the context of a list of histograms that a histogram
 	/// stack is to be created from.
-	class HistogramDisplayData : public prototype::WeightedHistogramData  {
+	class HistogramDisplayData : public render::WeightedHistogramData  {
 		public:
 			/// Default constructor.
 			/// @param histogram {@link WeightedHistogramData}
