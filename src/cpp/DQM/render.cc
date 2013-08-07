@@ -1510,10 +1510,10 @@ private:
         // The justification for this design decision is because
         // the developer wished to avoid  modifying the legacy
         // code, which is complex and tightly coupled thus hard to test.
-        render::StackedHistogramSettings *stackedHistogramSettings =
-        		new render::StackedHistogramSettingsParser(i.imgspec);
+        render::StackedHistogramSettings stackedHistogramSettings =
+        		render::StackedHistogramSettingsParser::parse(i.imgspec);
 
-        if(!stackedHistogramSettings->shouldDrawStackedHistogram()) {
+        if(!stackedHistogramSettings.shouldDrawStackedHistogram()) {
 			// Draw the main object on top.
 			ob->Draw(ri.drawOptions.c_str());
         }
