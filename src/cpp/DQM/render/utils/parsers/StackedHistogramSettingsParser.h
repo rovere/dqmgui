@@ -10,7 +10,7 @@
 #include <Rtypes.h>
 #include <map>
 #include <vector>
-#include <xstring>
+#include <string>
 
 namespace prototype { class StackedHistogramSettings; }
 

@@ -9,7 +9,7 @@
 
 #include <Rtypes.h>
 #include <list>
-#include <xstring>
+#include <string>
 
 namespace prototype {
 	class StackedHistogramSettings {

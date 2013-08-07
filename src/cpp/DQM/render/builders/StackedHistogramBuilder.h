@@ -8,7 +8,7 @@
 #define STACKEDHISTOGRAMBUILDER_H_
 
 #include <list>
-#include <xstring>
+#include <string>
 
 #include "../controllers/ColourController.h"
 #include "../models/display-data/HistogramStackDisplayData.h"
