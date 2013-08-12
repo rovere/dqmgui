@@ -1,5 +1,5 @@
 /*
- * HistogramDisplayDataSet.h
+ * HistogramStackData.h
  *
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
@@ -9,34 +9,36 @@
 
 #include <Rtypes.h>
 #include <list>
+#include <vector>
 
-#include "HistogramDisplayData.h"
+#include "WeightedHistogramData.h"
+
 
 namespace render {
 	/// Data container for a histogram stack.
-	class HistogramStackDisplayData {
+	class HistogramStackData {
 		private:
 			/// List of histogram data relating to the histograms that are to be included
 			/// in the stack.
-			std::list<HistogramDisplayData> allHistogramDisplayData;
+			std::vector<WeightedHistogramData> allWeightedHistogramsData;
 
 		public:
 			/// Default constructor.
-			HistogramStackDisplayData();
+			HistogramStackData();
 
 			/// Adds data about a histogram that is to be displayed in this histogram stack's data.
 			/// <p>
 			/// If by adding the histogram, the total weight of all histograms in the stack exceeds
 			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
-			/// @param histogramDisplayData data instructing how a histogram is to be displayed
-			void add(HistogramDisplayData histogramDisplayData);
+			/// @param weightedHistogramData data instructing how a histogram is to be displayed
+			void add(WeightedHistogramData weightedHistogramData);
 
 			/// Adds all the <code>WeightedHistogramData</code> data contained in a given
 			/// <code>HistogramStackDisplayData</code> to this histogram stack's data container.
 			/// If by adding the histogram, the total weight of all histograms in the stack exceeds
 			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
-			/// @param histogramStackDisplayData the stack's data to add to this container
-			void add(HistogramStackDisplayData histogramStackDisplayData);
+			/// @param histogramStackData the stack's data to add to this container
+			void add(HistogramStackData histogramStackData);
 
 			/// Gets the total weight of all the histograms in this container.
 			/// @return the total weight of all histograms in this container.
@@ -45,7 +47,7 @@ namespace render {
 
 			/// Gets the data for all the histograms' contained in this histogram stack data.
 			/// @return the data for all histograms that made up this stack
-			std::list<HistogramDisplayData> getAllHistogramDisplayData();
+			std::vector<WeightedHistogramData> getAllHistogramsData();
 		};
 	}
 #endif

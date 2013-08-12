@@ -1,14 +1,3 @@
-#include <cassert>
-
-#include "../utils/HistogramScalingUtil.h"
-
-#include <TCollection.h>
-#include <TObjArray.h>
-#include <cassert>
-
-#include "../models/display-data/WeightedHistogramData.h"
-#include "../utils/HistogramNormalisationUtil.h"
-
 /*
  * StackedHistogramCreator.cpp
  *
@@ -30,8 +19,10 @@
 #include <stdexcept>
 
 #include "../controllers/ColourController.h"
-#include "../models/display-data/HistogramDisplayData.h"
-#include "../models/display-data/HistogramStackDisplayData.h"
+#include "../models/display-data/HistogramStackData.h"
+#include "../models/display-data/WeightedHistogramData.h"
+#include "../utils/HistogramScalingUtil.h"
+
 
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
@@ -39,7 +30,7 @@ namespace render {
 	}
 
 	THStack StackedHistogramBuilder::build() {
-		if(this->histogramStackDisplayData.getHistogramsTotalWeight() != 1.0) {
+		if(this->histogramStackData.getHistogramsTotalWeight() != 1.0) {
 			throw std::invalid_argument(
 					"The sum weight of all histograms in the stack to be built must equal 1");
 		}
@@ -51,20 +42,20 @@ namespace render {
 		return(*histogramStack);
 	}
 
-	void StackedHistogramBuilder::addHistogramDisplayData(HistogramDisplayData data) {
+	void StackedHistogramBuilder::addWeightedHistogramData(WeightedHistogramData data) {
 		// TODO: Consider using cloning here!
 		HistogramScalingUtil::scaleWeightedHistogram(data, this->getTargetHistogramArea());
-		this->histogramStackDisplayData.add(data);
+		this->histogramStackData.add(data);
 	}
 
-	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackDisplayData data) {
-		std::list<HistogramDisplayData> allHistogramDisplayData = data.getAllHistogramDisplayData();
+	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackData data) {
+		std::vector<WeightedHistogramData> allWeightedHistogramsData = data.getAllHistogramsData();
 
-		std::list<HistogramDisplayData>::iterator it = allHistogramDisplayData.begin();
+		std::vector<WeightedHistogramData>::iterator it = allWeightedHistogramsData.begin();
 
-		while(it != allHistogramDisplayData.end()) {
-			HistogramDisplayData histogramDisplayData = *it;
-			this->addHistogramDisplayData(histogramDisplayData);
+		while(it != allWeightedHistogramsData.end()) {
+			WeightedHistogramData weightedHistogramData = *it;
+			this->addWeightedHistogramData(weightedHistogramData);
 			it++;
 		}
 	}
@@ -75,19 +66,19 @@ namespace render {
 	}
 
 	std::list<TH1D*> StackedHistogramBuilder::getAllHistograms() {
-		std::list<HistogramDisplayData> histogramDisplayData = this->
-				histogramStackDisplayData.getAllHistogramDisplayData();
-		std::list<HistogramDisplayData>::iterator it = histogramDisplayData.begin();
+		std::list<WeightedHistogramData> allHistogramsData = this->
+				histogramStackData.getAllHistogramsData();
+		std::list<WeightedHistogramData>::iterator it = allHistogramsData.begin();
 		std::list<TH1D*> histograms;
 
-		while(it != histogramDisplayData.end()) {
-			HistogramDisplayData *histogramWeightPair = &(*it);
-			TH1D *histogram = histogramWeightPair->getHistogram();
+		while(it != allHistogramsData.end()) {
+			WeightedHistogramData *weightedHistogramData = &(*it);
+			TH1D *histogram = weightedHistogramData->getHistogram();
 			histograms.push_back(histogram);
 			it++;
 		}
 
-		assert(histograms.size() == histogramDisplayData.size());
+		assert(histograms.size() == allHistogramsData.size());
 		return(histograms);
 	}
 

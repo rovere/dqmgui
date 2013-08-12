@@ -1,5 +1,5 @@
 /*
- * HistogramNormalisationUtil.cpp
+ * HistogramNormalisationUtil.cc
  *
  *  Created on: 16 Jul 2013
  *      Author: Colin - CERN
