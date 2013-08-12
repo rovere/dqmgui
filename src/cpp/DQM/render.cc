@@ -1629,7 +1629,7 @@ private:
 
         if(drawStackedHistogram) {
 			// Got all of the data we need - draw the stacked histogram
-			std::vector<TObject> temp1;
+			std::vector<TH1D> temp1;
 			std::vector<Double_t> temp2;
 			std::string drawOptions = ri.drawOptions.c_str();
 			TH1 *dataHistogram = dynamic_cast<TH1 *>(ob);		// XXX: Is this cast valid in all cases where a stacked histogram is to be rendered?

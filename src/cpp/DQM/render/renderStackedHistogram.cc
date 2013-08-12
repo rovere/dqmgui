@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <stdexcept>
 #include "Rtypes.h"
 #include "TH1.h"
 #include "THStack.h"
@@ -21,27 +22,26 @@ namespace render {
 	// 		parameters anti-pattern.
 	void renderStackedHistogram(
 			TH1 dataHistogram,
-			std::vector<TObject> monteCarloHistograms,
+			std::vector<TH1D> monteCarloHistograms,
 			std::vector<Double_t> monteCarloHistogramWeights,
 			std::string drawOptions) {
-		if(monteCarloHistograms.size() != monteCarloHistogramWeights) {
+		if(monteCarloHistograms.size() != monteCarloHistogramWeights.size()) {
 			throw std::invalid_argument("A single weight must be associated to all histograms");
 		}
 
-		Double_t histogramArea = dataHistogram.Integral()
-
-		StackedHistogramBuilder stackedHistogramBuilder = new StackedHistogramBuilder();
+		Double_t histogramArea = dataHistogram.Integral();
+		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder(histogramArea);
 
 		for(Int_t i = 0; i < monteCarloHistograms.size(); i++) {
-			TObject histogram = monteCarloHistograms.at(i);
+			TH1D histogram = monteCarloHistograms.at(i);
 			Double_t histogramWeight = monteCarloHistogramWeights.at(i);
 
-			WeightedHistogramData weightedHistogramData = new WeightedHistogramData(
-					histogram, histogramWeight);
-			stackedHistogramBuilder.addWeightedHistogramData(weightedHistogramData);
+			WeightedHistogramData *weightedHistogramData = new WeightedHistogramData(
+					&histogram, histogramWeight);
+			stackedHistogramBuilder->addWeightedHistogramData(*weightedHistogramData);
 		}
 
-		THStack histogramStack = stackedHistogramBuilder.build();
+		THStack histogramStack = stackedHistogramBuilder->build();
 
 		// TODO: Check that these get drawn on the same canvas
 		histogramStack.Draw();		// Does this require draw options that are dependent on certain settings?
