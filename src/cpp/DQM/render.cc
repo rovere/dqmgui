@@ -1626,14 +1626,14 @@ private:
 			}
 		  }
         }
-      }
 
-      if(drawStackedHistogram) {
-    	  // We've got all of the data we need - draw the stacked histogram
-    	  std::vector<TObject> temp1;
-    	  std::vector<Double_t> temp2;
-    	  std::string drawOptions = ri.drawOptions.c_str();
-    	  render::renderStackedHistogram(ob, temp1, temp2, drawOptions);
+        if(drawStackedHistogram) {
+			// We've got all of the data we need - draw the stacked histogram
+			std::vector<TObject> temp1;
+			std::vector<Double_t> temp2;
+			std::string drawOptions = ri.drawOptions.c_str();
+			render::renderStackedHistogram(*ob, temp1, temp2, drawOptions);
+		}
       }
 
       // Invoke post-draw hook on plug-ins that applied.
