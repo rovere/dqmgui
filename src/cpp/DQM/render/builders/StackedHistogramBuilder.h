@@ -28,16 +28,16 @@ namespace render {
 			/// to create a stacked histogram.
 			ColourController colourController;
 
-			/// TODO: Comment
+			/// The area that the built histogram should have.
 			Double_t targetHistogramArea;
 
 
 		public:
 			/// Default constructor.
-			/// TODO: Comment param
+			/// @param targetHistogramArea the area that the built histogram should have
 			StackedHistogramBuilder(Double_t targetHistogramArea);
 
-			/// @see StackedHistogramBuilder::build()
+			/// @see HistogramBuilder::build()
 			THStack build();
 
 			/// Adds data about a histogram that shall be displayed in the histogram
@@ -58,7 +58,7 @@ namespace render {
 			/// exception will be thrown.
 			/// @param data the container of the histogram data to be added to the histogram
 			///				stack when it is built
-			void addHistogramStackDisplayData(HistogramStackData data);
+			void addHistogramStackData(HistogramStackData data);
 
 			/// TODO: Comment
 			void setTargetHistogramArea(Double_t targetHistogramArea);
@@ -66,9 +66,10 @@ namespace render {
 		private:
 			/// Gets all of the histograms, regardless of weight.
 			/// @return all histograms to be drawn in the stack
-			std::list<TH1D*> getAllHistograms();
+			std::vector<TH1D*> getAllHistograms();
 
-			/// TODO: Comment
+			/// Gets the area that the built histogram should have.
+			/// @return the area that the built histogram should have
 			Double_t getTargetHistogramArea();
 
 			/// Adds a given histogram to the given histograms stack.
@@ -79,7 +80,7 @@ namespace render {
 			/// Adds all of the histograms given to the given histogram stack.
 			/// @param histograms the list of histograms to add to the stack
 			/// @param histogramStack TODO
-			void addAllToHistogramStack(std::list<TH1D*> histograms, THStack *histogramStack);
+			void addAllToHistogramStack(std::vector<TH1D*> histograms, THStack *histogramStack);
 	};
 }
 #endif
