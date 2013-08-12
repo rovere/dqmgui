@@ -6,6 +6,11 @@
  */
 #define DNDEBUG
 
+#include "<string>"
+#include "<vector>"
+#include "Rtypes.h"
+#include "TH1.h"
+
 namespace render {
 	// XXX: This should be made more OO, which would also solve the excessive
 	// 		parameters antipattern.
