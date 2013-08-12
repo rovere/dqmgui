@@ -1537,52 +1537,53 @@ private:
 		  TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
 		  TProfile *refp = dynamic_cast<TProfile *>(refobj);
 		  if (refp)
-			  {
-				refp->SetLineColor(colors[n%colorIndex]);
-				refp->SetLineWidth(0);
-				refp->GetListOfFunctions()->Delete();
-				refp->Draw("same hist");
-			  }
-			  else if (ref1f || ref1d)
-			  {
+		  {
+			refp->SetLineColor(colors[n%colorIndex]);
+			refp->SetLineWidth(0);
+			refp->GetListOfFunctions()->Delete();
+			refp->Draw("same hist");
+		  }
+		  else if (ref1f || ref1d)
+		  {
 			// Perform KS statistical test only on the first available
 			// reference, excluding the (possible) default one
 			// injected during the harvesting step.
 			int color = colors[n%colorIndex];
 			double norm = 1.;
-				if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-				  norm = th1f->GetSumOfWeights();
-				else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-				  norm = th1d->GetSumOfWeights();
+			if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
+			  norm = th1f->GetSumOfWeights();
+			else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
+			  norm = th1d->GetSumOfWeights();
 
 			TH1 *ref = (ref1f
 				? static_cast<TH1 *>(ref1f)
 				: static_cast<TH1 *>(ref1d));
-			if (n==1 && ! isnan(i.ktest))
+			if (n==1 && ! isnan(i.ktest)) {
 			  if (TH1 *h = dynamic_cast<TH1 *>(ob))
 			  {
-			double prob = h->KolmogorovTest(ref);
-			color = prob < i.ktest ? kRed-4 : kGreen-3;
-			char buffer[14];
-			snprintf(buffer, 14, "%6.5f", prob);
-			TText t;
-			t.SetTextColor(color);
-			t.DrawTextNDC(0.45, 0.9, buffer);
+				double prob = h->KolmogorovTest(ref);
+				color = prob < i.ktest ? kRed-4 : kGreen-3;
+				char buffer[14];
+				snprintf(buffer, 14, "%6.5f", prob);
+				TText t;
+				t.SetTextColor(color);
+				t.DrawTextNDC(0.45, 0.9, buffer);
 			  }
+			}
 
-				ref->SetLineColor(color); ref->SetMarkerColor(color);
-				ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
-				ref->GetListOfFunctions()->Delete();
+			ref->SetLineColor(color); ref->SetMarkerColor(color);
+			ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
+			ref->GetListOfFunctions()->Delete();
 			if (i.showerrbars)
 			  samePlotOptions += " e1 x0";
 			// Check if the original plot has been flagged as an
 			// efficieny plot at production time: if this is the case,
 			// then avoid any kind of normalization that introduces
 			// fake effects.
-				if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-				  nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-				else
-				  ref->Draw(samePlotOptions.c_str());
+			if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
+			  nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+			else
+			  ref->Draw(samePlotOptions.c_str());
 
 			if (i.showstats)
 			{
@@ -1597,25 +1598,25 @@ private:
 						   0.98, 0.835-n*0.16, "brNDC");
 			  if (currentStat)
 			  {
-			currentStat->SetBorderSize(1);
-			nukem.push_back(currentStat);
-			std::stringstream ss;
-			if (n==0)
-			  currentStat->AddText("StandardRef");
-			else
-			{
-			  ss << "Ref "<< n;
-			  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-			}
-			ss << "Entries = " << ref->GetEntries();
-			currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-			ss << "Mean  = " << ref->GetMean();
-			currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-			ss << "RMS   = " << ref->GetRMS();
-			currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-			currentStat->SetOptStat(1111);
-			currentStat->SetOptFit(0);
-			currentStat->Draw();
+				currentStat->SetBorderSize(1);
+				nukem.push_back(currentStat);
+				std::stringstream ss;
+				if (n==0)
+				  currentStat->AddText("StandardRef");
+				else
+				{
+				  ss << "Ref "<< n;
+				  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+				}
+				ss << "Entries = " << ref->GetEntries();
+				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+				ss << "Mean  = " << ref->GetMean();
+				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+				ss << "RMS   = " << ref->GetRMS();
+				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+				currentStat->SetOptStat(1111);
+				currentStat->SetOptFit(0);
+				currentStat->Draw();
 			  }
 			}
 		  }
