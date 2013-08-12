@@ -2,6 +2,7 @@
 
 #include "DQM/render/utils/parsers/StackedHistogramSettingsParser.h"
 #include "DQM/render/models/StackedHistogramSettings.h"
+#include "DQM/render/renderStackedHistogram.cc"
 
 #include "DQM/DQMRenderPlugin.h"
 #include "DQM/VisDQMRenderTools.h"
@@ -1513,7 +1514,11 @@ private:
         render::StackedHistogramSettings stackedHistogramSettings =
         		render::StackedHistogramSettingsParser::parse(i.imgspec);
 
-        if(!stackedHistogramSettings.shouldDrawStackedHistogram()) {
+        bool drawStackedHistogram = stackedHistogramSettings.shouldDrawStackedHistogram();
+        // TODO: Need some kind of data structure to store histograms in loop that the stack is built from...
+//      std::vector<double>
+
+        if(!drawStackedHistogram) {
 			// Draw the main object on top.
 			ob->Draw(ri.drawOptions.c_str());
         }
@@ -1621,6 +1626,14 @@ private:
 			}
 		  }
         }
+      }
+
+      if(drawStackedHistogram) {
+    	  // We've got all of the data we need - draw the stacked histogram
+    	  std::vector<TObject> temp1;
+    	  std::vector<Double_t> temp2;
+    	  std::string drawOptions = ri.drawOptions.c_str();
+    	  render::renderStackedHistogram(ob, temp1, temp2, drawOptions);
       }
 
       // Invoke post-draw hook on plug-ins that applied.
