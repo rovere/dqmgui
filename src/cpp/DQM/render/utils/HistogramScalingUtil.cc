@@ -1,9 +1,5 @@
-#include <cassert>
-#include <iostream>
-#include <list>
-
 /*
- * HistogramScalingUtil.cpp
+ * HistogramScalingUtil.cc
  *
  *  Created on: 1 Aug 2013
  *      Author: Colin - CERN
@@ -12,13 +8,9 @@
 
 #include "HistogramScalingUtil.h"
 
-#include <math.h>
 #include <Rtypes.h>
 #include <TH1.h>
 #include <cassert>
-#include <cmath>
-#include <cstdlib>
-#include <limits>
 #include <list>
 
 #include "../models/display-data/HistogramData.h"

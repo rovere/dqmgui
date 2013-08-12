@@ -7,11 +7,11 @@
 #ifndef STACKEDHISTOGRAMBUILDER_H_
 #define STACKEDHISTOGRAMBUILDER_H_
 
+#include <Rtypes.h>
 #include <list>
-#include <string>
 
 #include "../controllers/ColourController.h"
-#include "../models/display-data/HistogramStackDisplayData.h"
+#include "../models/display-data/HistogramStackData.h"
 
 class TH1D;
 class THStack;
@@ -22,7 +22,7 @@ namespace render {
 	class StackedHistogramBuilder {
 		private:
 			/// The data associated to the stacked histogram this builder shall build.
-			HistogramStackDisplayData histogramStackDisplayData;
+			HistogramStackData histogramStackData;
 
 			/// The object responsible for controlling the colours this builder uses
 			/// to create a stacked histogram.
@@ -48,7 +48,7 @@ namespace render {
 			/// exception will be thrown.
 			/// @param data the histogram data to add to the histogram stack that is to be
 			///				built
-			void addHistogramDisplayData(HistogramDisplayData data);
+			void addWeightedHistogramData(WeightedHistogramData data);
 
 			/// Adds data about many histograms that are to be used to build the histogram
 			/// stack.
@@ -58,7 +58,7 @@ namespace render {
 			/// exception will be thrown.
 			/// @param data the container of the histogram data to be added to the histogram
 			///				stack when it is built
-			void addHistogramStackDisplayData(HistogramStackDisplayData data);
+			void addHistogramStackDisplayData(HistogramStackData data);
 
 			/// TODO: Comment
 			void setTargetHistogramArea(Double_t targetHistogramArea);
