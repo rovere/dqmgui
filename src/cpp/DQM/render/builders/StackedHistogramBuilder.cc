@@ -15,7 +15,7 @@
 #include <THStack.h>
 #include <TObject.h>
 #include <cassert>
-#include <list>
+#include <vector>
 #include <stdexcept>
 
 #include "../controllers/ColourController.h"
@@ -36,7 +36,7 @@ namespace render {
 		}
 
 		THStack *histogramStack = new THStack();
-		std::list<TH1D*> histograms = this->getAllHistograms();
+		std::vector<TH1D*> histograms = this->getAllHistograms();
 		this->addAllToHistogramStack(histograms, histogramStack);
 
 		return(*histogramStack);
@@ -48,7 +48,7 @@ namespace render {
 		this->histogramStackData.add(data);
 	}
 
-	void StackedHistogramBuilder::addHistogramStackDisplayData(HistogramStackData data) {
+	void StackedHistogramBuilder::addHistogramStackData(HistogramStackData data) {
 		std::vector<WeightedHistogramData> allWeightedHistogramsData = data.getAllHistogramsData();
 
 		std::vector<WeightedHistogramData>::iterator it = allWeightedHistogramsData.begin();
@@ -65,11 +65,10 @@ namespace render {
 		this->targetHistogramArea = targetHistogramArea;
 	}
 
-	std::list<TH1D*> StackedHistogramBuilder::getAllHistograms() {
-		std::list<WeightedHistogramData> allHistogramsData = this->
-				histogramStackData.getAllHistogramsData();
-		std::list<WeightedHistogramData>::iterator it = allHistogramsData.begin();
-		std::list<TH1D*> histograms;
+	std::vector<TH1D*> StackedHistogramBuilder::getAllHistograms() {
+		std::vector<WeightedHistogramData> allHistogramsData = this->histogramStackData.getAllHistogramsData();
+		std::vector<WeightedHistogramData>::iterator it = allHistogramsData.begin();
+		std::vector<TH1D*> histograms;
 
 		while(it != allHistogramsData.end()) {
 			WeightedHistogramData *weightedHistogramData = &(*it);
@@ -107,7 +106,7 @@ namespace render {
 	}
 
 	void StackedHistogramBuilder::addAllToHistogramStack(
-			std::list<TH1D*> histograms, THStack *histogramStack) {
+			std::vector<TH1D*> histograms, THStack *histogramStack) {
 		#ifdef DNDEBUG
 		TObjArray *histogramsInStack = histogramStack->GetStack();
 		Int_t stackSize = (histogramsInStack == nullptr)
@@ -115,7 +114,7 @@ namespace render {
 								: histogramsInStack->GetSize();
 		#endif
 
-		std::list<TH1D*>::iterator it = histograms.begin();
+		std::vector<TH1D*>::iterator it = histograms.begin();
 
 		while(it != histograms.end()) {
 			TH1D *histogram = (*it);
