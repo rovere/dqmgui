@@ -1,3 +1,5 @@
+class TH1D;
+
 /*
  * HistogramData.cc
  *
@@ -9,8 +11,9 @@
 #include "HistogramData.h"
 
 namespace render {
-	HistogramData::HistogramData() {
-		this->histogram = nullptr;
+	HistogramData::HistogramData()
+		/*	: histogram(nullptr)	// This is C++11 so cannot be used right now */ {
+		;
 	}
 
 	HistogramData::HistogramData(TH1D *histogram) {

@@ -11,10 +11,13 @@
 #include <Rtypes.h>
 #include <TH1.h>
 #include <cassert>
+#include <cmath>
+#include <cstdlib>
 #include <list>
 
 #include "../models/display-data/HistogramData.h"
 #include "../models/display-data/WeightedHistogramData.h"
+
 
 namespace render {
 	void HistogramScalingUtil::scaleHistogram(TH1D *histogram, Double_t targetArea) {

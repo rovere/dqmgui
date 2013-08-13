@@ -8,6 +8,14 @@
 
 #include "WeightedHistogramData.h"
 
+#include <Rtypes.h>
+#include <stdexcept>
+
+#include "HistogramData.h"
+
+class TH1D;
+
+
 namespace render {
 	WeightedHistogramData::WeightedHistogramData(TH1D *histogram, Double_t weight) {
 		this->setHistogram(histogram);
