@@ -1,7 +1,3 @@
-#include <cassert>
-#include <new>
-#include <sstream>
-
 /*
  * StackedHistogramSettingsParser.cpp
  *
@@ -15,18 +11,13 @@
 #include <Rtypes.h>
 #include <map>
 #include <sstream>
-#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <xmemory0>
-#include <xstddef>
-#include <string>
-#include <xtree>
+#include <algorithm>
 #include <cassert>
 
 #include "../../models/StackedHistogramSettings.h"
-
 
 namespace render {
 	const Char_t StackedHistogramSettingsParser::SETTINGS_DELIMITER = ';';
