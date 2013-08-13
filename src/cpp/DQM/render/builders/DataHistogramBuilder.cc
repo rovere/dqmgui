@@ -17,7 +17,7 @@
 namespace render {
 	DataHistogramBuilder::DataHistogramBuilder(TH1D *histogram)
 			: histogram(histogram) {
-		// TODO: Consider cloning here!
+		// TODO: Consider cloning here
 	}
 
 	TH1D DataHistogramBuilder::build() {

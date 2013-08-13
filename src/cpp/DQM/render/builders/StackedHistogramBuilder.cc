@@ -43,7 +43,7 @@ namespace render {
 	}
 
 	void StackedHistogramBuilder::addWeightedHistogramData(WeightedHistogramData data) {
-		// TODO: Consider using cloning here!
+		// TODO: Consider using cloning here
 		HistogramScalingUtil::scaleWeightedHistogram(data, this->getTargetHistogramArea());
 		this->histogramStackData.add(data);
 	}

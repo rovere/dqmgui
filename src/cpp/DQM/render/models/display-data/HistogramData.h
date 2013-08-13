@@ -10,7 +10,7 @@
 class TH1D;
 
 namespace render {
-	/// TODO: Class documentation
+	/// Model of data required to display a histogram.
 	class HistogramData {
 		private:
 			/// This histogram represented by this data.
