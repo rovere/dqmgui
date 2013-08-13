@@ -67,7 +67,7 @@ namespace render {
 	void HistogramScalingUtil::scaleWeightedHistogram(
 			WeightedHistogramData weightedHistogramData,
 			Double_t combinedTargetArea) {
-		TH1D *histogram = weightedHistogramData.getHistogram();		// TODO: Change to reference
+		TH1D *histogram = weightedHistogramData.getHistogram();
 		Double_t weight = weightedHistogramData.getWeight();
 
 		Double_t targetHistogramArea = weight * combinedTargetArea;

@@ -60,7 +60,8 @@ namespace render {
 			///				stack when it is built
 			void addHistogramStackData(HistogramStackData data);
 
-			/// TODO: Comment
+			/// Sets the area that the stacked histogram should have.
+			/// @param targetHistogramArea the area that the stacked histogram should have
 			void setTargetHistogramArea(Double_t targetHistogramArea);
 
 		private:
@@ -74,12 +75,12 @@ namespace render {
 
 			/// Adds a given histogram to the given histograms stack.
 			/// @param histogram the histogram to put on the histogram stack
-			/// @param histogramStack TODO
+			/// @param histogramStack the histogram stack that the histogram is to be added to
 			void addToHistogramStack(TH1D &histogram, THStack *histogramStack);
 
 			/// Adds all of the histograms given to the given histogram stack.
 			/// @param histograms the list of histograms to add to the stack
-			/// @param histogramStack TODO
+			/// @param histogramStack the histogram stack that the histogram is to be added to
 			void addAllToHistogramStack(std::vector<TH1D*> histograms, THStack *histogramStack);
 	};
 }

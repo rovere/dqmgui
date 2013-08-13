@@ -12,6 +12,7 @@
 #include <string>
 
 namespace render {
+	/// Settings for drawing a stacked histogram.
 	class StackedHistogramSettings {
 		private:
 			Bool_t drawStackedHistogram;
@@ -24,7 +25,8 @@ namespace render {
 			/// @return whether a stacked histogram should be drawn
 			Bool_t shouldDrawStackedHistogram();
 
-			/// TODO: Comment
+			/// Sets whether a stacked histogram should be drawn.
+			/// @param shouldDraw whether a stacked histogram list should be draw
 			void setDrawStackedHistogram(Bool_t shouldDraw);
 	};
 }
