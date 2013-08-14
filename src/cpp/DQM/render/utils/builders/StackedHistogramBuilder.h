@@ -10,8 +10,8 @@
 #include <Rtypes.h>
 #include <list>
 
-#include "../controllers/ColourController.h"
-#include "../models/display-data/HistogramStackData.h"
+#include "../../controllers/ColourController.h"
+#include "../../models/display-data/HistogramStackData.h"
 
 class TH1D;
 class THStack;

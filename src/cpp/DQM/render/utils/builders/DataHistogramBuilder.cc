@@ -11,8 +11,8 @@
 #include <TAttLine.h>
 #include <TH1.h>
 
-#include "../controllers/ColourController.h"
-#include "../utils/HistogramNormalisationUtil.h"
+#include "../../controllers/ColourController.h"
+#include "../../utils/HistogramNormalisationUtil.h"
 
 namespace render {
 	DataHistogramBuilder::DataHistogramBuilder(TH1D *histogram)
