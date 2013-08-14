@@ -13,7 +13,7 @@
 #include "TH1.h"
 #include "THStack.h"
 
-#include "builders/StackedHistogramBuilder.h";
+#include "utils/builders/StackedHistogramBuilder.h";
 #include "models/display-data/WeightedHistogramData.h";
 #include "models/display-data/HistogramStackData.h"
 
