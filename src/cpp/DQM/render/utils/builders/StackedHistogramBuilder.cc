@@ -18,10 +18,10 @@
 #include <vector>
 #include <stdexcept>
 
-#include "../controllers/ColourController.h"
-#include "../models/display-data/HistogramStackData.h"
-#include "../models/display-data/WeightedHistogramData.h"
-#include "../utils/HistogramScalingUtil.h"
+#include "../../controllers/ColourController.h"
+#include "../../models/display-data/HistogramStackData.h"
+#include "../../models/display-data/WeightedHistogramData.h"
+#include "../../utils/HistogramScalingUtil.h"
 
 
 namespace render {
