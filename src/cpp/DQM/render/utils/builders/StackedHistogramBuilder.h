@@ -8,10 +8,12 @@
 #define STACKEDHISTOGRAMBUILDER_H_
 
 #include <Rtypes.h>
-#include <list>
+#include <THStack.h>
+#include <vector>
 
 #include "../../controllers/ColourController.h"
 #include "../../models/display-data/HistogramStackData.h"
+#include "Builder.h"
 
 class TH1D;
 class THStack;
@@ -19,7 +21,7 @@ namespace render { class WeightedHistogramData; }
 
 namespace render {
 	/// Builder for stacked histograms.
-	class StackedHistogramBuilder {
+	class StackedHistogramBuilder : public Builder<THStack> {
 		private:
 			/// The data associated to the stacked histogram this builder shall build.
 			HistogramStackData histogramStackData;
