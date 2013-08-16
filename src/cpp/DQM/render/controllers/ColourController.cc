@@ -27,7 +27,6 @@ namespace render {
 		assert(this->colourIndex < numberOfColours);
 		assert(this->colourIndex >= 0);
 
-		Int_t index = this->colourIndex;
 		Int_t colour = this->DEFAULT_COLOURS[this->colourIndex];
 
 		this->colourIndex++;
