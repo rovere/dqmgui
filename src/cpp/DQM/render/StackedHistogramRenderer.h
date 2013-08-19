@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-class TH1;
+class TH1F;
 class TH1D;
 
 namespace render {
@@ -19,8 +19,11 @@ namespace render {
 	class StackedHistogramRenderer {
 		public:
 			/// TODO
-			static void render(
-					TH1 dataHistogram,
+			/// @param dataHistogram a pointer to the histogram representing the distribution
+			///						 of the data. A pointer must be passed opposed to a reference.
+
+			static std::string render(
+					TH1F *dataHistogram,
 					std::vector<TH1D> monteCarloHistograms,
 					std::vector<Double_t> monteCarloHistogramWeights,
 					std::string drawOptions);

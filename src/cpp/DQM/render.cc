@@ -1619,18 +1619,17 @@ private:
 			std::vector<TH1D> temp1;
 			std::vector<Double_t> temp2;
 			std::string drawOptions = ri.drawOptions.c_str();
-			TH1 *dataHistogram = dynamic_cast<TH1F *>(ob);		// XXX: Is this cast valid in all cases where a stacked histogram is to be rendered?
+			TH1F *dataHistogram = dynamic_cast<TH1F *>(ob);		// XXX: Is this cast valid in all cases where a stacked histogram is to be rendered?
 
-			logme() << "th1: " << dynamic_cast<TH1 *>(ob) << '\n';
-			logme() << "th1d: " << dynamic_cast<TH1D *>(ob) << '\n';
-			logme() << "th1f: " << dynamic_cast<TH1F *>(ob) << '\n';
-			logme() << "dataHistogram: " << dataHistogram << '\n';
+			if(dataHistogram != nullptr) {
+				// TODO: Handle this situation
+			}
 
-			logme() << "Going off to draw" << '\n';
-			render::StackedHistogramRenderer::render(*dataHistogram, temp1, temp2, drawOptions);
-			logme() << "Coming back from drawing..." << '\n';
-			ob->Draw(ri.drawOptions.c_str());
-			logme() << "Drawing final" << '\n';
+
+			logme() << "Going off to draw...." << '\n';
+			logme() << render::StackedHistogramRenderer::render(
+					dataHistogram, temp1, temp2, drawOptions) << '\n';
+			logme() << "Coming back from drawing!" << '\n';
 		}
       }
 

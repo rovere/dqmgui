@@ -49,7 +49,7 @@ INDEX_LINK   = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(INDEX_OBJ) \
 RENDER_SRC   = DQM/render.cc DQM/DQMNet.cc DQM/DQMError.cc \
 			   DQM/HistogramScalingUtil.cc DQM/HistogramNormalisationUtil.cc DQM/StackedHistogramBuilder.cc \
 			   DQM/WeightedHistogramData.cc DQM/HistogramStackData.cc DQM/HistogramData.cc \
-			   DQM/ColourController.cc
+			   DQM/ColourController.cc DQM/StackedHistogramRenderer.cc
 RENDER_OBJ   = $(patsubst %.cc,%.o,$(notdir $(RENDER_SRC)))
 RENDER_LINK  = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(RENDER_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTG_LIBS) $(OTHER_LIBS) -ljpeg
