@@ -13,9 +13,11 @@
 #include "TH1F.h"
 #include "THStack.h"
 #include "TObject.h"
+#include "TText.h"
+#include "TColor.h"
 
-#include "StackedHistogramRenderer.h";
-#include "utils/builders/StackedHistogramBuilder.h";
+#include "StackedHistogramRenderer.h"
+#include "utils/builders/StackedHistogramBuilder.h"
 
 namespace render {
 	std::string StackedHistogramRenderer::render(
@@ -42,12 +44,36 @@ namespace render {
 			stackedHistogramBuilder->addWeightedHistogramData(*weightedHistogramData);
 		}
 
-//		THStack histogramStack = stackedHistogramBuilder->build();
+		THStack histogramStack = stackedHistogramBuilder->build();
 
 		// TODO: Check that these get drawn on the same canvas
-//		histogramStack.Draw();		// Does this require draw options that are dependent on certain settings?
+		histogramStack.Draw();		// Does this require draw options that are dependent on certain settings?
 		dataHistogram->Draw(drawOptions.c_str());
 
 		return("Complete!");
+	}
+
+	// XXX: There are a lot of magic numbers floating around in this method...
+	void StackedHistogramRenderer::showErrorMessage(
+			std::string histogramTitleText, std::string errorMessageText) {
+		Color_t TEXT_COLOR = TColor::GetColor(178, 32, 32);		// TODO: Considering making this a static class constant
+
+		TText *histogramTitle = new TText(.5, .58, histogramTitleText.c_str());
+		TText *errorMessage = new TText(.5, .42, errorMessageText.c_str());
+
+		TText* textElements[] = {
+			histogramTitle,
+			errorMessage
+		};
+		Int_t numberOfTextElements = sizeof(textElements) / sizeof(TText*);
+
+		for(Int_t i = 0; i < numberOfTextElements; i++) {
+			TText *textElement = textElements[i];
+			textElement->SetNDC(true);
+			textElement->SetTextSize(0.10);
+			textElement->SetTextAlign(22);
+			textElement->SetTextColor(TEXT_COLOR);
+			textElement->Draw();
+		}
 	}
 }
