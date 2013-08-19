@@ -1,8 +1,6 @@
 #define DEBUG(n,x)
 
-#include "DQM/render/utils/parsers/StackedHistogramSettingsParser.h"
-#include "DQM/render/models/StackedHistogramSettings.h"
-#include "DQM/render/renderStackedHistogram.cc"
+#include "DQM/render/StackedHistogramRenderer.h"
 
 #include "DQM/DQMRenderPlugin.h"
 #include "DQM/VisDQMRenderTools.h"
@@ -1501,130 +1499,119 @@ private:
         if (gStyle)
           gStyle->SetOptStat(i.showstats);
 
-        // Parses settings (if any) for drawing a stacked histogram.
-        // <p>
-        // These settings could have been parsed by the function:
-        // <code>parseImageSpec</code> and stored into a modified
-        // <code>VisDQMImgInfo</code> instance. Instead, a custom
-        // parser and data model is used with stacked histogram UIs.
-        // <p>
-        // The justification for this design decision is because
-        // the developer wished to avoid  modifying the legacy
-        // code, which is complex and tightly coupled thus hard to test.
-        render::StackedHistogramSettings stackedHistogramSettings =
-        		render::StackedHistogramSettingsParser::parse(i.imgspec);
-
-        bool drawStackedHistogram = stackedHistogramSettings.shouldDrawStackedHistogram();
+//       bool drawStackedHistogram = stackedHistogramSettings.shouldDrawStackedHistogram();
         // TODO: Need some kind of data structure to store histograms in loop that the stack is built from...
 //      std::vector<double>
+
+        bool drawStackedHistogram = true;
 
         if(!drawStackedHistogram) {
 			// Draw the main object on top.
 			ob->Draw(ri.drawOptions.c_str());
-        }
 
-        // Maybe draw overlay from reference and other objects.
-        for (size_t n = 0; n < numobjs; ++n)
-		{
-		  TObject *refobj = 0;
-		  TPaveStats * currentStat =0;
-		  // Compute colors array size on the fly and use it to loop
-		  // over defined colors in case the number of objects to
-		  // overlay is greater than the available colors
-		  // (n%colorIndex).
-		  int colorIndex = sizeof(colors)/sizeof(int);
-		  if (n == 0 && i.reference == DQM_REF_OVERLAY)
-			refobj = o.reference;
-		  else if (n > 0)
-			refobj = objs[n].object;
-
-		  TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
-		  TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
-		  TProfile *refp = dynamic_cast<TProfile *>(refobj);
-		  if (refp)
-		  {
-			refp->SetLineColor(colors[n%colorIndex]);
-			refp->SetLineWidth(0);
-			refp->GetListOfFunctions()->Delete();
-			refp->Draw("same hist");
-		  }
-		  else if (ref1f || ref1d)
-		  {
-			// Perform KS statistical test only on the first available
-			// reference, excluding the (possible) default one
-			// injected during the harvesting step.
-			int color = colors[n%colorIndex];
-			double norm = 1.;
-			if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-			  norm = th1f->GetSumOfWeights();
-			else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-			  norm = th1d->GetSumOfWeights();
-
-			TH1 *ref = (ref1f
-				? static_cast<TH1 *>(ref1f)
-				: static_cast<TH1 *>(ref1d));
-			if (n==1 && ! isnan(i.ktest)) {
-			  if (TH1 *h = dynamic_cast<TH1 *>(ob))
-			  {
-				double prob = h->KolmogorovTest(ref);
-				color = prob < i.ktest ? kRed-4 : kGreen-3;
-				char buffer[14];
-				snprintf(buffer, 14, "%6.5f", prob);
-				TText t;
-				t.SetTextColor(color);
-				t.DrawTextNDC(0.45, 0.9, buffer);
-			  }
-			}
-
-			ref->SetLineColor(color); ref->SetMarkerColor(color);
-			ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
-			ref->GetListOfFunctions()->Delete();
-			if (i.showerrbars)
-			  samePlotOptions += " e1 x0";
-			// Check if the original plot has been flagged as an
-			// efficieny plot at production time: if this is the case,
-			// then avoid any kind of normalization that introduces
-			// fake effects.
-			if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-			  nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-			else
-			  ref->Draw(samePlotOptions.c_str());
-
-			if (i.showstats)
+			// Maybe draw overlay from reference and other objects.
+			for (size_t n = 0; n < numobjs; ++n)
 			{
-			  // Draw stats box for every additional ovelayed reference
-			  // object, appending latest at the bottom of the stats box
-			  // drawn last. FIXME: stats' coordinates are fixed, which
-			  // is ugly, but apparently we cannot have them back from
-			  // ROOT unless we use some public variable (gPad) which I
-			  // do not know if it is thread safe but which I know is
-			  // causing us problems.
-			  currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
-						   0.98, 0.835-n*0.16, "brNDC");
-			  if (currentStat)
+			  TObject *refobj = 0;
+			  TPaveStats * currentStat =0;
+			  // Compute colors array size on the fly and use it to loop
+			  // over defined colors in case the number of objects to
+			  // overlay is greater than the available colors
+			  // (n%colorIndex).
+			  int colorIndex = sizeof(colors)/sizeof(int);
+			  if (n == 0 && i.reference == DQM_REF_OVERLAY)
+				refobj = o.reference;
+			  else if (n > 0)
+				refobj = objs[n].object;
+
+			  TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
+			  TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
+			  TProfile *refp = dynamic_cast<TProfile *>(refobj);
+			  if (refp)
 			  {
-				currentStat->SetBorderSize(1);
-				nukem.push_back(currentStat);
-				std::stringstream ss;
-				if (n==0)
-				  currentStat->AddText("StandardRef");
-				else
-				{
-				  ss << "Ref "<< n;
-				  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+				refp->SetLineColor(colors[n%colorIndex]);
+				refp->SetLineWidth(0);
+				refp->GetListOfFunctions()->Delete();
+				refp->Draw("same hist");
+			  }
+			  else if (ref1f || ref1d)
+			  {
+				// Perform KS statistical test only on the first available
+				// reference, excluding the (possible) default one
+				// injected during the harvesting step.
+				int color = colors[n%colorIndex];
+				double norm = 1.;
+				if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
+				  norm = th1f->GetSumOfWeights();
+				else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
+				  norm = th1d->GetSumOfWeights();
+
+				TH1 *ref = (ref1f
+					? static_cast<TH1 *>(ref1f)
+					: static_cast<TH1 *>(ref1d));
+				if (n==1 && ! isnan(i.ktest)) {
+				  if (TH1 *h = dynamic_cast<TH1 *>(ob))
+				  {
+					double prob = h->KolmogorovTest(ref);
+					color = prob < i.ktest ? kRed-4 : kGreen-3;
+					char buffer[14];
+					snprintf(buffer, 14, "%6.5f", prob);
+					TText t;
+					t.SetTextColor(color);
+					t.DrawTextNDC(0.45, 0.9, buffer);
+				  }
 				}
-				ss << "Entries = " << ref->GetEntries();
-				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-				ss << "Mean  = " << ref->GetMean();
-				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-				ss << "RMS   = " << ref->GetRMS();
-				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-				currentStat->SetOptStat(1111);
-				currentStat->SetOptFit(0);
-				currentStat->Draw();
+
+				ref->SetLineColor(color); ref->SetMarkerColor(color);
+				ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
+				ref->GetListOfFunctions()->Delete();
+				if (i.showerrbars)
+				  samePlotOptions += " e1 x0";
+				// Check if the original plot has been flagged as an
+				// efficieny plot at production time: if this is the case,
+				// then avoid any kind of normalization that introduces
+				// fake effects.
+				if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
+				  nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+				else
+				  ref->Draw(samePlotOptions.c_str());
+
+				if (i.showstats)
+				{
+				  // Draw stats box for every additional ovelayed reference
+				  // object, appending latest at the bottom of the stats box
+				  // drawn last. FIXME: stats' coordinates are fixed, which
+				  // is ugly, but apparently we cannot have them back from
+				  // ROOT unless we use some public variable (gPad) which I
+				  // do not know if it is thread safe but which I know is
+				  // causing us problems.
+				  currentStat = new TPaveStats(0.78, 0.835-(n+1)*0.16,
+							   0.98, 0.835-n*0.16, "brNDC");
+				  if (currentStat)
+				  {
+					currentStat->SetBorderSize(1);
+					nukem.push_back(currentStat);
+					std::stringstream ss;
+					if (n==0)
+					  currentStat->AddText("StandardRef");
+					else
+					{
+					  ss << "Ref "<< n;
+					  currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+					}
+					ss << "Entries = " << ref->GetEntries();
+					currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+					ss << "Mean  = " << ref->GetMean();
+					currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+					ss << "RMS   = " << ref->GetRMS();
+					currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+					currentStat->SetOptStat(1111);
+					currentStat->SetOptFit(0);
+					currentStat->Draw();
+				  }
+				}
 			  }
 			}
-		  }
         }
 
         if(drawStackedHistogram) {
@@ -1632,9 +1619,18 @@ private:
 			std::vector<TH1D> temp1;
 			std::vector<Double_t> temp2;
 			std::string drawOptions = ri.drawOptions.c_str();
-			TH1 *dataHistogram = dynamic_cast<TH1 *>(ob);		// XXX: Is this cast valid in all cases where a stacked histogram is to be rendered?
+			TH1 *dataHistogram = dynamic_cast<TH1F *>(ob);		// XXX: Is this cast valid in all cases where a stacked histogram is to be rendered?
 
-			render::renderStackedHistogram(*dataHistogram, temp1, temp2, drawOptions);
+			logme() << "th1: " << dynamic_cast<TH1 *>(ob) << '\n';
+			logme() << "th1d: " << dynamic_cast<TH1D *>(ob) << '\n';
+			logme() << "th1f: " << dynamic_cast<TH1F *>(ob) << '\n';
+			logme() << "dataHistogram: " << dataHistogram << '\n';
+
+			logme() << "Going off to draw" << '\n';
+			render::StackedHistogramRenderer::render(*dataHistogram, temp1, temp2, drawOptions);
+			logme() << "Coming back from drawing..." << '\n';
+			ob->Draw(ri.drawOptions.c_str());
+			logme() << "Drawing final" << '\n';
 		}
       }
 
