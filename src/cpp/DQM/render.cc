@@ -1622,8 +1622,7 @@ private:
 
 			try {
 				logme() << "Going off to draw...." << '\n';
-				logme() << render::StackedHistogramRenderer::render(
-						dataHistogram, temp1, temp2, drawOptions) << '\n';
+				render::StackedHistogramRenderer::render(dataHistogram, temp1, temp2, drawOptions);
 				logme() << "Coming back from drawing!" << '\n';
 			}
 			catch(std::invalid_argument e) {
@@ -1634,6 +1633,8 @@ private:
 				// and that localisation (appears) not to be required.
 				std::string messageText(e.what());
 				render::StackedHistogramRenderer::showErrorMessage(labelText, messageText);
+				// Log the error message to file
+				logme() << messageText << '\n';
 			}
 		}
       }

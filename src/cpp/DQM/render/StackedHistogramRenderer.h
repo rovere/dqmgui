@@ -24,7 +24,7 @@ namespace render {
 			/// @param monteCarloHistograms TODO
 			/// @param monteCarloHistogramWeights TODO
 			/// @param drawOptions TODO
-			static std::string render(
+			static void render(
 					TH1F *dataHistogram,
 					std::vector<TH1D> monteCarloHistograms,
 					std::vector<Double_t> monteCarloHistogramWeights,

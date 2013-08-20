@@ -20,7 +20,7 @@
 #include "utils/builders/StackedHistogramBuilder.h"
 
 namespace render {
-	std::string StackedHistogramRenderer::render(
+	void StackedHistogramRenderer::render(
 			TH1F *dataHistogram,
 			std::vector<TH1D> monteCarloHistograms,
 			std::vector<Double_t> monteCarloHistogramWeights,
@@ -49,8 +49,6 @@ namespace render {
 		// TODO: Check that these get drawn on the same canvas
 		histogramStack.Draw();		// Does this require draw options that are dependent on certain settings?
 		dataHistogram->Draw(drawOptions.c_str());
-
-		return("Complete!");
 	}
 
 	// XXX: There are a lot of magic numbers floating around in this method...
