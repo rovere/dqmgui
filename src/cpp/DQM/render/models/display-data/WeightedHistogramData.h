@@ -1,17 +1,17 @@
 /*
- * HistogramScalingData.h
+ * WeightedHistogramData.h
  *
  *  Created on: 1 Aug 2013
  *      Author: Colin - CERN
  */
-#ifndef HISTOGRAMSCALINGDATA_H_
-#define HISTOGRAMSCALINGDATA_H_
+#ifndef WEIGHTEDHISTOGRAMDATA_H_
+#define WEIGHTEDHISTOGRAMDATA_H_
 
 #include <Rtypes.h>
 
 #include "HistogramData.h"
 
-class TH1D;
+class TH1;
 
 namespace render {
 	class WeightedHistogramData : public render::HistogramData {
@@ -23,7 +23,7 @@ namespace render {
 			/// Default constructor.
 			/// @param histogram a pointer to this data's histogram
 			/// @param weight the histogram's weighting in the stack
-			WeightedHistogramData(TH1D *histogram, Double_t weight);
+			WeightedHistogramData(TH1 *histogram, Double_t weight);
 
 			/// Gets the histogram's weight, considering the entire stack
 			/// of all histograms.

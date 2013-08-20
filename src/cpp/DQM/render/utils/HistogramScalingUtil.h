@@ -13,7 +13,7 @@
 
 namespace render { class WeightedHistogramData; }
 
-class TH1D;
+class TH1;
 
 namespace render {
 	/// Utility class for scaling histograms.
@@ -27,7 +27,7 @@ namespace render {
 			/// equals <code>targetArea</code>.
 			/// @param histogram a pointer to the histogram that is to be scaled
 			/// @param targetArea the area under the histogram required
-			static void scaleHistogram(TH1D *histogram, Double_t targetArea);
+			static void scaleHistogram(TH1 *histogram, Double_t targetArea);
 
 			/// Scales a list of histograms with respect to their relative weights
 			/// such that their combined weight when scaled equals <code>targetCombinedArea</code>.

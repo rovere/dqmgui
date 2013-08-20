@@ -20,7 +20,7 @@
 
 
 namespace render {
-	void HistogramScalingUtil::scaleHistogram(TH1D *histogram, Double_t targetArea) {
+	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t targetArea) {
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {
@@ -29,7 +29,7 @@ namespace render {
 
 			// Note: We cannot assume that integrating the histogram will give exactly the
 			//		 <code>targetArea</code> as we don't know the internals of <code>
-			//		 TH1D::Scale(Double_t)</code> and <code>TH1D::Integral()</code>.
+			//		 TH1::Scale(Double_t)</code> and <code>TH1::Integral()</code>.
 			//		 Therefore we'll just assume a tolerance of 0.01% is acceptable.
 			assert(std::abs(histogram->Integral() - targetArea) < (targetArea * 0.0001));
 		}
@@ -67,7 +67,7 @@ namespace render {
 	void HistogramScalingUtil::scaleWeightedHistogram(
 			WeightedHistogramData weightedHistogramData,
 			Double_t combinedTargetArea) {
-		TH1D *histogram = weightedHistogramData.getHistogram();
+		TH1 *histogram = weightedHistogramData.getHistogram();
 		Double_t weight = weightedHistogramData.getWeight();
 
 		Double_t targetHistogramArea = weight * combinedTargetArea;
