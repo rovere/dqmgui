@@ -1,5 +1,5 @@
 /*
- * HistogramScalingData.cc
+ * WeightedHistogramData.cc
  *
  *  Created on: 1 Aug 2013
  *      Author: Colin - CERN
@@ -13,11 +13,10 @@
 
 #include "HistogramData.h"
 
-class TH1D;
-
+class TH1;
 
 namespace render {
-	WeightedHistogramData::WeightedHistogramData(TH1D *histogram, Double_t weight) {
+	WeightedHistogramData::WeightedHistogramData(TH1 *histogram, Double_t weight) {
 		this->setHistogram(histogram);
 		this->setWeight(weight);
 	}

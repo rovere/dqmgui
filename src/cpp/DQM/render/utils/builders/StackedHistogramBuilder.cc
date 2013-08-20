@@ -1,5 +1,5 @@
 /*
- * StackedHistogramCreator.cpp
+ * StackedHistogramBuilder.cc
  *
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
@@ -23,7 +23,6 @@
 #include "../../models/display-data/WeightedHistogramData.h"
 #include "../../utils/HistogramScalingUtil.h"
 
-
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
 		this->setTargetHistogramArea(targetHistogramArea);
@@ -36,7 +35,7 @@ namespace render {
 		}
 
 		THStack *histogramStack = new THStack();
-		std::vector<TH1D*> histograms = this->getAllHistograms();
+		std::vector<TH1*> histograms = this->getAllHistograms();
 		this->addAllToHistogramStack(histograms, histogramStack);
 
 		return(*histogramStack);
@@ -65,14 +64,14 @@ namespace render {
 		this->targetHistogramArea = targetHistogramArea;
 	}
 
-	std::vector<TH1D*> StackedHistogramBuilder::getAllHistograms() {
+	std::vector<TH1*> StackedHistogramBuilder::getAllHistograms() {
 		std::vector<WeightedHistogramData> allHistogramsData = this->histogramStackData.getAllHistogramsData();
 		std::vector<WeightedHistogramData>::iterator it = allHistogramsData.begin();
-		std::vector<TH1D*> histograms;
+		std::vector<TH1*> histograms;
 
 		while(it != allHistogramsData.end()) {
 			WeightedHistogramData *weightedHistogramData = &(*it);
-			TH1D *histogram = weightedHistogramData->getHistogram();
+			TH1 *histogram = weightedHistogramData->getHistogram();
 			histograms.push_back(histogram);
 			it++;
 		}
@@ -85,7 +84,7 @@ namespace render {
 		return(this->targetHistogramArea);
 	}
 
-	void StackedHistogramBuilder::addToHistogramStack(TH1D &histogram, THStack *histogramStack) {
+	void StackedHistogramBuilder::addToHistogramStack(TH1 &histogram, THStack *histogramStack) {
 		#ifdef DNDEBUG
 		TObjArray *histogramsInStack = histogramStack->GetStack();
 		Int_t stackSize = (histogramsInStack == nullptr)
@@ -106,7 +105,7 @@ namespace render {
 	}
 
 	void StackedHistogramBuilder::addAllToHistogramStack(
-			std::vector<TH1D*> histograms, THStack *histogramStack) {
+			std::vector<TH1*> histograms, THStack *histogramStack) {
 		#ifdef DNDEBUG
 		TObjArray *histogramsInStack = histogramStack->GetStack();
 		Int_t stackSize = (histogramsInStack == nullptr)
@@ -114,10 +113,10 @@ namespace render {
 								: histogramsInStack->GetSize();
 		#endif
 
-		std::vector<TH1D*>::iterator it = histograms.begin();
+		std::vector<TH1*>::iterator it = histograms.begin();
 
 		while(it != histograms.end()) {
-			TH1D *histogram = (*it);
+			TH1 *histogram = (*it);
 			this->addToHistogramStack(*histogram, histogramStack);
 			it++;
 		}

@@ -1,5 +1,5 @@
 /*
- * StackedHistogramCreator.h
+ * StackedHistogramBuilder.h
  *
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
@@ -15,7 +15,7 @@
 #include "../../models/display-data/HistogramStackData.h"
 #include "Builder.h"
 
-class TH1D;
+class TH1;
 class THStack;
 namespace render { class WeightedHistogramData; }
 
@@ -69,7 +69,7 @@ namespace render {
 		private:
 			/// Gets all of the histograms, regardless of weight.
 			/// @return all histograms to be drawn in the stack
-			std::vector<TH1D*> getAllHistograms();
+			std::vector<TH1*> getAllHistograms();
 
 			/// Gets the area that the built histogram should have.
 			/// @return the area that the built histogram should have
@@ -78,12 +78,12 @@ namespace render {
 			/// Adds a given histogram to the given histograms stack.
 			/// @param histogram the histogram to put on the histogram stack
 			/// @param histogramStack the histogram stack that the histogram is to be added to
-			void addToHistogramStack(TH1D &histogram, THStack *histogramStack);
+			void addToHistogramStack(TH1 &histogram, THStack *histogramStack);
 
 			/// Adds all of the histograms given to the given histogram stack.
 			/// @param histograms the list of histograms to add to the stack
 			/// @param histogramStack the histogram stack that the histogram is to be added to
-			void addAllToHistogramStack(std::vector<TH1D*> histograms, THStack *histogramStack);
+			void addAllToHistogramStack(std::vector<TH1*> histograms, THStack *histogramStack);
 	};
 }
 #endif

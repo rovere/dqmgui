@@ -1,5 +1,3 @@
-class TH1D;
-
 /*
  * HistogramData.cc
  *
@@ -10,21 +8,23 @@ class TH1D;
 
 #include "HistogramData.h"
 
+class TH1;
+
 namespace render {
 	HistogramData::HistogramData()
-		/*	: histogram(nullptr)	// This is C++11 so cannot be used right now */ {
+			: histogram(nullptr) {
 		;
 	}
 
-	HistogramData::HistogramData(TH1D *histogram) {
+	HistogramData::HistogramData(TH1 *histogram) {
 		this->histogram = histogram;
 	}
 
-	TH1D* HistogramData::getHistogram() {
+	TH1* HistogramData::getHistogram() {
 		return(this->histogram);
 	}
 
-	void HistogramData::setHistogram(TH1D *histogram) {
+	void HistogramData::setHistogram(TH1 *histogram) {
 		this->histogram = histogram;
 	}
 }
