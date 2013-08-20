@@ -18,7 +18,7 @@
 namespace render {
 	const Double_t HistogramNormalisationUtil::UNIT_AREA = 1.0;
 
-	void HistogramNormalisationUtil::normaliseHistogram(TH1D *histogram) {
+	void HistogramNormalisationUtil::normaliseHistogram(TH1 *histogram) {
 		HistogramScalingUtil::scaleHistogram(histogram, UNIT_AREA);
 	}
 

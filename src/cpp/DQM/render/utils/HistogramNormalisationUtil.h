@@ -12,7 +12,7 @@
 
 namespace render { class WeightedHistogramData; }
 
-class TH1D;
+class TH1;
 
 namespace render {
 	/// Utility class for normalising histograms.
@@ -29,7 +29,7 @@ namespace render {
 			/// Normalises a histogram such that it has an area of <code>UNIT_AREA</code>.
 			/// @param histogram pointer to the histogram to normalise.
 			///					 This histogram object is modified
-			static void normaliseHistogram(TH1D *histogram);
+			static void normaliseHistogram(TH1 *histogram);
 
 			/// Normalise a given list of histograms such that, when stacked, they will
 			/// have an area of <code>UNIT_AREA</code>. The weight of each histogram in the stack

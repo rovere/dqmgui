@@ -4,15 +4,14 @@
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
  */
-#ifndef HISTOGRAMDISPLAYDATA_H_
-#define HISTOGRAMDISPLAYDATA_H_
+#ifndef HISTOGRAMSTACKDATA_H_
+#define HISTOGRAMSTACKDATA_H_
 
 #include <Rtypes.h>
 #include <list>
 #include <vector>
 
 #include "WeightedHistogramData.h"
-
 
 namespace render {
 	/// Data container for a histogram stack.
