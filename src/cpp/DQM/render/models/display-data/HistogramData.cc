@@ -7,6 +7,9 @@
 #define DNDEBUG
 
 #include "HistogramData.h"
+#include "Rtypes.h"
+
+class TH1;
 
 class TH1;
 
