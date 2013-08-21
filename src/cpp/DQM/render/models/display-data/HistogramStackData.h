@@ -25,6 +25,15 @@ namespace render {
 			/// Default constructor.
 			HistogramStackData();
 
+			/// Gets the total weight of all the histograms in this container.
+			/// @return the total weight of all histograms in this container.
+			///			The weight, w, shall be in the range: 1.0 <= w <= 0.0
+			Double_t getHistogramsTotalWeight();
+
+			/// Gets the data for all the histograms' contained in this histogram stack data.
+			/// @return the data for all histograms that made up this stack
+			std::vector<WeightedHistogramData> getAllHistogramsData();
+
 			/// Adds data about a histogram that is to be displayed in this histogram stack's data.
 			/// <p>
 			/// If by adding the histogram, the total weight of all histograms in the stack exceeds
@@ -38,15 +47,6 @@ namespace render {
 			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
 			/// @param histogramStackData the stack's data to add to this container
 			void add(HistogramStackData histogramStackData);
-
-			/// Gets the total weight of all the histograms in this container.
-			/// @return the total weight of all histograms in this container.
-			///			The weight, w, shall be in the range: 1.0 <= w <= 0.0
-			Double_t getHistogramsTotalWeight();
-
-			/// Gets the data for all the histograms' contained in this histogram stack data.
-			/// @return the data for all histograms that made up this stack
-			std::vector<WeightedHistogramData> getAllHistogramsData();
 		};
 	}
 #endif
