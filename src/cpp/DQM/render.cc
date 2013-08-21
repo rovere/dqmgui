@@ -1614,9 +1614,17 @@ private:
 			}
         }
         else {
+        	std::string histogramId = "histogram";
+        	TH1F *histogram = new TH1F(histogramId.c_str(), "Data Vs. Monte Carlo", 100, -5, 5);
+        	histogram->FillRandom("gaus", 50000);
+
 			// Got all of the data we need - draw the stacked histogram
-			std::vector<TH1D> temp1;
+			std::vector<TH1F*> temp1;
+			temp1.push_back(histogram);
+
 			std::vector<Double_t> temp2;
+			temp2.push_back(1.0);
+
 			std::string drawOptions = ri.drawOptions.c_str();
 			TH1F *dataHistogram = dynamic_cast<TH1F *>(ob);		// XXX: Is this cast valid in all cases where a stacked histogram is to be rendered?
 

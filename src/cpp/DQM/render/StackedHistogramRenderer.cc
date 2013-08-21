@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <cassert>
 #include "Rtypes.h"
 #include "TH1F.h"
 #include "THStack.h"
@@ -22,7 +23,7 @@
 namespace render {
 	void StackedHistogramRenderer::render(
 			TH1F *dataHistogram,
-			std::vector<TH1D> monteCarloHistograms,
+			std::vector<TH1F*> monteCarloHistograms,
 			std::vector<Double_t> monteCarloHistogramWeights,
 			std::string drawOptions) {
 		if(dataHistogram == nullptr) {
@@ -36,19 +37,20 @@ namespace render {
 		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder(histogramArea);
 
 		for(Int_t i = 0; i < monteCarloHistograms.size(); i++) {
-			TH1D histogram = monteCarloHistograms.at(i);
+			TH1F *histogram = monteCarloHistograms.at(i);
 			Double_t histogramWeight = monteCarloHistogramWeights.at(i);
 
 			WeightedHistogramData *weightedHistogramData = new WeightedHistogramData(
-					&histogram, histogramWeight);
+					histogram, histogramWeight);
+
 			stackedHistogramBuilder->addWeightedHistogramData(*weightedHistogramData);
 		}
 
-		THStack histogramStack = stackedHistogramBuilder->build();
+		THStack *histogramStack = stackedHistogramBuilder->build();
 
 		// TODO: Check that these get drawn on the same canvas
-		histogramStack.Draw();		// Does this require draw options that are dependent on certain settings?
 		dataHistogram->Draw(drawOptions.c_str());
+		histogramStack->Draw("SAME");
 	}
 
 	// XXX: There are a lot of magic numbers floating around in this method...
@@ -59,10 +61,7 @@ namespace render {
 		TText *histogramTitle = new TText(.5, .58, histogramTitleText.c_str());
 		TText *errorMessage = new TText(.5, .42, errorMessageText.c_str());
 
-		TText* textElements[] = {
-			histogramTitle,
-			errorMessage
-		};
+		TText* textElements[] = {histogramTitle, errorMessage};
 		Int_t numberOfTextElements = sizeof(textElements) / sizeof(TText*);
 
 		for(Int_t i = 0; i < numberOfTextElements; i++) {
