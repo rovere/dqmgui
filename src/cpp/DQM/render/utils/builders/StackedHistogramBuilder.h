@@ -21,7 +21,7 @@ namespace render { class WeightedHistogramData; }
 
 namespace render {
 	/// Builder for stacked histograms.
-	class StackedHistogramBuilder : public Builder<THStack> {
+	class StackedHistogramBuilder : public Builder<THStack*> {
 		private:
 			/// The data associated to the stacked histogram this builder shall build.
 			HistogramStackData histogramStackData;
@@ -33,14 +33,21 @@ namespace render {
 			/// The area that the built histogram should have.
 			Double_t targetHistogramArea;
 
-
 		public:
 			/// Default constructor.
 			/// @param targetHistogramArea the area that the built histogram should have
 			StackedHistogramBuilder(Double_t targetHistogramArea);
 
 			/// @see HistogramBuilder::build()
-			THStack build();
+			/// Note: A pointer to the <code>THStack</code> object is been returned as in the
+			///		  actual system, the calling code using <code>THStack.Draw</code> was ineffective
+			///		  even though returning a reference and using <code>THStack->Draw</code> in the
+			/// 	  standalone test project was fine!?
+			///		  <p>
+			///		  This developer does not know exactly why the *same* code performed differently
+			/// 	  in the actual system and can only speculate that it didn't work because of the
+			///		  environment in which code executes is different in the actual system.
+			THStack* build();
 
 			/// Adds data about a histogram that shall be displayed in the histogram
 			/// stack that this builder shall build.

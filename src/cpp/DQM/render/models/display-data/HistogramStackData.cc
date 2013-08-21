@@ -20,6 +20,27 @@ namespace render {
 		;
 	}
 
+	Double_t HistogramStackData::getHistogramsTotalWeight() {
+		// XXX: It would be nice if the list could be casted to WeightedHistogramData as
+		//		we're only interested in seeing the data like this
+		std::vector<WeightedHistogramData>::iterator it = this->allWeightedHistogramsData.begin();
+		Double_t totalWeight = 0;
+
+		while(it != this->allWeightedHistogramsData.end()) {
+			WeightedHistogramData weightedHistogramData = (*it);
+			totalWeight += weightedHistogramData.getWeight();
+			it++;
+		}
+
+		assert(totalWeight <= 1.0);
+		assert(totalWeight >= 0.0);
+		return(totalWeight);
+	}
+
+	std::vector<WeightedHistogramData> HistogramStackData::getAllHistogramsData() {
+		return(this->allWeightedHistogramsData);
+	}
+
 	void HistogramStackData::add(WeightedHistogramData weightedHistogramData) {
 		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
 		Double_t postTotalWeight = currentTotalWeight + weightedHistogramData.getWeight();
@@ -52,26 +73,5 @@ namespace render {
 		assert(this->getAllHistogramsData().size() == (originalDataSize + allHistogramData.size()));
 		assert(this->getHistogramsTotalWeight() <= 1.0);
 		assert(this->getHistogramsTotalWeight() >= 0.0);
-	}
-
-	Double_t HistogramStackData::getHistogramsTotalWeight() {
-		// XXX: It would be nice if the list could be casted to WeightedHistogramData as
-		//		we're only interested in seeing the data like this
-		std::vector<WeightedHistogramData>::iterator it = this->allWeightedHistogramsData.begin();
-		Double_t totalWeight = 0;
-
-		while(it != this->allWeightedHistogramsData.end()) {
-			WeightedHistogramData weightedHistogramData = (*it);
-			totalWeight += weightedHistogramData.getWeight();
-			it++;
-		}
-
-		assert(totalWeight <= 1.0);
-		assert(totalWeight >= 0.0);
-		return(totalWeight);
-	}
-
-	std::vector<WeightedHistogramData> HistogramStackData::getAllHistogramsData() {
-		return(this->allWeightedHistogramsData);
 	}
 }

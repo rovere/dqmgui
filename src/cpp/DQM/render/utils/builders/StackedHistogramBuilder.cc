@@ -26,9 +26,10 @@
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
 		this->setTargetHistogramArea(targetHistogramArea);
+		this->histogramStackData = *(new HistogramStackData());
 	}
 
-	THStack StackedHistogramBuilder::build() {
+	THStack* StackedHistogramBuilder::build() {
 		if(this->histogramStackData.getHistogramsTotalWeight() != 1.0) {
 			throw std::invalid_argument(
 					"The sum weight of all histograms in the stack to be built must equal 1");
@@ -38,7 +39,7 @@ namespace render {
 		std::vector<TH1*> histograms = this->getAllHistograms();
 		this->addAllToHistogramStack(histograms, histogramStack);
 
-		return(*histogramStack);
+		return(histogramStack);
 	}
 
 	void StackedHistogramBuilder::addWeightedHistogramData(WeightedHistogramData data) {
@@ -49,7 +50,6 @@ namespace render {
 
 	void StackedHistogramBuilder::addHistogramStackData(HistogramStackData data) {
 		std::vector<WeightedHistogramData> allWeightedHistogramsData = data.getAllHistogramsData();
-
 		std::vector<WeightedHistogramData>::iterator it = allWeightedHistogramsData.begin();
 
 		while(it != allWeightedHistogramsData.end()) {
@@ -84,6 +84,8 @@ namespace render {
 		return(this->targetHistogramArea);
 	}
 
+	// XXX: The way in which the THStack object is passed in, looks like this method
+	//		should be static...
 	void StackedHistogramBuilder::addToHistogramStack(TH1 &histogram, THStack *histogramStack) {
 		#ifdef DNDEBUG
 		TObjArray *histogramsInStack = histogramStack->GetStack();
@@ -104,6 +106,8 @@ namespace render {
 		#endif
 	}
 
+	// XXX: The way in which the THStack object is passed in, looks like this method
+	//		should be static...
 	void StackedHistogramBuilder::addAllToHistogramStack(
 			std::vector<TH1*> histograms, THStack *histogramStack) {
 		#ifdef DNDEBUG
