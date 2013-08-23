@@ -38,13 +38,16 @@ namespace render {
 			/// @param targetHistogramArea the area that the built histogram should have
 			StackedHistogramBuilder(Double_t targetHistogramArea);
 
+			/// Destructor.
+			~StackedHistogramBuilder();
+
 			/// @see HistogramBuilder::build()
 			/// Note: A pointer to the <code>THStack</code> object is been returned as in the
 			///		  actual system, the calling code using <code>THStack.Draw</code> was ineffective
 			///		  even though returning a reference and using <code>THStack->Draw</code> in the
 			/// 	  standalone test project was fine!?
 			///		  <p>
-			///		  This developer does not know exactly why the *same* code performed differently
+			///		  This developer does not know exactly why the same code performed differently
 			/// 	  in the actual system and can only speculate that it didn't work because of the
 			///		  environment in which code executes is different in the actual system.
 			THStack* build();
