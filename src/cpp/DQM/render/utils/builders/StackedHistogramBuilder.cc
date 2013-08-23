@@ -26,7 +26,6 @@
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
 		this->setTargetHistogramArea(targetHistogramArea);
-		this->histogramStackData();
 	}
 
 	THStack* StackedHistogramBuilder::build() {

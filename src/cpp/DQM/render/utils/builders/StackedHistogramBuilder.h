@@ -23,7 +23,7 @@ namespace render {
 	/// Builder for stacked histograms.
 	class StackedHistogramBuilder : public Builder<THStack*> {
 		private:
-			/// The data associated to the stacked histogram this builder shall build.
+			/// The data associated to the histogram stack that this instance will build
 			HistogramStackData histogramStackData;
 
 			/// The object responsible for controlling the colours this builder uses
@@ -37,9 +37,6 @@ namespace render {
 			/// Default constructor.
 			/// @param targetHistogramArea the area that the built histogram should have
 			StackedHistogramBuilder(Double_t targetHistogramArea);
-
-			/// Destructor.
-			~StackedHistogramBuilder();
 
 			/// @see HistogramBuilder::build()
 			/// Note: A pointer to the <code>THStack</code> object is been returned as in the
