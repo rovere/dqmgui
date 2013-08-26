@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-class TH1F;
+class TH1;
 
 namespace render {
 	/// TODO
@@ -24,8 +24,8 @@ namespace render {
 			/// @param monteCarloHistogramWeights TODO
 			/// @param drawOptions TODO
 			static void render(
-					TH1F *dataHistogram,
-					std::vector<TH1F*> monteCarloHistograms,
+					TH1 *dataHistogram,
+					std::vector<TH1*> monteCarloHistograms,
 					std::vector<Double_t> monteCarloHistogramWeights,
 					std::string drawOptions);
 
