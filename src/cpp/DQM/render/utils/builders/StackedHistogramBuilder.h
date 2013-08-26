@@ -23,7 +23,7 @@ namespace render {
 	/// Builder for stacked histograms.
 	class StackedHistogramBuilder : public Builder<THStack*> {
 		private:
-			/// The data associated to the stacked histogram this builder shall build.
+			/// The data associated to the histogram stack that this instance will build
 			HistogramStackData histogramStackData;
 
 			/// The object responsible for controlling the colours this builder uses
@@ -44,7 +44,7 @@ namespace render {
 			///		  even though returning a reference and using <code>THStack->Draw</code> in the
 			/// 	  standalone test project was fine!?
 			///		  <p>
-			///		  This developer does not know exactly why the *same* code performed differently
+			///		  This developer does not know exactly why the same code performed differently
 			/// 	  in the actual system and can only speculate that it didn't work because of the
 			///		  environment in which code executes is different in the actual system.
 			THStack* build();

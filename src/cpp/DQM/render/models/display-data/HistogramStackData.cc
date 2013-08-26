@@ -27,7 +27,7 @@ namespace render {
 		Double_t totalWeight = 0;
 
 		while(it != this->allWeightedHistogramsData.end()) {
-			WeightedHistogramData weightedHistogramData = (*it);
+			WeightedHistogramData weightedHistogramData = *it;
 			totalWeight += weightedHistogramData.getWeight();
 			it++;
 		}
@@ -65,7 +65,7 @@ namespace render {
 		std::vector<WeightedHistogramData>::iterator it = allHistogramData.begin();
 
 		while(it != allHistogramData.end()) {
-			WeightedHistogramData weightedHistogramData = (*it);
+			WeightedHistogramData weightedHistogramData = *it;
 			this->add(weightedHistogramData);
 			it++;
 		}

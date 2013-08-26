@@ -26,7 +26,6 @@
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
 		this->setTargetHistogramArea(targetHistogramArea);
-		this->histogramStackData = *(new HistogramStackData());
 	}
 
 	THStack* StackedHistogramBuilder::build() {
@@ -120,7 +119,7 @@ namespace render {
 		std::vector<TH1*>::iterator it = histograms.begin();
 
 		while(it != histograms.end()) {
-			TH1 *histogram = (*it);
+			TH1 *histogram = *it;
 			this->addToHistogramStack(*histogram, histogramStack);
 			it++;
 		}

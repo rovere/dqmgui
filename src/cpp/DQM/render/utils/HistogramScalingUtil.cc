@@ -31,7 +31,7 @@ namespace render {
 			//		 <code>targetArea</code> as we don't know the internals of <code>
 			//		 TH1::Scale(Double_t)</code> and <code>TH1::Integral()</code>.
 			//		 Therefore we'll just assume a tolerance of 0.01% is acceptable.
-			assert(std::abs(histogram->Integral() - targetArea) < (targetArea * 0.0001));
+			assert(std::abs(histogram->Integral() - targetArea) <= (targetArea * 0.0001));
 		}
 		else {
 			// Histogram does not contain any samples - no scaling required
