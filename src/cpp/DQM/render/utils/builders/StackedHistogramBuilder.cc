@@ -14,14 +14,18 @@
 #include <TH1.h>
 #include <THStack.h>
 #include <TObject.h>
-#include <cassert>
-#include <vector>
+#include <iostream>
 #include <stdexcept>
+#include <vector>
+#include <cassert>
+#include <sstream>
 
 #include "../../controllers/ColourController.h"
+#include "../../models/display-data/HistogramData.h"
 #include "../../models/display-data/HistogramStackData.h"
 #include "../../models/display-data/WeightedHistogramData.h"
-#include "../../utils/HistogramScalingUtil.h"
+#include "../HistogramScalingUtil.h"
+
 
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
@@ -59,12 +63,17 @@ namespace render {
 	}
 
 	void StackedHistogramBuilder::setTargetHistogramArea(Double_t targetHistogramArea) {
-		assert(targetHistogramArea >= 0);
+		if(targetHistogramArea < 0) {
+			std::ostringstream message;
+			message << "Target histogram area (" << targetHistogramArea << ") cannot be less than 0";
+			throw std::invalid_argument(message.str());
+		}
 		this->targetHistogramArea = targetHistogramArea;
 	}
 
 	std::vector<TH1*> StackedHistogramBuilder::getAllHistograms() {
-		std::vector<WeightedHistogramData> allHistogramsData = this->histogramStackData.getAllHistogramsData();
+		std::vector<WeightedHistogramData> allHistogramsData =
+				this->histogramStackData.getAllHistogramsData();
 		std::vector<WeightedHistogramData>::iterator it = allHistogramsData.begin();
 		std::vector<TH1*> histograms;
 
@@ -85,7 +94,7 @@ namespace render {
 
 	// XXX: The way in which the THStack object is passed in, looks like this method
 	//		should be static...
-	void StackedHistogramBuilder::addToHistogramStack(TH1 &histogram, THStack *histogramStack) {
+	void StackedHistogramBuilder::addToHistogramStack(TH1 *histogram, THStack *histogramStack) {
 		#ifdef DNDEBUG
 		TObjArray *histogramsInStack = histogramStack->GetStack();
 		Int_t stackSize = (histogramsInStack == nullptr)
@@ -95,9 +104,9 @@ namespace render {
 
 		Int_t colour = this->colourController.getNextColour();
 
-		histogram.SetFillColor(colour);
-		histogram.SetLineColor(ColourController::COLOUR_BLACK);
-		histogramStack->Add(&histogram);
+		histogram->SetFillColor(colour);
+		histogram->SetLineColor(ColourController::COLOUR_BLACK);
+		histogramStack->Add(histogram);
 
 		#ifdef DNDEBUG
 		Int_t modifiedStackSize = histogramStack->GetStack()->GetSize();
@@ -120,7 +129,7 @@ namespace render {
 
 		while(it != histograms.end()) {
 			TH1 *histogram = *it;
-			this->addToHistogramStack(*histogram, histogramStack);
+			this->addToHistogramStack(histogram, histogramStack);
 			it++;
 		}
 

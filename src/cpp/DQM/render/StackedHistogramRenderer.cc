@@ -15,6 +15,7 @@
 #include "TText.h"
 #include "TColor.h"
 
+#include "TList.h"
 #include <sstream>
 
 #include "StackedHistogramRenderer.h"
@@ -53,12 +54,12 @@ namespace render {
 		dataHistogram->Draw(drawOptions.c_str());
 		histogramStack->Draw("SAME");
 
-//		TList *histograms = histogramStack->GetHists();
-//		TH1 *h1 = (TH1*) histograms->At(0);
-//		TH1 *h2 = (TH1*) histograms->At(1);
-//		std::ostringstream stream;
-//		stream << *(dataHistogram->GetIntegral());
-//		throw std::invalid_argument(stream.str());
+		TList *histograms = histogramStack->GetHists();
+		TH1 *h1 = (TH1*) histograms->At(0);
+		TH1 *h2 = (TH1*) histograms->At(1);
+		std::ostringstream stream;
+		stream << h1->Integral() << " + " << h2->Integral() << " = " << dataHistogram->Integral();
+		StackedHistogramRenderer::showErrorMessage("Debug:", stream.str());
 
 //		delete histogramStack;			// This cannot be deleted else the histogramStack is not drawn,
 										// indicating deletion it is this code's responsibility

@@ -1628,18 +1628,23 @@ private:
         if(drawStackedHistogram) {
         	TH1 *dataHistogram = dynamic_cast<TH1 *>(ob);
 
+//        	TH1 *dataHistogram = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
+//        	dataHistogram->SetBinContent(dataHistogram->FindBin(0, 0, 0), 100);
+
         	std::vector<TH1*> temp1;
         	std::vector<Double_t> temp2;
 
         	TH1F *histogram1 = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
+//        	histogram1->SetBinContent(histogram1->FindBin(0, 0, 0), 1);
         	histogram1->FillRandom("gaus", 50000);
 			temp1.push_back(histogram1);
-			temp2.push_back(0.7);
+			temp2.push_back(0.75);
 
 			TH1F *histogram2 = new TH1F("h2", "Data Vs. Monte Carlo", 100, -5, 5);
+//			histogram2->SetBinContent(histogram2->FindBin(0, 0, 0), 1);
 			histogram2->FillRandom("gaus", 50000);
 			temp1.push_back(histogram2);
-			temp2.push_back(0.3);
+			temp2.push_back(0.25);
 
 			std::string drawOptions = ri.drawOptions.c_str();
 
@@ -1648,7 +1653,7 @@ private:
 				render::StackedHistogramRenderer::render(dataHistogram, temp1, temp2, drawOptions);
 				logme() << "Coming back from drawing!" << '\n';
 			}
-			catch(std::invalid_argument e) {
+			catch(std::invalid_argument &e) {
 				std::string labelText;
 				stripNameToLabel(labelText, o.name);
 				// Just displaying the raw error message is appropriate considering that this

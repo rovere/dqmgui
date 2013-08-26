@@ -27,7 +27,8 @@ namespace render {
 		HistogramScalingUtil::scaleWeightedHistograms(weightedHistogramData, UNIT_AREA);
 	}
 
-	void HistogramNormalisationUtil::normaliseWeightedHistogram(WeightedHistogramData weightedHistogramData) {
+	void HistogramNormalisationUtil::normaliseWeightedHistogram(
+			WeightedHistogramData weightedHistogramData) {
 		HistogramScalingUtil::scaleWeightedHistogram(weightedHistogramData, UNIT_AREA);
 	}
 }

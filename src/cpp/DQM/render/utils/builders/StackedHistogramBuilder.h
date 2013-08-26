@@ -83,9 +83,9 @@ namespace render {
 			Double_t getTargetHistogramArea();
 
 			/// Adds a given histogram to the given histograms stack.
-			/// @param histogram the histogram to put on the histogram stack
+			/// @param histogram pointer to the histogram to put on the histogram stack
 			/// @param histogramStack the histogram stack that the histogram is to be added to
-			void addToHistogramStack(TH1 &histogram, THStack *histogramStack);
+			void addToHistogramStack(TH1 *histogram, THStack *histogramStack);
 
 			/// Adds all of the histograms given to the given histogram stack.
 			/// @param histograms the list of histograms to add to the stack
