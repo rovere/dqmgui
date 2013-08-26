@@ -14,14 +14,18 @@
 #include <TH1.h>
 #include <THStack.h>
 #include <TObject.h>
-#include <cassert>
-#include <vector>
+#include <iostream>
 #include <stdexcept>
+#include <vector>
+#include <cassert>
+#include <sstream>
 
 #include "../../controllers/ColourController.h"
+#include "../../models/display-data/HistogramData.h"
 #include "../../models/display-data/HistogramStackData.h"
 #include "../../models/display-data/WeightedHistogramData.h"
-#include "../../utils/HistogramScalingUtil.h"
+#include "../HistogramScalingUtil.h"
+
 
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
@@ -59,7 +63,11 @@ namespace render {
 	}
 
 	void StackedHistogramBuilder::setTargetHistogramArea(Double_t targetHistogramArea) {
-		assert(targetHistogramArea >= 0);
+		if(targetHistogramArea < 0) {
+			std::ostringstream message;
+			message << "Target histogram area (" << targetHistogramArea << ") cannot be less than 0";
+			throw std::invalid_argument(message.str());
+		}
 		this->targetHistogramArea = targetHistogramArea;
 	}
 
