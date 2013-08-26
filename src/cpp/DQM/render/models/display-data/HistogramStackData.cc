@@ -17,7 +17,14 @@
 
 namespace render {
 	HistogramStackData::HistogramStackData() {
-		;
+		// Nothing to do here
+	}
+
+	HistogramStackData::~HistogramStackData() {
+		// TODO: Check that because allWeightedHistogramsData is kept on the stack,
+		//		 when this class' destructor is called, all of the WeightedHistogramData
+		// 		 instances (stored through a reference) are deleted and memory is not
+		//		 leaked.
 	}
 
 	Double_t HistogramStackData::getHistogramsTotalWeight() {
