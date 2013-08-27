@@ -20,13 +20,11 @@ namespace render {
 			/// TODO: Comment.
 			/// @param dataHistogram a pointer to the histogram representing the distribution
 			///						 of the data. A pointer must be passed opposed to a reference.
-			/// @param monteCarloHistograms TODO
-			/// @param monteCarloHistogramWeights TODO
+			/// @param histogramsToStack TODO
 			/// @param drawOptions TODO
 			static void render(
 					TH1 *dataHistogram,
-					std::vector<TH1*> monteCarloHistograms,
-					std::vector<Double_t> monteCarloHistogramWeights,
+					std::vector<TH1*> histogramsToStack,
 					std::string drawOptions);
 
 			/// TODO: Comment.
@@ -34,6 +32,12 @@ namespace render {
 			/// @param errorMessage TODO
 			static void showErrorMessage(
 					std::string histogramTitleText, std::string errorMessageText);
-		};
-	}
+
+		private:
+			/// TODO: Comment
+			/// @param histogramsToStack TODO
+			static std::vector<Double_t> calculateWeightingsFromNumberOfEntries(
+						std::vector<TH1*> histogramsToStack);
+	};
+}
 #endif

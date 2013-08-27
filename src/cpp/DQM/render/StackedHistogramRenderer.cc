@@ -9,11 +9,13 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <cassert>
 #include "Rtypes.h"
 #include "THStack.h"
 #include "TObject.h"
 #include "TText.h"
 #include "TColor.h"
+#include <numeric>
 
 #include "TList.h"
 #include <sstream>
@@ -24,22 +26,26 @@
 namespace render {
 	void StackedHistogramRenderer::render(
 			TH1 *dataHistogram,
-			std::vector<TH1*> monteCarloHistograms,
-			std::vector<Double_t> monteCarloHistogramWeights,
+			std::vector<TH1*> histogramsToStack,
 			std::string drawOptions) {
 		if(dataHistogram == nullptr) {
 			throw std::invalid_argument("dataHistogram cannot be null");
 		}
-		if(monteCarloHistograms.size() != monteCarloHistogramWeights.size()) {
-			throw std::invalid_argument("A (single) weight must be associated to all histograms");
+		if(histogramsToStack.size() == 0) {
+			throw std::invalid_argument("At least one histogram must be given to stack");
 		}
+
+		// It's now been redecided that given histograms that are to be stacked will already
+		// be weighted...
+		std::vector<Double_t> histogramWeights =
+				StackedHistogramRenderer::calculateWeightingsFromNumberOfEntries(histogramsToStack);
 
 		Double_t histogramArea = dataHistogram->Integral();
 		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder(histogramArea);
 
-		for(Int_t i = 0; i < monteCarloHistograms.size(); i++) {
-			TH1 *histogram = monteCarloHistograms.at(i);
-			Double_t histogramWeight = monteCarloHistogramWeights.at(i);
+		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
+			TH1 *histogram = histogramsToStack.at(i);
+			Double_t histogramWeight = histogramWeights.at(i);
 
 			WeightedHistogramData *weightedHistogramData = new WeightedHistogramData(
 					histogram, histogramWeight);
@@ -87,5 +93,33 @@ namespace render {
 
 //		delete [] textElements;			// This cannot be deleted else the histogramStack is not drawn,
 										// indicating deletion it is this code's responsibility
+	}
+
+	std::vector<Double_t> StackedHistogramRenderer::calculateWeightingsFromNumberOfEntries(
+			std::vector<TH1*> histogramsToStack) {
+		std::vector<Double_t> stackedHistogramWeights;
+
+		Double_t totalHistogramArea = 0;
+		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
+			TH1 *histogram = histogramsToStack.at(i);
+			assert(histogram->Integral() >= 0);
+			totalHistogramArea += histogram->Integral();
+		}
+
+		if(totalHistogramArea == 0) {
+			// Edge case - none of the histograms to stack have any area - do 0/1 not 0/0
+			totalHistogramArea = 1;
+		}
+
+		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
+			TH1 *histogram = histogramsToStack.at(i);
+			Double_t histogramWeight = histogram->Integral() / totalHistogramArea;
+			assert(histogramWeight >= 0.0 && histogramWeight <= 1.0);
+			stackedHistogramWeights.push_back(histogramWeight);
+		}
+
+		assert(std::accumulate(stackedHistogramWeights.begin(), stackedHistogramWeights.end(), 0) == 1);
+		assert(histogramsToStack.size() == stackedHistogramWeights.size());
+		return(stackedHistogramWeights);
 	}
 }

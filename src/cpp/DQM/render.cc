@@ -1507,14 +1507,17 @@ private:
           gStyle->SetOptStat(i.showstats);
 
 
-        // FIXME: Temp for testing only
-        bool isTH1D = (dynamic_cast<TH1D *>(ob) == nullptr);
-        bool isTH1F = (dynamic_cast<TH1F *>(ob) == nullptr);
-        bool drawStackedHistogram = (isTH1D || isTH1F);
+        // Whether the non-data (i.e. not 'ob') histogram should be stacked
+		bool drawStackedHistogram = false;
+		// Data structure to store the histograms that are to be stacked (if required)
+		std::vector<TH1*> histogramsToStack;
 
-        // Data structure to store the histograms that are to be stacked
-        std::vector<TH1*> histogramsToStack;
-
+        if(i.reference == DQM_REF_STACKED) {
+//			bool isTH1D = (dynamic_cast<TH1D *>(ob) == nullptr);
+//			bool isTH1F = (dynamic_cast<TH1F *>(ob) == nullptr);
+//			drawStackedHistogram = (isTH1D || isTH1F);
+        	drawStackedHistogram = true;
+        }
 
         if(!drawStackedHistogram) {
 			// Draw the main object on top.
@@ -1583,8 +1586,9 @@ private:
 			// efficieny plot at production time: if this is the case,
 			// then avoid any kind of normalization that introduces
 			// fake effects.
-			if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-			  nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+			if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)) {
+				nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+			}
 			else {
 				if(!drawStackedHistogram) {
 					ref->Draw(samePlotOptions.c_str());
@@ -1634,30 +1638,22 @@ private:
 
         if(drawStackedHistogram) {
         	TH1 *dataHistogram = dynamic_cast<TH1 *>(ob);
+        	std::vector<Double_t> stackedHistogramWeights;
 
-//        	TH1 *dataHistogram = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
-//        	dataHistogram->SetBinContent(dataHistogram->FindBin(0, 0, 0), 100);
-
-        	std::vector<TH1*> temp1;
-        	std::vector<Double_t> temp2;
-
-        	TH1F *histogram1 = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
-//        	histogram1->SetBinContent(histogram1->FindBin(0, 0, 0), 1);
-        	histogram1->FillRandom("gaus", 50000);
-			temp1.push_back(histogram1);
-			temp2.push_back(0.75);
-
-			TH1F *histogram2 = new TH1F("h2", "Data Vs. Monte Carlo", 100, -5, 5);
-//			histogram2->SetBinContent(histogram2->FindBin(0, 0, 0), 1);
-			histogram2->FillRandom("gaus", 50000);
-			temp1.push_back(histogram2);
-			temp2.push_back(0.25);
+//        	TH1F *histogram1 = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
+//        	histogram1->FillRandom("gaus", 50000);
+//        	histogramsToStack.push_back(histogram1);
+//
+//			TH1F *histogram2 = new TH1F("h2", "Data Vs. Monte Carlo", 100, -5, 5);
+//			histogram2->FillRandom("gaus", 50000);
+//			histogramsToStack.push_back(histogram2);
 
 			std::string drawOptions = ri.drawOptions.c_str();
 
 			try {
 				logme() << "Going off to draw...." << '\n';
-				render::StackedHistogramRenderer::render(dataHistogram, temp1, temp2, drawOptions);
+				render::StackedHistogramRenderer::render(
+						dataHistogram, histogramsToStack, drawOptions);
 				logme() << "Coming back from drawing!" << '\n';
 			}
 			catch(std::invalid_argument &e) {
