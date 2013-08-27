@@ -157,6 +157,12 @@ parseReference(const char *&p, const char *name, size_t len, VisDQMReference &va
       p += 7;
       return true;
     }
+    else if (! strncmp(p, "stacked", 7))
+    {
+      value = DQM_REF_STACKED;
+      p += 7;
+      return true;
+    }
   }
   return false;
 }
@@ -807,6 +813,7 @@ protected:
 	// Validate the image request.
 	VisDQMImgInfo info;
 	const char *error = 0;
+
 	if (type == DQM_MSG_GET_IMAGE_DATA && ! parseImageSpec(info, spec, error))
 	{
 	  logme()

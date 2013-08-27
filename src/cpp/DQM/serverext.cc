@@ -1292,7 +1292,7 @@ struct IMGOPT { std::string label; Regexp &verify; };
 static Regexp RX_OPT_INT("^[0-9]+$");
 static Regexp RX_OPT_FLOAT("^([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)?$");
 static Regexp RX_OPT_DRAWOPT("^[A-Za-z ]*$");
-static Regexp RX_OPT_REFTYPE("^(|object|reference|overlay)$");
+static Regexp RX_OPT_REFTYPE("^(|object|reference|overlay|stacked)$");
 static Regexp RX_OPT_AXISTYPE("^(def|lin|log)$");
 static Regexp RX_OPT_TREND_TYPE("^(num-(entries|bins|bytes)|value|"
 				"[xyz]-(min|max|bins|mean(-rms|-min-max)?))$");
