@@ -10,8 +10,8 @@
 
 #include <Rtypes.h>
 #include <cassert>
-#include <list>
 #include <stdexcept>
+#include <vector>
 
 #include "WeightedHistogramData.h"
 

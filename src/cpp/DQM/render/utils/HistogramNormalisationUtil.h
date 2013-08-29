@@ -10,9 +10,8 @@
 #include <Rtypes.h>
 #include <list>
 
-namespace render { class WeightedHistogramData; }
-
 class TH1;
+namespace render { class WeightedHistogramData; }
 
 namespace render {
 	/// Utility class for normalising histograms.

@@ -11,13 +11,11 @@
 #include <Rtypes.h>
 #include <TH1.h>
 #include <cassert>
-#include <cmath>
-#include <cstdlib>
 #include <list>
+#include <cmath>
 
 #include "../models/display-data/HistogramData.h"
 #include "../models/display-data/WeightedHistogramData.h"
-
 
 namespace render {
 	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t targetArea) {
@@ -61,7 +59,7 @@ namespace render {
 			it++;
 		}
 
-		assert(std::abs(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001)));
+		assert(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001));
 	}
 
 	void HistogramScalingUtil::scaleWeightedHistogram(
