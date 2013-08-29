@@ -118,8 +118,8 @@ namespace render {
 			stackedHistogramWeights.push_back(histogramWeight);
 		}
 
-		assert(std::accumulate(stackedHistogramWeights.begin(), stackedHistogramWeights.end(), 0) == 1);
 		assert(histogramsToStack.size() == stackedHistogramWeights.size());
+//		assert(std::accumulate(stackedHistogramWeights.begin(), stackedHistogramWeights.end(), 0) == 1);
 		return(stackedHistogramWeights);
 	}
 }
