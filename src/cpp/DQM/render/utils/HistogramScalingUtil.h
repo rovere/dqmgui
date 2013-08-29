@@ -4,16 +4,14 @@
  *  Created on: 1 Aug 2013
  *      Author: Colin - CERN
  */
-
 #ifndef HISTOGRAMSCALINGUTIL_H_
 #define HISTOGRAMSCALINGUTIL_H_
 
 #include <Rtypes.h>
 #include <list>
 
-namespace render { class WeightedHistogramData; }
-
 class TH1;
+namespace render { class WeightedHistogramData; }
 
 namespace render {
 	/// Utility class for scaling histograms.

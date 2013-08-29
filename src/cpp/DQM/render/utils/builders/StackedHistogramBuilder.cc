@@ -14,18 +14,16 @@
 #include <TH1.h>
 #include <THStack.h>
 #include <TObject.h>
-#include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 #include <cassert>
-#include <sstream>
 
 #include "../../controllers/ColourController.h"
 #include "../../models/display-data/HistogramData.h"
 #include "../../models/display-data/HistogramStackData.h"
 #include "../../models/display-data/WeightedHistogramData.h"
 #include "../HistogramScalingUtil.h"
-
 
 namespace render {
 	StackedHistogramBuilder::StackedHistogramBuilder(Double_t targetHistogramArea) {
