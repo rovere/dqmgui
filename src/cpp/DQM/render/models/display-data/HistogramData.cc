@@ -7,9 +7,8 @@
 #define DNDEBUG
 
 #include "HistogramData.h"
-#include "Rtypes.h"
 
-class TH1;
+#include <TH1.h>
 
 namespace render {
 	HistogramData::HistogramData()

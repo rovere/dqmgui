@@ -9,11 +9,12 @@
 #include "HistogramNormalisationUtil.h"
 
 #include <Rtypes.h>
-#include <TH1.h>
 #include <list>
 
 #include "../models/display-data/WeightedHistogramData.h"
 #include "HistogramScalingUtil.h"
+
+class TH1;
 
 namespace render {
 	const Double_t HistogramNormalisationUtil::UNIT_AREA = 1.0;
