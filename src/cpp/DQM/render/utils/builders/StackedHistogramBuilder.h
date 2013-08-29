@@ -8,7 +8,6 @@
 #define STACKEDHISTOGRAMBUILDER_H_
 
 #include <Rtypes.h>
-#include <THStack.h>
 #include <vector>
 
 #include "../../controllers/ColourController.h"

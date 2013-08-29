@@ -8,7 +8,6 @@
 #define HISTOGRAMSTACKDATA_H_
 
 #include <Rtypes.h>
-#include <list>
 #include <vector>
 
 #include "WeightedHistogramData.h"
