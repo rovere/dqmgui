@@ -12,6 +12,7 @@
 #include <TH1.h>
 #include <cassert>
 #include <list>
+#include <cmath>
 
 #include "../models/display-data/HistogramData.h"
 #include "../models/display-data/WeightedHistogramData.h"
@@ -58,7 +59,7 @@ namespace render {
 			it++;
 		}
 
-		assert(std::abs(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001)));
+		assert(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001));
 	}
 
 	void HistogramScalingUtil::scaleWeightedHistogram(

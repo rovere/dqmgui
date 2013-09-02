@@ -10,8 +10,6 @@
 
 #include <TH1.h>
 
-class TH1;
-
 namespace render {
 	HistogramData::HistogramData()
 			: histogram(nullptr) {
