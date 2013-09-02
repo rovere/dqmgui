@@ -18,12 +18,12 @@
 #include "../models/display-data/WeightedHistogramData.h"
 
 namespace render {
-	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t targetArea) {
+	void HistogramScalingUtil::scaleHistogramToArea(TH1 *histogram, Double_t targetArea) {
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {
 			Double_t inverseIntegral = targetArea / integral;
-			histogram->Scale(inverseIntegral);
+			HistogramScalingUtil::scaleHistogram(histogram, inverseIntegral);
 
 			// Note: We cannot assume that integrating the histogram will give exactly the
 			//		 <code>targetArea</code> as we don't know the internals of <code>
@@ -34,6 +34,19 @@ namespace render {
 		else {
 			// Histogram does not contain any samples - no scaling required
 		}
+	}
+
+	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t scalingFactor) {
+		#ifdef DNDEBUG
+			Double_t originalArea = histogram->Integral();
+		#endif
+
+		histogram->Scale(scalingFactor);
+
+		#ifdef DNDEBUG
+			Double_t postOperationArea = histogram->Integral();
+			assert(postOperationArea == (originalArea * 0.0001));
+		#endif
 	}
 
 	void HistogramScalingUtil::scaleWeightedHistograms(
@@ -70,6 +83,6 @@ namespace render {
 
 		Double_t targetHistogramArea = weight * combinedTargetArea;
 
-		HistogramScalingUtil::scaleHistogram(histogram, targetHistogramArea);
+		HistogramScalingUtil::scaleHistogramToArea(histogram, targetHistogramArea);
 	}
 }
