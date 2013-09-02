@@ -1,35 +1,28 @@
 /*
- * StackedHistogramBuilder.h
+ * ScaledStackedHistogramBuilder.h
  *
  *  Created on: 2 Sep 2013
  *      Author: Colin - CERN
  */
-#ifndef STACKEDHISTOGRAMBUILDER_H_
-#define STACKEDHISTOGRAMBUILDER_H_
+#ifndef SCALEDSTACKEDHISTOGRAMBUILDER_H_
+#define SCALEDSTACKEDHISTOGRAMBUILDER_H_
 
 #include <vector>
 
-#include "../../controllers/ColourController.h"
-#include "Builder.h"
+#include "AbstractStackedHistogramBuilder.h"
 
 class TH1;
 class THStack;
 namespace render { class HistogramData; }
 
 namespace render {
-	/// TODO: Document
-	template <class T> class StackedHistogramBuilder : public Builder<THStack*> {
-		private:
-			/// The object responsible for controlling the colours this builder uses
-			/// to create a stacked histogram.
-			ColourController colourController;
-
+	class ScaledStackedHistogramBuilder : StackedHistogramBuilder {
 		public:
-			/// @see StackedHistogramBuilder::build()
+			/// @see AbstractStackedHistogramBuilder::build()
 			THStack* build();
 
-			/// TODO: Comment
-			HistogramData addHistogramData(HistogramData histogramData);
+			/// @see AbstractStackedHistogramBuilder::
+			virtual HistogramData addHistogramData(HistogramData histogramData) = 0;
 
 		private:
 			/// Adds a given histogram to the given histograms stack.

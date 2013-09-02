@@ -11,7 +11,7 @@
 #include <Rtypes.h>
 #include <list>
 
-#include "../models/display-data/WeightedHistogramData.h"
+#include "../models/WeightedHistogramData.h"
 #include "HistogramScalingUtil.h"
 
 class TH1;
