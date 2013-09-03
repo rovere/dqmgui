@@ -18,7 +18,7 @@ namespace render {
 	template <class T> class IHistogramStackData {
 		public:
 			/// Destructor.
-			virtual ~IHistogramStackData() = 0;
+			virtual ~IHistogramStackData() {};
 
 			/// Gets the data for all the histograms contained in this histogram stack data.
 			/// @return the data for all histograms that made up this stack

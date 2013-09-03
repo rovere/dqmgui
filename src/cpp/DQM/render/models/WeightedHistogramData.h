@@ -25,6 +25,9 @@ namespace render {
 			/// @param weight the histogram's weighting in the stack
 			WeightedHistogramData(TH1 *histogram, Double_t weight);
 
+			/// Destructor.
+			~WeightedHistogramData();
+
 			/// Gets the histogram's weight, considering the entire stack
 			/// of all histograms.
 			/// @return the histogram's weighting in the stack

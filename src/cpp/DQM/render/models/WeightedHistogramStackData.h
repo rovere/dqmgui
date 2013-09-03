@@ -22,6 +22,7 @@ namespace render {
 			HistogramStackData histogramStackData;
 
 		public:
+			/// Default constructor.
 			WeightedHistogramStackData();
 
 			/// @see AbstractHistogramStackData::getAllHistogramData()

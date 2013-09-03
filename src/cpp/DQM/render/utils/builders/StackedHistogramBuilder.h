@@ -44,6 +44,10 @@ namespace render {
 				// Nothing to do here
 			}
 
+			~StackedHistogramBuilder<T>() {
+				delete stackData;
+			}
+
 			/// TODO: Comment
 			THStack* build() {
 				THStack *histogramStack = new THStack();
