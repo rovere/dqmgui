@@ -13,7 +13,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "IHistogramStackData.h"
+#include "AbstractHistogramStackData.h"
 #include "HistogramData.h"
 #include "HistogramStackData.h"
 #include "WeightedHistogramData.h"
@@ -23,27 +23,6 @@ class TH1;
 namespace render {
 	WeightedHistogramStackData::WeightedHistogramStackData() {
 		// Nothing to do here
-	}
-
-	std::vector<WeightedHistogramData> WeightedHistogramStackData::getAllHistogramData() {
-		std::vector<HistogramData> histogramData = this->histogramStackData.getAllHistogramData();
-		std::vector<WeightedHistogramData> weightedHistogramData;
-
-		// This is the cost of making this class using composition with HistogramData
-		std::vector<HistogramData>::iterator it = histogramData.begin();
-		while(it != histogramData.end()) {
-			HistogramData histogramData = *it;
-			// TODO: Check that this cast is correct!
-//			weightedHistogramData.push_back(histogramData);		// FIXME
-			it++;
-		}
-
-		assert(weightedHistogramData.size() == histogramData.size());
-		return(weightedHistogramData);
-	}
-
-	std::vector<TH1*> WeightedHistogramStackData::getAllHistograms() {
-		return(this->histogramStackData.getAllHistograms());
 	}
 
 	Double_t WeightedHistogramStackData::getHistogramsTotalWeight() {
@@ -63,20 +42,20 @@ namespace render {
 		return(totalWeight);
 	}
 
-	void WeightedHistogramStackData::add(WeightedHistogramData histogramData) {
-		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
-		Double_t postTotalWeight = currentTotalWeight + histogramData.getWeight();
-
-		if(postTotalWeight > 1.0) {
-			throw std::invalid_argument(
-					"Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
-		}
-
-		this->histogramStackData.add(histogramData);
-		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
-		assert(this->getHistogramsTotalWeight() <= 1.0);
-		assert(this->getHistogramsTotalWeight() >= 0.0);
-	}
+//	void WeightedHistogramStackData::add(WeightedHistogramData histogramData) {
+//		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
+//		Double_t postTotalWeight = currentTotalWeight + histogramData.getWeight();
+//
+//		if(postTotalWeight > 1.0) {
+//			throw std::invalid_argument(
+//					"Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
+//		}
+//
+////		this->super!add(histogramData);
+//		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
+//		assert(this->getHistogramsTotalWeight() <= 1.0);
+//		assert(this->getHistogramsTotalWeight() >= 0.0);
+//	}
 
 //	void WeightedHistogramStackData::add(WeightedHistogramStackData histogramStackData) {
 //		#ifdef DNDEBUG

@@ -9,7 +9,7 @@
 
 #include <cassert>
 
-#include "../../models/IHistogramStackData.h"
+#include "../../models/AbstractHistogramStackData.h"
 
 #define DNDEBUG
 
@@ -35,11 +35,11 @@ namespace render {
 	template <class T> class StackedHistogramBuilder : public Builder<THStack*> {
 		private:
 			/// TODO: Comment
-			IHistogramStackData<T> *stackData;
+		AbstractHistogramStackData<T> *stackData;
 
 		public:
 			/// TODO: Comment
-			StackedHistogramBuilder<T>(IHistogramStackData<T> *stackData)
+			StackedHistogramBuilder<T>(AbstractHistogramStackData<T> *stackData)
 					: stackData(stackData) {
 				// Nothing to do here
 			}

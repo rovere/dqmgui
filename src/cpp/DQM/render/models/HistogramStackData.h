@@ -10,28 +10,15 @@
 #include <vector>
 
 #include "HistogramData.h"
-#include "IHistogramStackData.h"
+#include "AbstractHistogramStackData.h"
 
 class TH1;
 
 namespace render {
-	class HistogramStackData : public IHistogramStackData<HistogramData> {
-		private:
-			/// List of histogram data.
-			std::vector<HistogramData> allHistogramData;
-
+	class HistogramStackData : public AbstractHistogramStackData<HistogramData> {
 		public:
 			/// Default constructor.
 			HistogramStackData();
-
-			/// @see AbstractHistogramStackData::getAllHistogramData()
-			std::vector<HistogramData> getAllHistogramData();
-
-			/// @see AbstractHistogramStackData::getAllHistograms()
-			std::vector<TH1*> getAllHistograms();
-
-			/// @see AbstractHistogramStackData::add(HistogramData)
-			void add(HistogramData histogramData);
 	};
 }
 
