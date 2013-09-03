@@ -14,8 +14,8 @@
 #include <list>
 #include <stdlib.h>
 
-#include "../models/display-data/HistogramData.h"
-#include "../models/display-data/WeightedHistogramData.h"
+#include "../models/HistogramData.h"
+#include "../models/WeightedHistogramData.h"
 
 namespace render {
 	void HistogramScalingUtil::scaleHistogramToArea(TH1 *histogram, Double_t targetArea) {
@@ -72,7 +72,9 @@ namespace render {
 			it++;
 		}
 
+		#ifdef DNDEBUG
 		assert(std::abs(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001)));
+		#endif
 	}
 
 	void HistogramScalingUtil::scaleWeightedHistogram(

@@ -10,13 +10,13 @@
 
 #include <Rtypes.h>
 
-#include "AbstractHistogramStackData.h"
+#include "IHistogramStackData.h"
 #include "HistogramStackData.h"
 #include "WeightedHistogramData.h"
 
 namespace render {
 	/// TODO: Document
-	class WeightedHistogramStackData : public AbstractHistogramStackData<WeightedHistogramData> {
+	class WeightedHistogramStackData : public IHistogramStackData<WeightedHistogramData> {
 		private:
 			// Making this class using composition with a HistogramStackData instance.
 			HistogramStackData histogramStackData;
@@ -40,6 +40,6 @@ namespace render {
 
 			/// TODO: Get documentation from history
 //			void add(WeightedHistogramStackData histogramStackData);
-	}
+	};
 }
 #endif

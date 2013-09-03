@@ -7,33 +7,28 @@
 #ifndef SCALEDSTACKEDHISTOGRAMBUILDER_H_
 #define SCALEDSTACKEDHISTOGRAMBUILDER_H_
 
-#include <vector>
+#include "StackedHistogramBuilder.h"
+#include "../../models/HistogramData.h"
+#include "../../models/HistogramStackData.h"
 
-#include "AbstractStackedHistogramBuilder.h"
-
-class TH1;
 class THStack;
-namespace render { class HistogramData; }
 
 namespace render {
-	class ScaledStackedHistogramBuilder : StackedHistogramBuilder {
-		public:
-			/// @see AbstractStackedHistogramBuilder::build()
-			THStack* build();
-
-			/// @see AbstractStackedHistogramBuilder::
-			virtual HistogramData addHistogramData(HistogramData histogramData) = 0;
-
+	/// TODO: Comment
+	class ScaledStackedHistogramBuilder : public StackedHistogramBuilder<HistogramData> {
 		private:
-			/// Adds a given histogram to the given histograms stack.
-			/// @param histogram pointer to the histogram to put on the histogram stack
-			/// @param histogramStack the histogram stack that the histogram is to be added to
-			static void addToTHStack(TH1 *histogram, THStack *histogramStack);
+			/// TODO: Comment
+			HistogramStackData stackData;
 
-			/// Adds all of the histograms given to the given histogram stack.
-			/// @param histograms the list of histograms to add to the stack
-			/// @param histogramStack the histogram stack that the histogram is to be added to
-			static void addAllToTHStack(std::vector<TH1*> histograms, THStack *histogramStack);
+		public:
+			/// Default constructor.
+			ScaledStackedHistogramBuilder();
+
+			/// @see StackedHistogramBuilder::build()
+//			THStack* build();
+
+			/// @see StackedHistogramBuilder::addHistogramData(HistogramData)
+//			void addHistogramData(HistogramData histogramData);
 	};
 }
 #endif

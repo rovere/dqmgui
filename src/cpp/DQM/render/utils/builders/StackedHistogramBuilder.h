@@ -1,46 +1,106 @@
 /*
  * StackedHistogramBuilder.h
  *
- *  Created on: 2 Sep 2013
+ *  Created on: 3 Sep 2013
  *      Author: Colin - CERN
  */
 #ifndef STACKEDHISTOGRAMBUILDER_H_
 #define STACKEDHISTOGRAMBUILDER_H_
 
-#include <vector>
+#include <cassert>
 
-#include "../../controllers/ColourController.h"
+#include "../../models/IHistogramStackData.h"
+
+#define DNDEBUG
+
+#include <Rtypes.h>
+#include <TCollection.h>
+#include <TH1.h>
+#include <THStack.h>
+#include <TObjArray.h>
+#include <TObject.h>
+#include <cassert>
+#include <vector>
+#include <cassert>
+
+#include "../../models/HistogramData.h"
+#include "../../models/HistogramStackData.h"
+
 #include "Builder.h"
 
-class TH1;
 class THStack;
-namespace render { class HistogramData; }
 
 namespace render {
-	/// TODO: Document
+	/// TODO: Comment
 	template <class T> class StackedHistogramBuilder : public Builder<THStack*> {
 		private:
-			/// The object responsible for controlling the colours this builder uses
-			/// to create a stacked histogram.
-			ColourController colourController;
+			/// TODO: Comment
+			IHistogramStackData<T> *stackData;
 
 		public:
-			/// @see StackedHistogramBuilder::build()
-			THStack* build();
+			/// TODO: Comment
+			StackedHistogramBuilder<T>(IHistogramStackData<T> *stackData)
+					: stackData(stackData) {
+				// Nothing to do here
+			}
 
 			/// TODO: Comment
-			HistogramData addHistogramData(HistogramData histogramData);
+			THStack* build() {
+				THStack *histogramStack = new THStack();
+				std::vector<TH1*> histograms = this->stackData->getAllHistograms();
+				StackedHistogramBuilder<T>::addAllToTHStack(histograms, histogramStack);
+				return(histogramStack);
+			}
 
-		private:
+			/// TODO: Comment
+			void addHistogramData(T histogramData) {
+				this->stackData.add(histogramData);
+			}
+
+		protected:
 			/// Adds a given histogram to the given histograms stack.
 			/// @param histogram pointer to the histogram to put on the histogram stack
 			/// @param histogramStack the histogram stack that the histogram is to be added to
-			static void addToTHStack(TH1 *histogram, THStack *histogramStack);
+			static void addToTHStack(TH1 *histogram, THStack *histogramStack) {
+				#ifdef DNDEBUG
+				TObjArray *histogramsInStack = histogramStack->GetStack();
+				Int_t stackSize = (histogramsInStack == nullptr)
+										? 0
+										: histogramsInStack->GetSize();
+				#endif
+
+				histogramStack->Add(histogram);
+
+				#ifdef DNDEBUG
+				Int_t modifiedStackSize = histogramStack->GetStack()->GetSize();
+				assert(modifiedStackSize == (stackSize + 1));
+				#endif
+			}
 
 			/// Adds all of the histograms given to the given histogram stack.
 			/// @param histograms the list of histograms to add to the stack
 			/// @param histogramStack the histogram stack that the histogram is to be added to
-			static void addAllToTHStack(std::vector<TH1*> histograms, THStack *histogramStack);
+			static void addAllToTHStack(std::vector<TH1*> histograms, THStack *histogramStack) {
+				#ifdef DNDEBUG
+				TObjArray *histogramsInStack = histogramStack->GetStack();
+				Int_t stackSize = (histogramsInStack == nullptr)
+										? 0
+										: histogramsInStack->GetSize();
+				#endif
+
+				std::vector<TH1*>::iterator it = histograms.begin();
+
+				while(it != histograms.end()) {
+					TH1 *histogram = *it;
+					StackedHistogramBuilder<T>::addToTHStack(histogram, histogramStack);
+					it++;
+				}
+
+				#ifdef DNDEBUG
+				Int_t modifiedStackSize = histogramStack->GetStack()->GetSize();
+				assert(modifiedStackSize == (stackSize + histograms.size()));
+				#endif
+			}
 	};
 }
 #endif

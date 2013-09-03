@@ -13,7 +13,7 @@ namespace render {
 	template <class T> class Builder {
 		public:
 			/// Destructor.
-			virtual ~Builder() {}
+			virtual ~Builder() = 0;
 
 			/// Builds an object of type <code>T</code>, considering
 			/// all settings that may have been set beforehand.

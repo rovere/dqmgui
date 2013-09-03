@@ -9,11 +9,13 @@
 
 #include <vector>
 
-#include "AbstractHistogramStackData.h"
 #include "HistogramData.h"
+#include "IHistogramStackData.h"
+
+class TH1;
 
 namespace render {
-	class HistogramStackData : public AbstractHistogramStackData<HistogramData> {
+	class HistogramStackData : public IHistogramStackData<HistogramData> {
 		private:
 			/// List of histogram data.
 			std::vector<HistogramData> allHistogramData;

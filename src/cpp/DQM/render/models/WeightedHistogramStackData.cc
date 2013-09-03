@@ -13,7 +13,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "AbstractHistogramStackData.h"
+#include "IHistogramStackData.h"
 #include "HistogramData.h"
 #include "HistogramStackData.h"
 #include "WeightedHistogramData.h"
@@ -30,13 +30,15 @@ namespace render {
 		std::vector<WeightedHistogramData> weightedHistogramData;
 
 		// This is the cost of making this class using composition with HistogramData
-		std::vector<WeightedHistogramData>::iterator it = histogramData.begin();
+		std::vector<HistogramData>::iterator it = histogramData.begin();
 		while(it != histogramData.end()) {
 			HistogramData histogramData = *it;
-			weightedHistogramData.push_back((WeightedHistogramData) histogramData);
+			// TODO: Check that this cast is correct!
+//			weightedHistogramData.push_back(histogramData);		// FIXME
 			it++;
 		}
 
+		assert(weightedHistogramData.size() == histogramData.size());
 		return(weightedHistogramData);
 	}
 

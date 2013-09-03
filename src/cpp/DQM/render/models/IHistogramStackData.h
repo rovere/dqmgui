@@ -1,11 +1,11 @@
 /*
- * AbstractHistogramStackData.h
+* IHistogramStackData.h
  *
  *  Created on: 23 Jul 2013
  *      Author: Colin - CERN
  */
-#ifndef ABSTRACTHISTOGRAMSTACKDATA_H_
-#define ABSTRACTHISTOGRAMSTACKDATA_H_
+#ifndef IHISTOGRAMSTACKDATA_H_
+#define IHISTOGRAMSTACKDATA_H_
 
 #include <vector>
 
@@ -15,8 +15,11 @@ class TH1;
 
 namespace render {
 	/// Data container for a histogram stack.
-	template <class T> class AbstractHistogramStackData {
+	template <class T> class IHistogramStackData {
 		public:
+			/// Destructor.
+			virtual ~IHistogramStackData() = 0;
+
 			/// Gets the data for all the histograms contained in this histogram stack data.
 			/// @return the data for all histograms that made up this stack
 			virtual std::vector<T> getAllHistogramData() = 0;
@@ -38,6 +41,6 @@ namespace render {
 			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
 			/// @param histogramStackData the stack's data to add to this container
 //			void add(AbstractHistogramStackData<T> histogramStackData);
-		};
-	}
+	};
+}
 #endif
