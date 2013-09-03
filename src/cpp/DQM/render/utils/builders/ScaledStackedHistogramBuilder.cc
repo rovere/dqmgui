@@ -12,7 +12,9 @@
 namespace render { class HistogramData; }
 
 namespace render {
-//	ScaledStackedHistogramBuilder::ScaledStackedHistogramBuilder() {
-//
-//	}
+	ScaledStackedHistogramBuilder::ScaledStackedHistogramBuilder(Double_t scalingFactor)
+			: StackedHistogramBuilder<HistogramData>(&stackData),
+			  scalingFactor(scalingFactor) {
+		// Nothing to do here
+	}
 }

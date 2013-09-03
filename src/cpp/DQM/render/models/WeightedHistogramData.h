@@ -14,7 +14,7 @@
 class TH1;
 
 namespace render {
-	class WeightedHistogramData : public render::HistogramData {
+	class WeightedHistogramData : public HistogramData {
 		private:
 			/// The weight of this histogram in a histogram stack.
 			Double_t weight;

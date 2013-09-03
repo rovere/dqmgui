@@ -58,7 +58,7 @@ namespace render {
 
 			/// TODO: Comment
 			void addHistogramData(T histogramData) {
-				this->stackData.add(histogramData);
+				this->stackData->add(histogramData);
 			}
 
 		protected:

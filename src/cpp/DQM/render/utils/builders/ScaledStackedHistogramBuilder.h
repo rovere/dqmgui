@@ -20,9 +20,12 @@ namespace render {
 			/// TODO: Comment
 			HistogramStackData stackData;
 
+			/// TODO: Comment
+			Double_t scalingFactor;
+
 		public:
 			/// Default constructor.
-			ScaledStackedHistogramBuilder();
+			ScaledStackedHistogramBuilder(Double_t scalingFactor);
 
 			/// @see StackedHistogramBuilder::build()
 //			THStack* build();

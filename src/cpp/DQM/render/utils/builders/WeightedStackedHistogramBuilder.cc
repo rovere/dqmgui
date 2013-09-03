@@ -59,6 +59,7 @@ namespace render {
 	}
 
 	Double_t WeightedStackedHistogramBuilder::getTargetHistogramArea() {
+		assert(this->targetHistogramArea >= 0);
 		return(this->targetHistogramArea);
 	}
 }
