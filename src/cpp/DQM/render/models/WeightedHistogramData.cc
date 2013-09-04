@@ -21,6 +21,10 @@ namespace render {
 		this->setWeight(weight);
 	}
 
+	WeightedHistogramData::~WeightedHistogramData() {
+		// Nothing to do here
+	}
+
 	Double_t WeightedHistogramData::getWeight() {
 		return(this->weight);
 	}
