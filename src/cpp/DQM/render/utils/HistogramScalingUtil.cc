@@ -12,30 +12,47 @@
 #include <TH1.h>
 #include <cassert>
 #include <list>
-#include <cmath>
+#include <stdlib.h>
 
-#include "../models/display-data/HistogramData.h"
-#include "../models/display-data/WeightedHistogramData.h"
+#include "../models/HistogramData.h"
+#include "../models/WeightedHistogramData.h"
 
 namespace render {
-	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t targetArea) {
+	const Double_t HistogramScalingUtil::REQUIRED_ACCURACY = 0.0001;
+
+	void HistogramScalingUtil::scaleHistogramToArea(TH1 *histogram, Double_t targetArea) {
 		Double_t integral = histogram->Integral();
 
 		if(integral > 0) {
 			Double_t inverseIntegral = targetArea / integral;
-			histogram->Scale(inverseIntegral);
+			HistogramScalingUtil::scaleHistogram(histogram, inverseIntegral);
 
 			// Note: We cannot assume that integrating the histogram will give exactly the
 			//		 <code>targetArea</code> as we don't know the internals of <code>
 			//		 TH1::Scale(Double_t)</code> and <code>TH1::Integral()</code>.
 			//		 Therefore we'll just assume a tolerance of 0.01% is acceptable.
-			assert(std::abs(histogram->Integral() - targetArea) <= (targetArea * 0.0001));
+			assert(std::abs(histogram->Integral() - targetArea) <= (targetArea * REQUIRED_ACCURACY));
 		}
 		else {
 			// Histogram does not contain any samples - no scaling required
 		}
 	}
 
+	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t scalingFactor) {
+		#ifdef DNDEBUG
+		Double_t originalArea = histogram->Integral();
+		#endif
+
+		histogram->Scale(scalingFactor);
+
+		#ifdef DNDEBUG
+		Double_t postOperationArea = histogram->Integral();
+		Double_t targetArea = originalArea * scalingFactor;
+		assert(std::abs(postOperationArea - targetArea) <= (targetArea * REQUIRED_ACCURACY));
+		#endif
+	}
+
+	// XXX: Is this method still required?
 	void HistogramScalingUtil::scaleWeightedHistograms(
 			std::list<WeightedHistogramData> weightedHistogramData,
 			Double_t targetCombinedArea) {
@@ -59,7 +76,9 @@ namespace render {
 			it++;
 		}
 
-		assert(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001));
+		#ifdef DNDEBUG
+		assert(std::abs(std::abs(combinedArea - targetCombinedArea) <= (targetCombinedArea * REQUIRED_ACCURACY)));
+		#endif
 	}
 
 	void HistogramScalingUtil::scaleWeightedHistogram(
@@ -70,6 +89,6 @@ namespace render {
 
 		Double_t targetHistogramArea = weight * combinedTargetArea;
 
-		HistogramScalingUtil::scaleHistogram(histogram, targetHistogramArea);
+		HistogramScalingUtil::scaleHistogramToArea(histogram, targetHistogramArea);
 	}
 }
