@@ -157,7 +157,8 @@ GUI.Plugin.DQMPlay = new function()
         _setclass(curnode, curnode.className + " playhead");
 
         layout("div", _canvas, _canvas.firstChild, _data.items[curpos],
-	       "XL", _data.reference, _data.strip, null, null, "", "div0");
+	       "XL", _data.reference, _data.strip, null,
+               _data.showstats, _data.showerrbars, null, "", "div0");
         YAHOO.util.Connect.asyncRequest("GET", _url() + "/step?pos=" + _data.pos, {});
       }
     }
@@ -174,7 +175,8 @@ GUI.Plugin.DQMPlay = new function()
       item = layout("div", _canvas, _canvas.firstChild,
 		    _data.items[_data.pos], "XL",
 		    _data.reference, _data.strip,
-		    null, null, "", "div0")
+		    null, _data.showstats, _data.showerrbars,
+                    null, "", "div0")
 	     .nextSibling;
     else
       item = _canvas.firstChild;
@@ -190,7 +192,8 @@ GUI.Plugin.DQMPlay = new function()
     for (var n = 0, item = _playarea.firstChild; n < _data.items.length;
 	 ++n, item = item.nextSibling)
       item = layout("div", _playarea, item, _data.items[n], "XS",
-		    _data.reference, _data.strip, null, null,
+		    _data.reference, _data.strip, null,
+                    _data.showstats, _data.showerrbars, null,
 		    n == _data.pos ? " playhead" : "", "pdiv" + n);
 
     // Remove whatever is left of old contents.

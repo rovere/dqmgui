@@ -21,6 +21,10 @@ function setsize(canvas, img, size, row, rows, col, cols)
   var wh = (window.innerHeight || document.documentElement.clientHeight);
   var maxheight = wh - YAHOO.util.Dom.getXY(canvas)[1] - 50;
   var maxwidth = ww - 25;
+  var play = null;
+  if (play = Ext.get('canvas-play')) {
+    maxwidth -= play.dom.clientWidth;
+  }
   if (maxwidth/1.33 > maxheight)
     maxwidth = Math.floor(1.33 * maxheight);
   else

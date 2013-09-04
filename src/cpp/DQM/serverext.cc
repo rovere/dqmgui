@@ -4787,8 +4787,8 @@ protected:
 	       const std::string &submenu,
 	       const VisDQMSample &sample,
 	       const std::string &filter,
-	       const std::string &showstats,
-	       const std::string &showerrbars,
+               const std::string &showstats,
+               const std::string &showerrbars,
 	       const std::string &reference,
 	       const std::string &strip,
 	       const std::string &rxstr,
@@ -4821,8 +4821,8 @@ protected:
 	.arg(submenu)
 	.arg(sampleToJSON(sample))
 	.arg(filter)
-	.arg(showstats)
-	.arg(showerrbars)
+        .arg(showstats)
+        .arg(showerrbars)
 	.arg(reference)
 	.arg(strip)
 	.arg(StringFormat("{'pattern':%1, 'valid':%2, 'nmatches':%3, 'error':%4}")
@@ -6253,7 +6253,8 @@ public:
 
         return makeResponse(StringFormat("{'kind':'DQMPlay', 'items':%1,"
 					 " 'interval':%2, 'pos':%3, 'max':%4,"
-					 " 'reference':%5, 'strip':%6}")
+					 " 'reference':%5, 'strip':%6, 'showstats': %7,"
+                                         " 'showerrbars': %8}")
 			    .arg(shownToJSON(contents, status, drawopts,
 					     StringAtom(&stree, root),
 					     sample, shown))
@@ -6261,7 +6262,9 @@ public:
 			    .arg(playpos)
 			    .arg(shown.size())
 			    .arg(reference)
-			    .arg(strip),
+			    .arg(strip)
+                            .arg(showstats)
+                            .arg(showerrbars),
 			    300, current, services, workspace, workspaces,
 			    submenu, sample, filter, showstats, showerrbars,
                             reference, strip, rxstr, rxerr, contents.size(),
