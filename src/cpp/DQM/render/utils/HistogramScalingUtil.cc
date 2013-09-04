@@ -18,6 +18,8 @@
 #include "../models/WeightedHistogramData.h"
 
 namespace render {
+	const Double_t HistogramScalingUtil::REQUIRED_ACCURACY = 0.0001;
+
 	void HistogramScalingUtil::scaleHistogramToArea(TH1 *histogram, Double_t targetArea) {
 		Double_t integral = histogram->Integral();
 
@@ -29,7 +31,7 @@ namespace render {
 			//		 <code>targetArea</code> as we don't know the internals of <code>
 			//		 TH1::Scale(Double_t)</code> and <code>TH1::Integral()</code>.
 			//		 Therefore we'll just assume a tolerance of 0.01% is acceptable.
-			assert(std::abs(histogram->Integral() - targetArea) <= (targetArea * 0.0001));
+			assert(std::abs(histogram->Integral() - targetArea) <= (targetArea * REQUIRED_ACCURACY));
 		}
 		else {
 			// Histogram does not contain any samples - no scaling required
@@ -38,17 +40,19 @@ namespace render {
 
 	void HistogramScalingUtil::scaleHistogram(TH1 *histogram, Double_t scalingFactor) {
 		#ifdef DNDEBUG
-			Double_t originalArea = histogram->Integral();
+		Double_t originalArea = histogram->Integral();
 		#endif
 
 		histogram->Scale(scalingFactor);
 
 		#ifdef DNDEBUG
-			Double_t postOperationArea = histogram->Integral();
-			assert(postOperationArea == (originalArea * 0.0001));
+		Double_t postOperationArea = histogram->Integral();
+		Double_t targetArea = originalArea * scalingFactor;
+		assert(std::abs(postOperationArea - targetArea) <= (targetArea * REQUIRED_ACCURACY));
 		#endif
 	}
 
+	// XXX: Is this method still required?
 	void HistogramScalingUtil::scaleWeightedHistograms(
 			std::list<WeightedHistogramData> weightedHistogramData,
 			Double_t targetCombinedArea) {
@@ -73,7 +77,7 @@ namespace render {
 		}
 
 		#ifdef DNDEBUG
-		assert(std::abs(std::abs(combinedArea - targetCombinedArea) < (targetCombinedArea * 0.0001)));
+		assert(std::abs(std::abs(combinedArea - targetCombinedArea) <= (targetCombinedArea * REQUIRED_ACCURACY)));
 		#endif
 	}
 

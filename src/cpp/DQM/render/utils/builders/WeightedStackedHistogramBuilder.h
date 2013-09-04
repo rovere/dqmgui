@@ -27,6 +27,9 @@ namespace render {
 			/// @param targetHistogramArea the area that the built histogram should have
 			WeightedStackedHistogramBuilder(Double_t targetHistogramArea);
 
+			/// @see StackedHistogramBuilder::addHistogramData(HistogramData)
+			void addHistogramData(WeightedHistogramData histogramData);
+
 		private:
 			/// Gets the area that the built histogram should have.
 			/// @return the area that the built histogram should have

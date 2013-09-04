@@ -9,12 +9,13 @@
 #include "WeightedStackedHistogramBuilder.h"
 
 #include <Rtypes.h>
+#include <cassert>
 #include <sstream>
 #include <stdexcept>
 
-#include <sstream>
-
-namespace render { class WeightedHistogramData; }
+#include "../../models/WeightedHistogramData.h"
+#include "../HistogramScalingUtil.h"
+#include "StackedHistogramBuilder.h"
 
 namespace render {
 	WeightedStackedHistogramBuilder::WeightedStackedHistogramBuilder(
@@ -32,12 +33,17 @@ namespace render {
 //		// TODO: Call super
 //	}
 
-//	void WeightedStackedHistogramBuilder::addHistogramData(WeightedHistogramData data) {
-//		// TODO: Consider using cloning here
-//		HistogramScalingUtil::scaleWeightedHistogram(data, this->getTargetHistogramArea());
-//		this->histogramStackData.add(data);
-//	}
-//
+	void WeightedStackedHistogramBuilder::addHistogramData(WeightedHistogramData data) {
+		if((this->stackData.getHistogramsTotalWeight() + data.getWeight()) > 1.0) {
+			throw std::invalid_argument(
+					"The sum weight of all histograms in the stack cannot be greater than 1");
+		}
+
+		// TODO: Consider using cloning here
+		HistogramScalingUtil::scaleWeightedHistogram(data, this->getTargetHistogramArea());
+		StackedHistogramBuilder<WeightedHistogramData>::addHistogramData(data);
+	}
+
 //	void WeightedStackedHistogramBuilder::addHistogramStackData(HistogramStackData data) {
 //		std::vector<WeightedHistogramData> allWeightedHistogramsData = data.getAllHistogramData();
 //		std::vector<WeightedHistogramData>::iterator it = allWeightedHistogramsData.begin();
@@ -49,6 +55,11 @@ namespace render {
 //		}
 //	}
 
+	Double_t WeightedStackedHistogramBuilder::getTargetHistogramArea() {
+		assert(this->targetHistogramArea >= 0);
+		return(this->targetHistogramArea);
+	}
+
 	void WeightedStackedHistogramBuilder::setTargetHistogramArea(Double_t targetHistogramArea) {
 		if(targetHistogramArea < 0) {
 			std::ostringstream message;
@@ -56,10 +67,5 @@ namespace render {
 			throw std::invalid_argument(message.str());
 		}
 		this->targetHistogramArea = targetHistogramArea;
-	}
-
-	Double_t WeightedStackedHistogramBuilder::getTargetHistogramArea() {
-		assert(this->targetHistogramArea >= 0);
-		return(this->targetHistogramArea);
 	}
 }

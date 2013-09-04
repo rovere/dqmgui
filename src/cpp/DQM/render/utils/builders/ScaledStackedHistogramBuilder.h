@@ -7,9 +7,11 @@
 #ifndef SCALEDSTACKEDHISTOGRAMBUILDER_H_
 #define SCALEDSTACKEDHISTOGRAMBUILDER_H_
 
-#include "StackedHistogramBuilder.h"
+#include <Rtypes.h>
+
 #include "../../models/HistogramData.h"
 #include "../../models/HistogramStackData.h"
+#include "StackedHistogramBuilder.h"
 
 class THStack;
 
@@ -31,7 +33,7 @@ namespace render {
 //			THStack* build();
 
 			/// @see StackedHistogramBuilder::addHistogramData(HistogramData)
-//			void addHistogramData(HistogramData histogramData);
+			void addHistogramData(HistogramData histogramData);
 	};
 }
 #endif

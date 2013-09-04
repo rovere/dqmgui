@@ -17,6 +17,10 @@ namespace render {
 	/// Utility class for scaling histograms.
 	class HistogramScalingUtil {
 		private:
+			/// TODO: Comment
+			static const Double_t REQUIRED_ACCURACY;
+
+		private:
 			/// Static class: the constructor should not called.
 			HistogramScalingUtil();
 
