@@ -3266,7 +3266,7 @@ streamoutProtocolBuffer(const Filename &indexdir, size_t sampleid)
   }
   // WRITE COMPRESSED SAMPLE
   int filedescriptor = open(fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
-                            S_IREAD | S_IWRITE);
+                            S_IRUSR | S_IWUSR);
   if (filedescriptor == -1)
     throw VisDQMError(0, fname,
                       StringFormat("failed to open file #%1")
