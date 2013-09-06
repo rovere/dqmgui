@@ -1518,8 +1518,7 @@ private:
 //			drawStackedHistogram = (isTH1D || isTH1F);
         	drawStackedHistogram = true;
         }
-
-        if(!drawStackedHistogram) {
+        else {
 			// Draw the main object on top.
 			ob->Draw(ri.drawOptions.c_str());
         }
@@ -1582,21 +1581,23 @@ private:
 			ref->GetListOfFunctions()->Delete();
 			if (i.showerrbars)
 			  samePlotOptions += " e1 x0";
-			// Check if the original plot has been flagged as an
-			// efficieny plot at production time: if this is the case,
-			// then avoid any kind of normalization that introduces
-			// fake effects.
-			if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)) {
-				nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-			}
-			else {
-				if(!drawStackedHistogram) {
-					ref->Draw(samePlotOptions.c_str());
+
+			if(!drawStackedHistogram) {
+				// Check if the original plot has been flagged as an
+				// efficieny plot at production time: if this is the case,
+				// then avoid any kind of normalization that introduces
+				// fake effects.
+				if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)) {
+					nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
 				}
 				else {
-					// TODO: Keep samePlotOptions?
-					histogramsToStack.push_back(ref);
+					ref->Draw(samePlotOptions.c_str());
 				}
+				logme() << samePlotOptions.c_str() << '\n';
+			}
+			else {
+				// TODO: Keep samePlotOptions?
+				histogramsToStack.push_back(ref);
 			}
 
 			if (i.showstats)
@@ -1638,13 +1639,14 @@ private:
 
         if(drawStackedHistogram) {
         	TH1 *dataHistogram = dynamic_cast<TH1 *>(ob);
-        	std::vector<Double_t> stackedHistogramWeights;
 
 //        	TH1F *histogram1 = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
+//        	histogram1->SetLineColor(kRed);
 //        	histogram1->FillRandom("gaus", 50000);
 //        	histogramsToStack.push_back(histogram1);
 //
 //			TH1F *histogram2 = new TH1F("h2", "Data Vs. Monte Carlo", 100, -5, 5);
+//			histogram2->SetLineColor(kGreen);
 //			histogram2->FillRandom("gaus", 50000);
 //			histogramsToStack.push_back(histogram2);
 
@@ -1652,6 +1654,8 @@ private:
 
 			try {
 				logme() << "Going off to draw...." << '\n';
+				logme() << "Size: " <<  histogramsToStack.size() << '\n';
+
 				render::StackedHistogramRenderer::render(
 						dataHistogram, histogramsToStack, drawOptions);
 				logme() << "Coming back from drawing!" << '\n';
@@ -1667,6 +1671,12 @@ private:
 				// Log the error message to file
 				logme() << messageText << '\n';
 			}
+
+			logme()
+//					<< "histogram1 = " << histogram1->Integral() << '\n'
+//					<< "histogram2 = " << histogram2->Integral() << '\n'
+					<< "histogramsToStack = " << histogramsToStack.at(0)->Integral() << '\n'
+					<< "dataHistogram = " << dataHistogram->Integral() << '\n';
 		}
       }
 

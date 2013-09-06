@@ -21,7 +21,8 @@
 #include <sstream>
 
 #include "StackedHistogramRenderer.h"
-#include "utils/builders/StackedHistogramBuilder.h"
+#include "models/HistogramData.h"
+#include "utils/builders/ScaledStackedHistogramBuilder.h"
 
 namespace render {
 	void StackedHistogramRenderer::render(
@@ -35,37 +36,36 @@ namespace render {
 			throw std::invalid_argument("At least one histogram must be given to stack");
 		}
 
-		// It's now been redecided that given histograms that are to be stacked will already
-		// be weighted...
-		std::vector<Double_t> histogramWeights =
-				StackedHistogramRenderer::calculateWeightingsFromNumberOfEntries(histogramsToStack);
+		// Calculate what each the histograms that are to be stacked should be scaled by
+		// to match the data histogram
+		Double_t scalingFactor = StackedHistogramRenderer::calculateScalingFactor(
+				dataHistogram, histogramsToStack);
 
-		Double_t histogramArea = dataHistogram->Integral();
-		StackedHistogramBuilder *stackedHistogramBuilder = new StackedHistogramBuilder(histogramArea);
+		// Create the histogram stack builder
+		ScaledStackedHistogramBuilder *stackedHistogramBuilder = new ScaledStackedHistogramBuilder(
+				scalingFactor);
 
+		// Add all of the histograms to the histogram stack builder
 		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
-			TH1 *histogram = histogramsToStack.at(i);
-			Double_t histogramWeight = histogramWeights.at(i);
-
-			WeightedHistogramData *weightedHistogramData = new WeightedHistogramData(
-					histogram, histogramWeight);
-
-			stackedHistogramBuilder->addWeightedHistogramData(*weightedHistogramData);
+			TH1* histogram = histogramsToStack.at(i);
+			HistogramData histogramData(histogram);
+			stackedHistogramBuilder->addHistogramData(histogramData);
 		}
 
+		// Build the histogram stack object (THStack)
 		THStack *histogramStack = stackedHistogramBuilder->build();
-		delete stackedHistogramBuilder;
 
-		// TODO: Check that these get drawn on the same canvas
-		dataHistogram->Draw(drawOptions.c_str());
-		histogramStack->Draw("SAME");
+		// Draw the histogram stack and then the histogram on top
+		histogramStack->Draw(drawOptions.c_str());
+		dataHistogram->Draw("SAME" /*drawOptions.c_str()*/);	// FIXME: use drawOptions
 
-		TList *histograms = histogramStack->GetHists();
-		TH1 *h1 = (TH1*) histograms->At(0);
-		TH1 *h2 = (TH1*) histograms->At(1);
-		std::ostringstream stream;
-		stream << h1->Integral() << " + " << h2->Integral() << " = " << dataHistogram->Integral();
-		StackedHistogramRenderer::showErrorMessage("Debug:", stream.str());
+		// TODO: Remove this temp debug code
+//		TList *histograms = histogramStack->GetHists();
+//		TH1 *h1 = (TH1*) histograms->At(0);
+//		TH1 *h2 = (TH1*) histograms->At(1);
+//		std::ostringstream stream;
+//		stream << h1->Integral() << " + " << h2->Integral() << " = " << dataHistogram->Integral();
+//		StackedHistogramRenderer::showErrorMessage("Debug:", stream.str());
 
 //		delete histogramStack;			// This cannot be deleted else the histogramStack is not drawn,
 										// indicating deletion it is this code's responsibility
@@ -95,31 +95,51 @@ namespace render {
 										// indicating deletion it is this code's responsibility
 	}
 
-	std::vector<Double_t> StackedHistogramRenderer::calculateWeightingsFromNumberOfEntries(
-			std::vector<TH1*> histogramsToStack) {
-		std::vector<Double_t> stackedHistogramWeights;
-
-		Double_t totalHistogramArea = 0;
-		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
-			TH1 *histogram = histogramsToStack.at(i);
-			assert(histogram->Integral() >= 0);
-			totalHistogramArea += histogram->Integral();
-		}
-
-		if(totalHistogramArea == 0) {
-			// Edge case - none of the histograms to stack have any area - do 0/1 not 0/0
-			totalHistogramArea = 1;
-		}
+	Double_t StackedHistogramRenderer::calculateScalingFactor(
+			TH1 *dataHistogram, std::vector<TH1*> histogramsToStack) {
+		Double_t totalStackArea = 0;
 
 		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
 			TH1 *histogram = histogramsToStack.at(i);
-			Double_t histogramWeight = histogram->Integral() / totalHistogramArea;
-			assert(histogramWeight >= 0.0 && histogramWeight <= 1.0);
-			stackedHistogramWeights.push_back(histogramWeight);
+			Double_t histogramArea= histogram->Integral();
+			assert(histogramArea >= 0);
+			totalStackArea += histogramArea;
 		}
 
-		assert(histogramsToStack.size() == stackedHistogramWeights.size());
-//		assert(std::accumulate(stackedHistogramWeights.begin(), stackedHistogramWeights.end(), 0) == 1);
-		return(stackedHistogramWeights);
+		if(totalStackArea == 0) {
+			// Edge case - none of the histograms that are to be stacked have any area
+			// so it doesn't matter what the scaling factor is
+			return(1.0);
+		}
+
+		return(dataHistogram->Integral() / totalStackArea);
 	}
+
+//	std::vector<Double_t> StackedHistogramRenderer::calculateWeightingsFromNumberOfEntries(
+//			std::vector<TH1*> histogramsToStack) {
+//		std::vector<Double_t> stackedHistogramWeights;
+//
+//		Double_t totalHistogramArea = 0;
+//		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
+//			TH1 *histogram = histogramsToStack.at(i);
+//			assert(histogram->Integral() >= 0);
+//			totalHistogramArea += histogram->Integral();
+//		}
+//
+//		if(totalHistogramArea == 0) {
+//			// Edge case - none of the histograms to stack have any area - do 0/1 not 0/0
+//			totalHistogramArea = 1;
+//		}
+//
+//		for(Int_t i = 0; i < histogramsToStack.size(); i++) {
+//			TH1 *histogram = histogramsToStack.at(i);
+//			Double_t histogramWeight = histogram->Integral() / totalHistogramArea;
+//			assert(histogramWeight >= 0.0 && histogramWeight <= 1.0);
+//			stackedHistogramWeights.push_back(histogramWeight);
+//		}
+//
+//		assert(histogramsToStack.size() == stackedHistogramWeights.size());
+////		assert(std::accumulate(stackedHistogramWeights.begin(), stackedHistogramWeights.end(), 0) == 1);
+//		return(stackedHistogramWeights);
+//	}
 }

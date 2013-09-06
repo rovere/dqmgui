@@ -36,8 +36,10 @@ namespace render {
 		private:
 			/// TODO: Comment
 			/// @param histogramsToStack TODO
-			static std::vector<Double_t> calculateWeightingsFromNumberOfEntries(
-						std::vector<TH1*> histogramsToStack);
+			/// @param dataHistogram TODO
+			/// @return TODO
+			static Double_t calculateScalingFactor(
+					TH1 *dataHistogram, std::vector<TH1*> histogramsToStack);
 	};
 }
 #endif
