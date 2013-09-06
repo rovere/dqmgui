@@ -12,7 +12,9 @@ class TH1;
 
 #include "HistogramData.h"
 
-#include <TH1.h>
+#include <string>
+
+class TH1;
 
 namespace render {
 	HistogramData::HistogramData(TH1 *histogram) {
