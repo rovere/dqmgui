@@ -6,11 +6,6 @@
  */
 #ifndef STACKEDHISTOGRAMBUILDER_H_
 #define STACKEDHISTOGRAMBUILDER_H_
-
-#include <cassert>
-
-#include "../../models/AbstractHistogramStackData.h"
-
 #define DNDEBUG
 
 #include <Rtypes.h>
@@ -21,14 +16,9 @@
 #include <TObject.h>
 #include <cassert>
 #include <vector>
-#include <cassert>
 
-#include "../../models/HistogramData.h"
-#include "../../models/HistogramStackData.h"
-
+#include "../../models/AbstractHistogramStackData.h"
 #include "Builder.h"
-
-class THStack;
 
 namespace render {
 	/// TODO: Comment
