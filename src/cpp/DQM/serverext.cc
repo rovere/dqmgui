@@ -2980,9 +2980,6 @@ public:
 		  translateDrawOptions(py::extract<py::dict>(colobj.get("draw")), col->drawopts);
                 if (colobj.has_key("overlays"))
                 {
-                  logwarn()
-                      << "found overlay definition in layout "
-                      << i->name.string() << std::endl;
                   py::list overlays = py::extract<py::list>(colobj.get("overlays"));
                   py::ssize_t n = py::len(overlays);
                   for(py::ssize_t j = 0; j < n; j++)
