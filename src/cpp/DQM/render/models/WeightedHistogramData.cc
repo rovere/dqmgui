@@ -16,8 +16,8 @@
 class TH1;
 
 namespace render {
-	WeightedHistogramData::WeightedHistogramData(TH1 *histogram, Double_t weight) {
-		this->setHistogram(histogram);
+	WeightedHistogramData::WeightedHistogramData(TH1 *histogram, Double_t weight)
+			: HistogramData(histogram) {
 		this->setWeight(weight);
 	}
 

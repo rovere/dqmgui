@@ -13,6 +13,7 @@
 #include <cassert>
 #include <list>
 #include <stdlib.h>
+#include <cmath>
 
 #include "../models/HistogramData.h"
 #include "../models/WeightedHistogramData.h"

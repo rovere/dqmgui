@@ -35,7 +35,7 @@ namespace render {
 			/// @return all histograms to be drawn in the stack
 			std::vector<TH1*> getAllHistograms() {
 				std::vector<T> allHistogramsData = this->getAllHistogramData();
-				std::vector<T>::iterator it = allHistogramsData.begin();
+				typename std::vector<T>::iterator it = allHistogramsData.begin();
 				std::vector<TH1*> histograms;
 
 				while(it != allHistogramsData.end()) {
