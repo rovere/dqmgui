@@ -15,7 +15,7 @@
 #include "WeightedHistogramData.h"
 
 namespace render {
-	/// TODO: Document
+	/// Model of data required to draw an histogram stack using <code>WeightedHistogramData</code>.
 	class WeightedHistogramStackData : public AbstractHistogramStackData<WeightedHistogramData> {
 		public:
 			/// Default constructor.
@@ -26,8 +26,8 @@ namespace render {
 			///			The weight, w, shall be in the range: 1.0 <= w <= 0.0
 			Double_t getHistogramsTotalWeight();
 
-			/// TODO: Get documentation from history
-//			void add(WeightedHistogramStackData histogramStackData);
+			/// @see AbstractHistogramStackData<WeightedHistogramData>::add(WeightedHistogramData)
+			void add(WeightedHistogramData histogramData);
 	};
 }
 #endif

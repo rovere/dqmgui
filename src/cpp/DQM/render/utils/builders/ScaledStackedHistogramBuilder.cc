@@ -18,14 +18,22 @@ class TH1;
 
 namespace render {
 	ScaledStackedHistogramBuilder::ScaledStackedHistogramBuilder(Double_t scalingFactor)
-			: StackedHistogramBuilder<HistogramData>(&stackData),
-			  scalingFactor(scalingFactor) {
-		// Nothing to do here
+			: StackedHistogramBuilder<HistogramData>(&stackData) {
+		this->setScalingFactor(scalingFactor);
 	}
 
-	// TODO: When adding a histogram, it needs to be scaled by the scaling factor!
+	Double_t ScaledStackedHistogramBuilder::getScalingFactor() {
+		return(this->scalingFactor);
+	}
+
+	void ScaledStackedHistogramBuilder::setScalingFactor(Double_t scalingFactor) {
+		this->scalingFactor = scalingFactor;
+	}
+
 	void ScaledStackedHistogramBuilder::addHistogramData(HistogramData histogramData) {
-		HistogramScalingUtil::scaleHistogram(histogramData.getHistogram(), this->scalingFactor);
+		TH1 *histogram = histogramData.getHistogram();
+		Double_t scalingFactor = this->getScalingFactor();
+		HistogramScalingUtil::scaleHistogram(histogram, scalingFactor);
 		return(StackedHistogramBuilder<HistogramData>::addHistogramData(histogramData));
 	}
 }
