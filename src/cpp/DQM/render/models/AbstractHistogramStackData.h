@@ -15,24 +15,24 @@
 class TH1;
 
 namespace render {
-	/// Data container for a histogram stack.
+	/// Model of data required to draw an (abstract) histogram stack.
 	template <class T> class AbstractHistogramStackData {
 		private:
-			/// List of histogram data.
+			/// List of data about all histogram in the stack.
 			std::vector<T> allHistogramData;
 
 		public:
 			/// Destructor.
 			virtual ~AbstractHistogramStackData() {};
 
-			/// Gets the data for all the histograms contained in this histogram stack data.
-			/// @return the data for all histograms that made up this stack
+			/// Gets data about all histograms to be in the histogram stack.
+			/// @return the data for all histograms that made up the histogram stack
 			std::vector<T> getAllHistogramData() {
 				return(this->allHistogramData);
 			}
 
-			/// Gets all of the histograms.
-			/// @return all histograms to be drawn in the stack
+			/// Gets all of the ROOT histograms objects to be made into the histogram stack.
+			/// @return all ROOT histograms objects to be included in the histogarm stack
 			std::vector<TH1*> getAllHistograms() {
 				std::vector<T> allHistogramsData = this->getAllHistogramData();
 				typename std::vector<T>::iterator it = allHistogramsData.begin();
@@ -49,21 +49,12 @@ namespace render {
 				return(histograms);
 			}
 
-			/// Adds data about a histogram that is to be displayed in this histogram stack's data.
-			/// <p>
-			/// If by adding the histogram, the total weight of all histograms in the stack exceeds
-			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
-			/// @param histogramData data instructing how a histogram is to be displayed
-			virtual void add(T histogramData)  {
+			/// Adds data about a histogram that is to be part of the histogram stack.
+			/// @param histogramData data instructing how a histogram is to be displayed in the
+			///						 histogram stack that is to be drawn
+			virtual void add(T histogramData) {
 				this->allHistogramData.push_back(histogramData);
 			}
-
-			/// Adds all the <code>WeightedHistogramData</code> data contained in a given
-			/// <code>HistogramStackDisplayData</code> to this histogram stack's data container.
-			/// If by adding the histogram, the total weight of all histograms in the stack exceeds
-			/// 1.0, a <code>std::invalid_argument</code> exception will be thrown.
-			/// @param histogramStackData the stack's data to add to this container
-//			void add(AbstractHistogramStackData<T> histogramStackData);
 	};
 }
 #endif

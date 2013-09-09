@@ -26,8 +26,6 @@ namespace render {
 	}
 
 	Double_t WeightedHistogramStackData::getHistogramsTotalWeight() {
-		// XXX: It would be nice if the list could be casted to WeightedHistogramData as
-		//		we're only interested in seeing the data like this
 		std::vector<WeightedHistogramData>::iterator it = this->getAllHistogramData().begin();
 		Double_t totalWeight = 0;
 
@@ -37,44 +35,24 @@ namespace render {
 			it++;
 		}
 
-		assert(totalWeight <= 1.0);
+//		assert(totalWeight <= 1.0);
 		assert(totalWeight >= 0.0);
 		return(totalWeight);
 	}
 
-//	void WeightedHistogramStackData::add(WeightedHistogramData histogramData) {
-//		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
-//		Double_t postTotalWeight = currentTotalWeight + histogramData.getWeight();
-//
+	/// XXX: Should we enforce that the total weight of all constituent histograms should not >1.0?
+	void WeightedHistogramStackData::add(WeightedHistogramData histogramData) {
+		Double_t currentTotalWeight = this->getHistogramsTotalWeight();
+		Double_t postTotalWeight = currentTotalWeight + histogramData.getWeight();
+
 //		if(postTotalWeight > 1.0) {
 //			throw std::invalid_argument(
 //					"Adding this histogram exceeds the total allowed weight of all histograms (1.0)");
 //		}
-//
-////		this->super!add(histogramData);
-//		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
-//		assert(this->getHistogramsTotalWeight() <= 1.0);
-//		assert(this->getHistogramsTotalWeight() >= 0.0);
-//	}
 
-//	void WeightedHistogramStackData::add(WeightedHistogramStackData histogramStackData) {
-//		#ifdef DNDEBUG
-//		Int_t originalDataSize = this->getAllHistogramData().size();
-//		#endif
-//
-//		std::vector<WeightedHistogramData> allHistogramData = histogramStackData.getAllHistogramData();
-//		std::vector<WeightedHistogramData>::iterator it = allHistogramData.begin();
-//
-//		while(it != allHistogramData.end()) {
-//			WeightedHistogramData weightedHistogramData = *it;
-//			this->add(weightedHistogramData);
-//			it++;
-//		}
-//
-//		#ifdef DNDEBUG
-//			assert(this->getAllHistogramData().size() == (originalDataSize + allHistogramData.size()));
-//			assert(this->getHistogramsTotalWeight() <= 1.0);
-//			assert(this->getHistogramsTotalWeight() >= 0.0);
-//		#endif
-//	}
+		AbstractHistogramStackData<WeightedHistogramData>::add(histogramData);
+		assert(this->getHistogramsTotalWeight() == postTotalWeight);	// XXX: Is this okey considering the machine's epsilon?
+//		assert(this->getHistogramsTotalWeight() <= 1.0);
+		assert(this->getHistogramsTotalWeight() >= 0.0);
+	}
 }

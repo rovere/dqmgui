@@ -15,34 +15,37 @@ namespace render {
 	/// Model of data required to display a histogram.
 	class HistogramData {
 		private:
-			/// The histogram represented by this data.
+			/// The ROOT histogram object that is to be displayed.
 			TH1 *histogram;
 
-			/// The draw options for the histogram represented by this data.
+			/// The draw options associated to the ROOT <code>histogram</code> object.
 			std::string drawOptions;
 
 		public:
 			/// Default constructor.
+			/// @param histogram pointer to the ROOT histogram object to be displayed
 			HistogramData(TH1 *histogram);
 
-			/// Constructor that allows both the histogram and draw options to
-			/// be given on instantiation.
+			/// Constructor that allows both the histogram and draw options to be given on
+			/// instantiation.
+			/// @param histogram pointer to the ROOT histogram object to be displayed
+			/// @param drawOptions draw options for the given ROOT histogram
 			HistogramData(TH1 *histogram, std::string drawOptions);
 
-			/// Gets the histogram.
-			/// @return a pointer to this pair's histogram
+			/// Gets a pointer to the ROOT histogram that is to be displayed.
+			/// @return a pointer to the ROOT histogram that is to be displayed
 			TH1* getHistogram();
 
-			/// Gets the histogram's draw options.
+			/// Gets the ROOT histogram's draw options.
 			/// @return the draw options associated to the histogram
 			std::string getDrawOptions();
 
-			/// Sets the histogram.
-			/// @param histogram a pointer to this  data's histogram
+			/// Sets the ROOT histogram.
+			/// @param histogram pointer to the ROOT histogram to display
 			void setHistogram(TH1 *histogram);
 
-			/// Sets the histogram's draw options.
-			/// @param the draw options associated to the histogram
+			/// Sets the draw options associated to the ROOT histogram.
+			/// @param drawOptions the draw options associated to the histogram
 			void setDrawOptions(std::string drawOptions);
 	};
 }

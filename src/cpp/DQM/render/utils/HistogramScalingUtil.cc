@@ -31,7 +31,8 @@ namespace render {
 			// Note: We cannot assume that integrating the histogram will give exactly the
 			//		 <code>targetArea</code> as we don't know the internals of <code>
 			//		 TH1::Scale(Double_t)</code> and <code>TH1::Integral()</code>.
-			//		 Therefore we'll just assume a tolerance of 0.01% is acceptable.
+			//		 Therefore we'll just assume a tolerance of <code>REQUIRED_ACCURACY</code> is
+			//		 acceptable.
 			assert(std::abs(histogram->Integral() - targetArea) <= (targetArea * REQUIRED_ACCURACY));
 		}
 		else {
@@ -50,35 +51,6 @@ namespace render {
 		Double_t postOperationArea = histogram->Integral();
 		Double_t targetArea = originalArea * scalingFactor;
 		assert(std::abs(postOperationArea - targetArea) <= (targetArea * REQUIRED_ACCURACY));
-		#endif
-	}
-
-	// XXX: Is this method still required?
-	void HistogramScalingUtil::scaleWeightedHistograms(
-			std::list<WeightedHistogramData> weightedHistogramData,
-			Double_t targetCombinedArea) {
-		#ifdef DNDEBUG
-		Double_t combinedArea = 0;
-		#endif
-
-		std::list<WeightedHistogramData>::iterator it = weightedHistogramData.begin();
-
-		while(it != weightedHistogramData.end()) {
-			WeightedHistogramData weightedHistogramData = *it;
-
-			// TODO: This is likely a reasonably computational expensive function call.
-			//		 For efficiency gains, consider executing the below/loop in a new thread
-			//		 (if thread safe) and then waiting for all threads to complete.
-			HistogramScalingUtil::scaleWeightedHistogram(weightedHistogramData, targetCombinedArea);
-
-			#ifdef DNDEBUG
-			combinedArea += *weightedHistogramData.getHistogram()->GetIntegral();
-			#endif
-			it++;
-		}
-
-		#ifdef DNDEBUG
-		assert(std::abs(std::abs(combinedArea - targetCombinedArea) <= (targetCombinedArea * REQUIRED_ACCURACY)));
 		#endif
 	}
 

@@ -16,23 +16,34 @@
 class THStack;
 
 namespace render {
-	/// TODO: Comment
+	/// Builder for ROOT <code>THStack</code> histograms using <code>HistogramData</code>.
+	/// The builder is designed to scale the histograms by a constact factor before they are added
+	/// to the stack.
 	class ScaledStackedHistogramBuilder : public StackedHistogramBuilder<HistogramData> {
 		private:
-			/// TODO: Comment
+			/// The data required to build the histogram stack.
 			HistogramStackData stackData;
 
-			/// TODO: Comment
+			/// The factor by which all histograms contained in the histogram stack data should be
+			/// scaled by before being added to the histogram stack.
 			Double_t scalingFactor;
 
 		public:
 			/// Default constructor.
+			/// @param scalingFactor see {@link ScaledStackedHistogramBuilder::setScalingFactor(Double_t)}
 			ScaledStackedHistogramBuilder(Double_t scalingFactor);
 
-			/// @see StackedHistogramBuilder::build()
-//			THStack* build();
+			/// Gets the histogram scaling factor.
+			/// @return the factor by which histograms should be scaled by before been added to the
+			///			histogram stack
+			Double_t getScalingFactor();
 
-			/// @see StackedHistogramBuilder::addHistogramData(HistogramData)
+			/// Sets the histogram scaling factor.
+			/// @return scalingFactor the factor by which histograms should be scaled by before
+			///			been added to the histogram stack
+			void setScalingFactor(Double_t scalingFactor);
+
+			/// @see StackedHistogramBuilder::addHistogramData(HistogramData).
 			void addHistogramData(HistogramData histogramData);
 	};
 }

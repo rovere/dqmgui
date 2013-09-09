@@ -17,7 +17,7 @@ namespace render {
 	/// Utility class for scaling histograms.
 	class HistogramScalingUtil {
 		private:
-			/// TODO: Comment
+			/// The minimum required accuracy to which the histograms are to be scaled to.
 			static const Double_t REQUIRED_ACCURACY;
 
 		private:
@@ -25,22 +25,18 @@ namespace render {
 			HistogramScalingUtil();
 
 		public:
-			/// Scales a given <code>histogram</code> such that it's integral
+			/// Scales a given <code>TH1</code> histogram object such that it's integral
 			/// equals <code>targetArea</code>.
 			/// @param histogram a pointer to the histogram that is to be scaled
 			/// @param targetArea the area under the histogram required
 			static void scaleHistogramToArea(TH1 *histogram, Double_t targetArea);
 
-			/// TODO: Comment
+			/// Scales a given <code>TH1</code> histogram object such that it's integral
+			/// is multiplied by the given <code>scalingFactor</code>.
+			/// @param histogram a pointer to the histogram that is to be scaled
+			/// @param scalingFactor the factor by which the given histogram's area is to be
+			///						 multiplied by
 			static void scaleHistogram(TH1 *histogram, Double_t scalingFactor);
-
-			/// Scales a list of histograms with respect to their relative weights
-			/// such that their combined weight when scaled equals <code>targetCombinedArea</code>.
-			/// @param weightedHistogramData list of data corresponding to weighted histograms
-			/// @param targetCombinedArea the area that the histograms should have when stacked
-			static void scaleWeightedHistograms(
-					std::list<WeightedHistogramData> weightedHistogramData,
-					Double_t targetCombinedArea);
 
 			/// Scales a weighted histogram such that its area equals the product of the histogram's
 			/// weight and the <code>combinedTargetArea</code>. i.e. the histogram's area should be
