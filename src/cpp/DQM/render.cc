@@ -1,6 +1,9 @@
 #define DEBUG(n,x)
 
+#include "DQM/render/models/HistogramData.h"
+#include "DQM/render/models/HistogramStackData.h"
 #include "DQM/render/StackedHistogramRenderer.h"
+#include "DQM/render/MessageRenderer.h"
 
 #include "DQM/DQMRenderPlugin.h"
 #include "DQM/VisDQMRenderTools.h"
@@ -1510,12 +1513,9 @@ private:
         // Whether the non-data (i.e. not 'ob') histogram should be stacked
 		bool drawStackedHistogram = false;
 		// Data structure to store the histograms that are to be stacked (if required)
-		std::vector<TH1*> histogramsToStack;
+		render::HistogramStackData histogramStackData;
 
         if(i.reference == DQM_REF_STACKED) {
-//			bool isTH1D = (dynamic_cast<TH1D *>(ob) == nullptr);
-//			bool isTH1F = (dynamic_cast<TH1F *>(ob) == nullptr);
-//			drawStackedHistogram = (isTH1D || isTH1F);
         	drawStackedHistogram = true;
         }
         else {
@@ -1593,11 +1593,10 @@ private:
 				else {
 					ref->Draw(samePlotOptions.c_str());
 				}
-				logme() << samePlotOptions.c_str() << '\n';
 			}
 			else {
-				// TODO: Keep samePlotOptions?
-				histogramsToStack.push_back(ref);
+				render::HistogramData histogramData(ref, samePlotOptions);
+				histogramStackData.add(histogramData);
 			}
 
 			if (i.showstats)
@@ -1638,8 +1637,6 @@ private:
 		}
 
         if(drawStackedHistogram) {
-        	TH1 *dataHistogram = dynamic_cast<TH1 *>(ob);
-
 //        	TH1F *histogram1 = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
 //        	histogram1->SetLineColor(kRed);
 //        	histogram1->FillRandom("gaus", 50000);
@@ -1650,33 +1647,35 @@ private:
 //			histogram2->FillRandom("gaus", 50000);
 //			histogramsToStack.push_back(histogram2);
 
-			std::string drawOptions = ri.drawOptions.c_str();
+        	std::string observedDrawOptions = ri.drawOptions.c_str();
+        	TH1 *observedHistogram = dynamic_cast<TH1 *>(ob);
+        	render::HistogramData observedData(observedHistogram, observedDrawOptions);
 
 			try {
-				logme() << "Going off to draw...." << '\n';
-				logme() << "Size: " <<  histogramsToStack.size() << '\n';
-
-				render::StackedHistogramRenderer::render(
-						dataHistogram, histogramsToStack, drawOptions);
-				logme() << "Coming back from drawing!" << '\n';
+				logme() << "Constructing...\n";
+				render::StackedHistogramRenderer *renderer = new render::StackedHistogramRenderer(observedData, histogramStackData);
+				logme() << "Constructed!\nGoing off to render...\n";
+				renderer->render();
+				logme() << "Rendered!\n";
 			}
-			catch(std::invalid_argument &e) {
+			catch(std::exception &e) {
 				std::string labelText;
 				stripNameToLabel(labelText, o.name);
+				std::string messageText(e.what());
+				// Log the error message to file
+				logme() << "Error: " << messageText << '\n';
 				// Just displaying the raw error message is appropriate considering that this
 				// is done elsewhere in the system, the target user has technical knowledge
 				// and that localisation (appears) not to be required.
-				std::string messageText(e.what());
-				render::StackedHistogramRenderer::showErrorMessage(labelText, messageText);
-				// Log the error message to file
-				logme() << messageText << '\n';
+				render::MessageRenderer *messageRenderer = new render::MessageRenderer();
+				messageRenderer->showErrorMessage(labelText, messageText);
 			}
 
-			logme()
-//					<< "histogram1 = " << histogram1->Integral() << '\n'
-//					<< "histogram2 = " << histogram2->Integral() << '\n'
-					<< "histogramsToStack = " << histogramsToStack.at(0)->Integral() << '\n'
-					<< "dataHistogram = " << dataHistogram->Integral() << '\n';
+//			logme()
+////					<< "histogram1 = " << histogram1->Integral() << '\n'
+////					<< "histogram2 = " << histogram2->Integral() << '\n'
+//					<< "histogramsToStack = " << histogramsToStack.at(0)->Integral() << '\n'
+//					<< "dataHistogram = " << dataHistogram->Integral() << '\n';
 		}
       }
 

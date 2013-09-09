@@ -1,7 +1,3 @@
-#include <xstring>
-
-class TH1;
-
 /*
  * HistogramData.cc
  *

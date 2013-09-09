@@ -47,15 +47,15 @@ INDEX_LINK   = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(INDEX_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTC_LIBS) $(OTHER_LIBS)
 
 RENDER_SRC   = DQM/render.cc DQM/DQMNet.cc DQM/DQMError.cc \
-			   DQM/HistogramScalingUtil.cc DQM/HistogramNormalisationUtil.cc DQM/ScaledStackedHistogramBuilder.cc DQM/WeightedStackedHistogramBuilder.cc \
-			   DQM/WeightedHistogramData.cc DQM/HistogramStackData.cc DQM/HistogramData.cc \
-			   DQM/WeightedHistogramStackData.cc DQM/ColourController.cc DQM/StackedHistogramRenderer.cc
+			   DQM/HistogramData.cc DQM/HistogramStackData.cc DQM/WeightedHistogramData.cc DQM/WeightedHistogramStackData.cc \
+			   DQM/ScaledStackedHistogramBuilder.cc DQM/WeightedStackedHistogramBuilder.cc DQM/HistogramScalingUtil.cc \
+			   DQM/MessageRenderer.cc DQM/StackedHistogramRenderer.cc
 RENDER_OBJ   = $(patsubst %.cc,%.o,$(notdir $(RENDER_SRC)))
 RENDER_LINK  = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(RENDER_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTG_LIBS) $(OTHER_LIBS) -ljpeg
 
 # XXX: There must be a better way of including source directories recursively...
-vpath %.cc $(SRCDIR)/DQM $(SRCDIR)/DQM/render $(SRCDIR)/DQM/render/controllers $(SRCDIR)/DQM/render/models $(SRCDIR)/DQM/render/utils $(SRCDIR)/DQM/render/utils/parsers $(SRCDIR)/DQM/render/utils/builders $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQM
+vpath %.cc $(SRCDIR)/DQM $(SRCDIR)/DQM/render $(SRCDIR)/DQM/render/models $(SRCDIR)/DQM/render/utils $(SRCDIR)/DQM/render/utils/builders $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQM
 all: visDQMIndex visDQMRender DQMCollector Accelerator.so libDQMGUI.so
 clean:; rm -f *.o *.so visDQMIndex visDQMRender
 %.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@

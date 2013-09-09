@@ -8,33 +8,39 @@
 #define STACKEDHISTOGRAMRENDERER_H_
 
 #include <Rtypes.h>
-#include <string>
 #include <vector>
+
+#include "models/HistogramData.h"
+#include "models/HistogramStackData.h"
+#include "Renderer.h"
 
 class TH1;
 
 namespace render {
 	/// TODO
-	class StackedHistogramRenderer {
-		public:
-			/// TODO: Comment.
-			/// @param dataHistogram a pointer to the histogram representing the distribution
-			///						 of the data. A pointer must be passed opposed to a reference.
-			/// @param histogramsToStack TODO
-			/// @param drawOptions TODO
-			static void render(
-					TH1 *dataHistogram,
-					std::vector<TH1*> histogramsToStack,
-					std::string drawOptions);
-
-			/// TODO: Comment.
-			/// @param histogramTitle TODO
-			/// @param errorMessage TODO
-			static void showErrorMessage(
-					std::string histogramTitleText, std::string errorMessageText);
-
+	class StackedHistogramRenderer : private Renderer {
 		private:
 			/// TODO: Comment
+			HistogramData observedData;
+
+			/// TODO: Comment
+			HistogramStackData histogramStackData;
+
+		public:
+			/// Default constructor
+			/// @param TODO
+			/// @param TODO
+			StackedHistogramRenderer(
+					HistogramData observedData, HistogramStackData histogramStackData);
+
+			/// Destructor.
+			~StackedHistogramRenderer();
+
+			/// TODO: Comment.
+			void render();
+
+		private:
+			/// TODO: Comment.
 			/// @param histogramsToStack TODO
 			/// @param dataHistogram TODO
 			/// @return TODO
