@@ -33,6 +33,9 @@ namespace render {
 			/// @param scalingFactor see {@link ScaledStackedHistogramBuilder::setScalingFactor(Double_t)}
 			ScaledStackedHistogramBuilder(Double_t scalingFactor);
 
+			/// @see StackedHistogramBuilder::addHistogramData(HistogramData).
+			void addHistogramData(HistogramData histogramData);
+
 			/// Gets the histogram scaling factor.
 			/// @return the factor by which histograms should be scaled by before been added to the
 			///			histogram stack
@@ -42,9 +45,6 @@ namespace render {
 			/// @return scalingFactor the factor by which histograms should be scaled by before
 			///			been added to the histogram stack
 			void setScalingFactor(Double_t scalingFactor);
-
-			/// @see StackedHistogramBuilder::addHistogramData(HistogramData).
-			void addHistogramData(HistogramData histogramData);
 	};
 }
 #endif
