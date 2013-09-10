@@ -21,10 +21,7 @@ namespace render {
 		// Nothing to do here.
 	}
 
-	MessageRenderer::~MessageRenderer() {
-		// Nothing to do here.
-	}
-
+	// This code is based on the error message code in render.cc
 	// XXX: There are a lot of magic numbers floating around in this method...
 	void MessageRenderer::showErrorMessage(
 			std::string histogramTitleText, std::string errorMessageText) {

@@ -12,19 +12,15 @@
 #include "Renderer.h"
 
 namespace render {
-	/// TODO: Document.
-	class MessageRenderer : private Renderer {
-//	class MessageRenderer {
+	/// Class that renders messages onto ROOT plots.
+	class MessageRenderer : public Renderer {
 		public:
 			/// Default constructor.
 			MessageRenderer();
 
-			/// Destructor.
-			~MessageRenderer();
-
-			/// TODO: Comment.
-			/// @param histogramTitle TODO
-			/// @param errorMessage TODO
+			/// Shows error message on ROOT plot.
+			/// @param histogramTitle the title of the error message
+			/// @param errorMessage the text of the error message
 			void showErrorMessage(std::string histogramTitleText, std::string errorMessageText);
 	};
 }

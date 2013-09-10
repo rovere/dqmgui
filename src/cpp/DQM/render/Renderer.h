@@ -12,7 +12,7 @@
 class TObject;
 
 namespace render {
-	/// TODO: Document.
+	/// Abstract superclass for classes that render ROOT plots.
 	class Renderer {
 		private:
 			/// List of ROOT TObjects that can only be deleted once the rendered ROOT
@@ -20,22 +20,19 @@ namespace render {
 			std::vector<TObject*> rootObjectPointers;
 
 		public:
-			/// Destructor.
-			virtual ~Renderer() {
-				while(!this->rootObjectPointers.empty()) {
-					delete this->rootObjectPointers.back();
-					this->rootObjectPointers.pop_back();
-				}
+			/// Gets the pointers stored for all ROOT objects created by the render.
+			std::vector<TObject*> getRootObjectPointers() {
+				return(this->rootObjectPointers);
 			}
 
 		protected:
 			/// Default constructor (protected to make class abstract).
 			Renderer() {};
 
-			/// TODO: Comment.
-			/// @param pointer TODO
-			void storeRootObjectPointer(TObject *pointer) {
-				this->rootObjectPointers.push_back(pointer);
+			/// Stores a pointer to a ROOT <code>TObject</code> object.
+			/// @param obj pointer to ROOT <code>TObject</code> to be stored
+			void storeRootObjectPointer(TObject *obj) {
+				this->rootObjectPointers.push_back(obj);
 			}
 	};
 }

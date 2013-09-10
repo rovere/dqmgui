@@ -18,32 +18,33 @@ class TH1;
 
 namespace render {
 	/// TODO
-	class StackedHistogramRenderer : private Renderer {
+	class StackedHistogramRenderer : public Renderer {
 		private:
-			/// TODO: Comment
+			/// Data about the histogram that represents the observed data.
 			HistogramData observedData;
 
-			/// TODO: Comment
+			/// Data about the MC histograms that are to be stacked.
 			HistogramStackData histogramStackData;
 
 		public:
-			/// Default constructor
-			/// @param TODO
-			/// @param TODO
+			/// Default constructor.
+			/// @param observedData data about the histogram that represents the observed data
+			/// @param histogramStackData data about the MC histograms that are to be stacked
 			StackedHistogramRenderer(
 					HistogramData observedData, HistogramStackData histogramStackData);
 
-			/// Destructor.
-			~StackedHistogramRenderer();
-
-			/// TODO: Comment.
+			/// Renders the stacked MC histograms vs. the observed data.
 			void render();
 
 		private:
-			/// TODO: Comment.
-			/// @param histogramsToStack TODO
-			/// @param dataHistogram TODO
-			/// @return TODO
+			/// Temporary method for debugging.
+			/// XXX: Remove when no longer required
+			void debug();
+
+			/// Calculates the scaling factor that should be applied to the MC histograms.
+			/// @param dataHistogram pointer to the data histogram
+			/// @param histogramsToStack pointers to the MC histograms
+			/// @return the calculated scaling factor
 			static Double_t calculateScalingFactor(
 					TH1 *dataHistogram, std::vector<TH1*> histogramsToStack);
 	};

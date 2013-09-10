@@ -1516,9 +1516,12 @@ private:
 		render::HistogramStackData histogramStackData;
 
         if(i.reference == DQM_REF_STACKED) {
-        	drawStackedHistogram = true;
+        	// Don't try to draw the stacked histogram if the observed data isn't represented
+        	// by a TH1 object.
+			bool isTH1 = (dynamic_cast<TH1 *>(ob) != nullptr);
+			drawStackedHistogram = (isTH1);
         }
-        else {
+        if(!drawStackedHistogram) {
 			// Draw the main object on top.
 			ob->Draw(ri.drawOptions.c_str());
         }
@@ -1645,37 +1648,36 @@ private:
 //			TH1F *histogram2 = new TH1F("h2", "Data Vs. Monte Carlo", 100, -5, 5);
 //			histogram2->SetLineColor(kGreen);
 //			histogram2->FillRandom("gaus", 50000);
-//			histogramsToStack.push_back(histogram2);
+//			render::HistogramData histogramData2(histogram2);
+//			histogramStackData.add(histogramData2);
 
         	std::string observedDrawOptions = ri.drawOptions.c_str();
         	TH1 *observedHistogram = dynamic_cast<TH1 *>(ob);
         	render::HistogramData observedData(observedHistogram, observedDrawOptions);
 
 			try {
-				logme() << "Constructing...\n";
-				render::StackedHistogramRenderer *renderer = new render::StackedHistogramRenderer(observedData, histogramStackData);
-				logme() << "Constructed!\nGoing off to render...\n";
+				render::StackedHistogramRenderer *renderer = new render::StackedHistogramRenderer(
+						observedData, histogramStackData);
 				renderer->render();
-				logme() << "Rendered!\n";
+
+				// TODO: Delete all created pointers on the heap!
 			}
 			catch(std::exception &e) {
 				std::string labelText;
 				stripNameToLabel(labelText, o.name);
 				std::string messageText(e.what());
+
 				// Log the error message to file
 				logme() << "Error: " << messageText << '\n';
+
 				// Just displaying the raw error message is appropriate considering that this
 				// is done elsewhere in the system, the target user has technical knowledge
 				// and that localisation (appears) not to be required.
 				render::MessageRenderer *messageRenderer = new render::MessageRenderer();
 				messageRenderer->showErrorMessage(labelText, messageText);
-			}
 
-//			logme()
-////					<< "histogram1 = " << histogram1->Integral() << '\n'
-////					<< "histogram2 = " << histogram2->Integral() << '\n'
-//					<< "histogramsToStack = " << histogramsToStack.at(0)->Integral() << '\n'
-//					<< "dataHistogram = " << dataHistogram->Integral() << '\n';
+				// TODO: Delete all created pointers on the heap!
+			}
 		}
       }
 

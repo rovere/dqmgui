@@ -19,12 +19,14 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <sstream>
 
 #include "models/AbstractHistogramStackData.h"
 #include "models/HistogramData.h"
 #include "models/HistogramStackData.h"
 #include "utils/builders/ScaledStackedHistogramBuilder.h"
 #include "utils/builders/StackedHistogramBuilder.h"
+#include "MessageRenderer.h"
 
 namespace render {
 	StackedHistogramRenderer::StackedHistogramRenderer(
@@ -39,23 +41,18 @@ namespace render {
 		}
 	}
 
-	StackedHistogramRenderer::~StackedHistogramRenderer() {
-		// FIXME
-		// Nothing to do here
-	}
-
 	void StackedHistogramRenderer::render() {
 		// Calculate what each the histograms that are to be stacked should be scaled by
 		// to match the data histogram
 		Double_t scalingFactor = StackedHistogramRenderer::calculateScalingFactor(
-				observedData.getHistogram(), histogramStackData.getAllHistograms());
+				this->observedData.getHistogram(), this->histogramStackData.getAllHistograms());
 
 		// Create the histogram stack builder
 		ScaledStackedHistogramBuilder *stackedHistogramBuilder = new ScaledStackedHistogramBuilder(
 				scalingFactor);
 
 		// Add all of the histograms to the histogram stack builder
-		std::vector<HistogramData> allHistogramData = histogramStackData.getAllHistogramData();
+		std::vector<HistogramData> allHistogramData = this->histogramStackData.getAllHistogramData();
 		for(Int_t i = 0; i < allHistogramData.size(); i++) {
 			HistogramData histogramData = allHistogramData.at(i);
 			stackedHistogramBuilder->addHistogramData(histogramData);
@@ -63,13 +60,31 @@ namespace render {
 
 		// Build the histogram stack object (THStack)
 		THStack *histogramStack = stackedHistogramBuilder->build();
-		delete stackedHistogramBuilder;
+//		delete stackedHistogramBuilder;		// FIXME: This causes a double free error to occur - find out why...
 		this->storeRootObjectPointer(histogramStack);
 
 		// Draw the histogram stack and then the histogram on top
-		histogramStack->Draw(observedData.getDrawOptions().c_str());
+		histogramStack->Draw(this->observedData.getDrawOptions().c_str());
 		observedData.getHistogram()->SetLineStyle(2);
 		observedData.getHistogram()->Draw("SAME");		// TODO: use any draw options?
+
+		// XXX: Remove debug
+//		this->debug();
+	}
+
+	void StackedHistogramRenderer::debug() {
+		std::ostringstream debugMessage;
+
+		std::vector<TH1*> allHistograms = this->histogramStackData.getAllHistograms();
+		for(Int_t i = 0; i < allHistograms.size(); i++) {
+			TH1* histogram = allHistograms.at(i);
+			debugMessage << "Histogram " << i << ": " << histogram->Integral() << ", ";
+		}
+
+		debugMessage << "Data: " << this->observedData.getHistogram()->Integral();
+
+		MessageRenderer *messageRenderer = new MessageRenderer();
+		messageRenderer->showErrorMessage("Debug:", debugMessage.str());
 	}
 
 	Double_t StackedHistogramRenderer::calculateScalingFactor(
