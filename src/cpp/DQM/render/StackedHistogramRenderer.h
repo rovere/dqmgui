@@ -17,7 +17,7 @@
 class TH1;
 
 namespace render {
-	/// TODO
+	/// Renderes stacked histogram and data (MC vs. data) onto the ROOT canvas.
 	class StackedHistogramRenderer : public Renderer {
 		private:
 			/// Data about the histogram that represents the observed data.

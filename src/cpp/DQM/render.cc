@@ -1640,17 +1640,6 @@ private:
 		}
 
         if(drawStackedHistogram) {
-//        	TH1F *histogram1 = new TH1F("h1", "Data Vs. Monte Carlo", 100, -5, 5);
-//        	histogram1->SetLineColor(kRed);
-//        	histogram1->FillRandom("gaus", 50000);
-//        	histogramsToStack.push_back(histogram1);
-//
-//			TH1F *histogram2 = new TH1F("h2", "Data Vs. Monte Carlo", 100, -5, 5);
-//			histogram2->SetLineColor(kGreen);
-//			histogram2->FillRandom("gaus", 50000);
-//			render::HistogramData histogramData2(histogram2);
-//			histogramStackData.add(histogramData2);
-
         	std::string observedDrawOptions = ri.drawOptions.c_str();
         	TH1 *observedHistogram = dynamic_cast<TH1 *>(ob);
         	render::HistogramData observedData(observedHistogram, observedDrawOptions);
