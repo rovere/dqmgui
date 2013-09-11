@@ -19,6 +19,11 @@
 #include "../models/WeightedHistogramData.h"
 
 namespace render {
+	// TODO: Using TH1::Integral() does not give the mathematical integral of the histogram as it
+	//		 does not consider the bin width ({@link http://root.cern.ch/root/html/TH1.html#TH1:Integral}.
+	//		 This means that the scaling code below only works if all histograms to be scaled have
+	//		 exactly the same bin widths. Consider modifying (perhaps using TH1::Integral("width")
+	//		 to allow this to work regardless of the bin widths
 	const Double_t HistogramScalingUtil::REQUIRED_ACCURACY = 0.0001;
 
 	void HistogramScalingUtil::scaleHistogramToArea(TH1 *histogram, Double_t targetArea) {
