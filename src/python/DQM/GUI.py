@@ -875,7 +875,7 @@ class DQMWorkspace:
 
     if referencepos != None:
       if not isinstance(referencepos, str) \
-         or referencepos not in ("overlay", "on-side"):
+         or referencepos not in ("overlay", "on-side", "stacked"):
         raise HTTPError(500, "Incorrect referencepos parameter")
       session['dqm.reference']['position'] = referencepos
 
