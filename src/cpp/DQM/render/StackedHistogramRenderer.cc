@@ -65,7 +65,7 @@ namespace render {
 
 		// Draw the histogram stack and then the histogram on top
 		histogramStack->Draw(this->observedData.getDrawOptions().c_str());
-		observedData.getHistogram()->SetLineStyle(2);
+		observedData.getHistogram()->SetLineColor(kBlack);
 		observedData.getHistogram()->Draw("SAME");		// TODO: use any draw options?
 
 		// XXX: Remove debug
