@@ -69,6 +69,8 @@ namespace render {
 										: histogramsInStack->GetSize();
 				#endif
 
+				// Implemented fill colour suggestion by Federico de Guio (email 12 Sep 2013 17:45:51 +0200)
+				histogram->SetFillColor(histogram->GetLineColor());
 				histogramStack->Add(histogram);
 
 				#ifdef DNDEBUG
