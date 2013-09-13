@@ -64,9 +64,11 @@ namespace render {
 		this->storeRootObjectPointer(histogramStack);
 
 		// Draw the histogram stack and then the histogram on top
-		histogramStack->Draw(this->observedData.getDrawOptions().c_str());
+		histogramStack->Draw();
 		observedData.getHistogram()->SetLineColor(kBlack);
-		observedData.getHistogram()->Draw("SAME");		// TODO: use any draw options?
+		// Note binding string "SAMES" to first parameter - the extra 'S' is not a typo!
+		// It is required to draw the statistics box
+		observedData.getHistogram()->Draw("SAMES");			// TODO: Use draw options?
 
 		// XXX: Remove debug
 //		this->debug();

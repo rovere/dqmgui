@@ -1520,6 +1520,8 @@ private:
 		bool drawStackedHistogram = false;
 		// Data structure to store the histograms that are to be stacked (if required)
 		render::HistogramStackData histogramStackData;
+		// Container for statistics boxes - must be stored if stacked histogram is to be drawn
+		std::vector<TPaveStats*> statisticsBoxes;
 
         if(i.reference == DQM_REF_STACKED) {
         	// Don't try to draw the stacked histogram if the observed data isn't represented
@@ -1642,7 +1644,16 @@ private:
 				currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
 				currentStat->SetOptStat(1111);
 				currentStat->SetOptFit(0);
-				currentStat->Draw();
+
+				if(!drawStackedHistogram) {
+					currentStat->Draw();
+				}
+				else {
+					// Can't draw the statistics box now as it gets covered by the stacked
+					// histogram (note: when not stacking histograms, the associated histogram is
+					// always drawn before the stats box - make this so when stacking also)
+					statisticsBoxes.push_back(currentStat);
+				}
 			  }
 			}
 		  }
@@ -1657,6 +1668,12 @@ private:
 				render::StackedHistogramRenderer *renderer = new render::StackedHistogramRenderer(
 						observedData, histogramStackData);
 				renderer->render();
+
+				// Draw the statistic boxes for each of the stacked histograms
+				for(Int_t i = 0; i < statisticsBoxes.size(); i++) {
+					TPaveStats* statBox = statisticsBoxes.at(i);
+					statBox->Draw();
+				}
 
 				// TODO: Delete all created pointers on the heap!
 			}
