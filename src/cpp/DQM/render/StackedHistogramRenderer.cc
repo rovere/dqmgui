@@ -42,10 +42,12 @@ namespace render {
 	}
 
 	void StackedHistogramRenderer::render() {
+		TH1* dataHistogram = this->observedData.getHistogram();
+
 		// Calculate what each the histograms that are to be stacked should be scaled by
 		// to match the data histogram
 		Double_t scalingFactor = StackedHistogramRenderer::calculateScalingFactor(
-				this->observedData.getHistogram(), this->histogramStackData.getAllHistograms());
+				dataHistogram, this->histogramStackData.getAllHistograms());
 
 		// Create the histogram stack builder
 		ScaledStackedHistogramBuilder *stackedHistogramBuilder = new ScaledStackedHistogramBuilder(
@@ -63,12 +65,25 @@ namespace render {
 //		delete stackedHistogramBuilder;		// FIXME: This causes a double free error to occur - find out why...
 		this->storeRootObjectPointer(histogramStack);
 
+		// XXX: This is a very hacky way of ensuring that the y-axis has the correct range
+		//		to show both the histogram and the stacked histogram.
+		//
+		//		The axis is drawn for the first histogram. Therefore, draw the histogram
+		//		that needs the largest axis first. If this is the data histogram however,
+		// 		it means that the data histogram is drawn twice on the same canvas! This
+		//		is bad practice but has no visual impact. This developer was unable to find
+		//		another solution to the problem of y-axis sizing at the current time.
+		Bool_t useAxisFromDataHistogram = dataHistogram->GetMaximum() > histogramStack->GetMaximum();
+		if(useAxisFromDataHistogram) {
+			dataHistogram->Draw();
+		}
+
 		// Draw the histogram stack and then the histogram on top
-		histogramStack->Draw();
-		observedData.getHistogram()->SetLineColor(kBlack);
-		// Note binding string "SAMES" to first parameter - the extra 'S' is not a typo!
+		histogramStack->Draw((useAxisFromDataHistogram ? "same" : ""));
+		dataHistogram->SetLineColor(kBlack);
+		// Note: binding string "SAMES" to first parameter - the extra 'S' is not a typo!
 		// It is required to draw the statistics box
-		observedData.getHistogram()->Draw("SAMES");			// TODO: Use draw options?
+		dataHistogram->Draw("SAMES");			// TODO: Use draw options?
 
 		// XXX: Remove debug
 //		this->debug();
