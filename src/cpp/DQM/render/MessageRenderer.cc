@@ -44,5 +44,10 @@ namespace render {
 			textElement->Draw();
 			this->storeRootObjectPointer(textElement);
 		}
+
+		// Note: Due to the way ROOT works, the TObjects cannot be deleted
+		// 		 until they have been converted to an image. Therefore, it
+		//		 is the developer's responsibility to delete these objects
+		//		 and ensure memory is not leaked.
 	}
 }

@@ -37,10 +37,6 @@ namespace render {
 			void render();
 
 		private:
-			/// Temporary method for debugging.
-			/// XXX: Remove when no longer required
-			void debug();
-
 			/// Calculates the scaling factor that should be applied to the MC histograms.
 			/// @param dataHistogram pointer to the data histogram
 			/// @param histogramsToStack pointers to the MC histograms

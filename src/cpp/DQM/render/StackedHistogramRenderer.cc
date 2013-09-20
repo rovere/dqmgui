@@ -85,23 +85,13 @@ namespace render {
 		// It is required to draw the statistics box
 		dataHistogram->Draw("SAMES");			// TODO: Use draw options?
 
-		// XXX: Remove debug
-//		this->debug();
-	}
-
-	void StackedHistogramRenderer::debug() {
-		std::ostringstream debugMessage;
-
-		std::vector<TH1*> allHistograms = this->histogramStackData.getAllHistograms();
-		for(Int_t i = 0; i < allHistograms.size(); i++) {
-			TH1* histogram = allHistograms.at(i);
-			debugMessage << "Histogram " << i << ": " << histogram->Integral() << ", ";
-		}
-
-		debugMessage << "Data: " << this->observedData.getHistogram()->Integral();
-
-		MessageRenderer *messageRenderer = new MessageRenderer();
-		messageRenderer->showErrorMessage("Debug:", debugMessage.str());
+		// Note: It would be nice here to delete all ROOT pointers and subsequently
+		// 		 ensure that memory is not leaked. However, due to the way ROOT works,
+		//		 this is not possible as the drawn TObjects need to be kept until
+		// 		 the ROOT plot has been converted to an image. ROOT's DrawCopy should
+		//		 solve this problem but unfortunately, such method is not available
+		//		 on THStack objects. Therefore the developer must remember to delete
+		//		 the ROOT object pointers after this method has been called!
 	}
 
 	Double_t StackedHistogramRenderer::calculateScalingFactor(
