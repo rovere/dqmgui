@@ -2,7 +2,7 @@
  * HistogramData.h
  *
  *  Created on: 1 Aug 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef HISTOGRAMDATA_H_
 #define HISTOGRAMDATA_H_

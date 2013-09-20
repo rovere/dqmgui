@@ -2,7 +2,7 @@
  * ScaledStackedHistogramBuilder.cc
  *
  *  Created on: 2 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #define DNDEBUG
 

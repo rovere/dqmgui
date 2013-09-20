@@ -2,7 +2,7 @@
 * AbstractHistogramStackData.h
  *
  *  Created on: 23 Jul 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef ABSTRACTHISTOGRAMSTACKDATA_H_
 #define ABSTRACTHISTOGRAMSTACKDATA_H_

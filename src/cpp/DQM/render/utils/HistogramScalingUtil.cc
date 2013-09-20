@@ -2,7 +2,7 @@
  * HistogramScalingUtil.cc
  *
  *  Created on: 1 Aug 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #define DNDEBUG
 

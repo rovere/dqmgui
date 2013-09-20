@@ -2,7 +2,7 @@
  * StackedHistogramBuilder.h
  *
  *  Created on: 3 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef STACKEDHISTOGRAMBUILDER_H_
 #define STACKEDHISTOGRAMBUILDER_H_

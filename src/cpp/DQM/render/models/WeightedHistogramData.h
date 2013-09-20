@@ -2,7 +2,7 @@
  * WeightedHistogramData.h
  *
  *  Created on: 1 Aug 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef WEIGHTEDHISTOGRAMDATA_H_
 #define WEIGHTEDHISTOGRAMDATA_H_

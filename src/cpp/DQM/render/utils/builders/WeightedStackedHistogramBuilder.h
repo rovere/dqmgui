@@ -2,7 +2,7 @@
  * WeightedStackedHistogramBuilder.h
  *
  *  Created on: 23 Jul 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef WEIGHTEDSTACKEDHISTOGRAMBUILDER_H_
 #define WEIGHTEDSTACKEDHISTOGRAMBUILDER_H_

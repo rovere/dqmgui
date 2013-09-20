@@ -2,7 +2,7 @@
  * HistogramStackData.h
  *
  *  Created on: 2 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef HISTOGRAMSTACKDATA_H_
 #define HISTOGRAMSTACKDATA_H_
