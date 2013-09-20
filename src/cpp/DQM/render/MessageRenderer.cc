@@ -2,7 +2,7 @@
  * MessageRenderer.cc
  *
  *  Created on: 6 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #define DNDEBUG
 

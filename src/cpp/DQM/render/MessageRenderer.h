@@ -2,7 +2,7 @@
  * MessageRenderer.h
  *
  *  Created on: 6 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef MESSAGERENDERER_H_
 #define MESSAGERENDERER_H_

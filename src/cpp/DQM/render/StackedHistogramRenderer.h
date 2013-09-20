@@ -2,7 +2,7 @@
  * StackedHistogramRenderer.h
  *
  *  Created on: 16 Aug 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef STACKEDHISTOGRAMRENDERER_H_
 #define STACKEDHISTOGRAMRENDERER_H_

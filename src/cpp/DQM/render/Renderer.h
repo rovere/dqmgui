@@ -2,7 +2,7 @@
  * Renderer.h
  *
  *  Created on: 6 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef RENDERER_H_
 #define RENDERER_H_
