@@ -2,7 +2,7 @@
  *  Builder.h
  *
  *  Created on: 26 Jul 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef BUILDER_H_
 #define BUILDER_H_

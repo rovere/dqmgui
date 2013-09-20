@@ -2,7 +2,7 @@
  * ScaledStackedHistogramBuilder.h
  *
  *  Created on: 2 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #ifndef SCALEDSTACKEDHISTOGRAMBUILDER_H_
 #define SCALEDSTACKEDHISTOGRAMBUILDER_H_

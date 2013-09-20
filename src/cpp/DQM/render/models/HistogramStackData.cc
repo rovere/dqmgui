@@ -2,7 +2,7 @@
  * HistogramStackData.cc
  *
  *  Created on: 23 Jul 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 #define DNDEBUG
 

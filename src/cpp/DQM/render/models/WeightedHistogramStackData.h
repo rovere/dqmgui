@@ -2,7 +2,7 @@
  * WeightedHistogramStackData.h
  *
  *  Created on: 2 Sep 2013
- *      Author: Colin - CERN
+ *      Author: Colin Nolan
  */
 
 #ifndef WEIGHTEDHISTOGRAMSTACKDATA_H_
