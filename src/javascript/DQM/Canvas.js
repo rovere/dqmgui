@@ -233,7 +233,7 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
 
       var overlay = false;
       var xargs = "";
-      if (ref.position == "overlay"
+      if ((ref.position == "overlay" || ref.position == "stacked")
 	  && (ref.show == "all"
 	      || (ref.show == "customise" && ob.withref == "yes")))
       {
@@ -311,6 +311,9 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       if (showerrbars)
         xargs += ';showerrbars=' + showerrbars;
 
+	  if(ref.position == "stacked") {
+		showref = "stacked";
+	  }
       layoutimg(img, container, focus, onclick, showref, size, ob,
 		rowdiv, nrows, row, ncols, col, n, xargs);
     }
