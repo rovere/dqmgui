@@ -231,9 +231,15 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       if (! img.parentNode)
         rowdiv.appendChild(img);
 
+      /* The boolean @overlay controls if we have been asked to show
+       * any reference, either internal or external. When set to
+       * false, no reference will ever be shown, despite the fact that
+       * the user has selected some reference sample. */
       var overlay = false;
       var xargs = "";
-      if ((ref.position == "overlay" || ref.position == "stacked")
+      if ((ref.position == "overlay"
+	 || ref.position == "ratiooverlay"
+	 || ref.position == "stacked")
 	  && (ref.show == "all"
 	      || (ref.show == "customise" && ob.withref == "yes")))
       {
@@ -311,9 +317,12 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       if (showerrbars)
         xargs += ';showerrbars=' + showerrbars;
 
-	  if(ref.position == "stacked") {
-		showref = "stacked";
-	  }
+      if ((overlay || xargs != "") && ref.position == "stacked")
+        showref = "stacked";
+
+      if ((overlay || xargs != "") && ref.position == "ratiooverlay")
+        showref = "ratiooverlay";
+
       layoutimg(img, container, focus, onclick, showref, size, ob,
 		rowdiv, nrows, row, ncols, col, n, xargs);
     }

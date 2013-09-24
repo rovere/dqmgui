@@ -159,6 +159,12 @@ parseReference(const char *&p, const char *name, size_t len, VisDQMReference &va
       p += 7;
       return true;
     }
+    else if (! strncmp(p, "ratiooverlay", 12))
+    {
+      value = DQM_REF_OVERLAY_RATIO;
+      p += 12;
+      return true;
+    }
     else if (! strncmp(p, "samesample", 10))
     {
       value = DQM_REF_SAMESAMPLE;
@@ -1298,6 +1304,71 @@ private:
     return;
   }
 
+  void applyTPadCustomizations(TPad * p,
+                               VisDQMImgInfo &i)
+  {
+    if (i.xaxis.type == "lin")
+      p->SetLogx(0);
+    else if (i.xaxis.type == "log")
+      p->SetLogx(1);
+
+    if (i.yaxis.type == "lin")
+      p->SetLogy(0);
+    else if (i.yaxis.type == "log")
+      p->SetLogy(1);
+
+    if (i.zaxis.type == "lin")
+      p->SetLogz(0);
+    else if (i.zaxis.type == "log")
+      p->SetLogz(1);
+
+    if (gStyle)
+      gStyle->SetOptStat(i.showstats);
+  }
+
+  void drawReferenceStatBox(VisDQMImgInfo &i,
+                            size_t order,
+                            TH1 * ref,
+                            int color,
+                            const std::string &name,
+                            std::vector<TObject *> &nukem)
+  {
+    // Draw stats box for every additional ovelayed reference
+    // object, appending latest at the bottom of the stats box
+    // drawn last. FIXME: stats' coordinates are fixed, which
+    // is ugly, but apparently we cannot have them back from
+    // ROOT unless we use some public variable (gPad) which I
+    // do not know if it is thread safe but which I know is
+    // causing us problems.
+    TPaveStats * currentStat = new TPaveStats(0.78, 0.835 - (order + 1) * 0.16,
+                                              0.98, 0.835 - order * 0.16, "brNDC");
+    if (currentStat)
+    {
+      currentStat->SetBorderSize(1);
+      nukem.push_back(currentStat);
+      std::stringstream ss;
+      if (order == 0)
+        currentStat->AddText("StandardRef");
+      else
+      {
+        if (i.reference == DQM_REF_SAMESAMPLE)
+          ss << name;
+        else
+          ss << "Ref "<< order;
+        currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+      }
+      ss << "Entries = " << ref->GetEntries();
+      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+      ss << "Mean  = " << ref->GetMean();
+      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+      ss << "RMS   = " << ref->GetRMS();
+      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+      currentStat->SetOptStat(1111);
+      currentStat->SetOptFit(0);
+      currentStat->Draw();
+    }
+  }
+
   double calculateScalingFactor(VisDQMObject *objs, size_t numobjs)
   {
     double data_area = 0;
@@ -1337,13 +1408,113 @@ private:
     t1->Draw();            t2->Draw();
     nukem.push_back(t1);   nukem.push_back(t2);
   }
+
+  // ----------------------------------------------------------------------
+  // Render ovelaid ROOT objects and their ratio at the bottom.
+  void
+  doRenderOverlayAndRatio(TCanvas &c,
+                          VisDQMImgInfo &i,
+                          VisDQMObject *objs,
+                          size_t numobjs,
+                          const VisDQMRenderInfo &ri,
+                          std::vector<TObject *> &nukem)
+  {
+    TObject *ob = objs[0].object;
+    //Do normal rendering for everything but TH1*
+    if (dynamic_cast<TH2 *>(ob) ||
+        dynamic_cast<TProfile *>(ob) ||
+        dynamic_cast<TObjString *>(ob))
+    {
+      doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
+      Color_t c = TColor::GetColor(64, 64, 64);
+      doRenderMsg(""/*ob.name*/, "Ratio not supported", c, nukem);
+      return;
+    }
+
+    int colorIndex = sizeof(colors)/sizeof(int);
+    int ratio_label_font_size = 14;
+    // Prepare the TPads
+    TPad *pad1 = new TPad("main","main",0,0.3,1,1);
+    pad1->SetBottomMargin(0);
+    applyTPadCustomizations(pad1, i);
+    pad1->Draw();
+    pad1->cd();
+
+    doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
+    c.cd();
+    TPad *pad2 = new TPad("ratio","ratio",0,0.05,1,0.3);
+    pad2->SetTopMargin(0);
+    if (i.xaxis.type == "lin")
+      pad2->SetLogx(0);
+    else if (i.xaxis.type == "log")
+      pad2->SetLogx(1);
+    pad2->Draw();
+    pad2->cd();
+
+    if (TH1 * h = dynamic_cast<TH1 *>(ob))
+    {
+      double norm = 1.;
+      if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
+        norm = th1f->GetSumOfWeights();
+      else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
+        norm = th1d->GetSumOfWeights();
+      bool first_plot = true;
+      for (size_t n = 0; n < numobjs; ++n)
+      {
+        TObject *refobj = 0;
+        if (n == 0)
+          refobj = objs[0].reference;
+        else
+          refobj = dynamic_cast<TH1 *>(objs[n].object);
+        TH1 * num = dynamic_cast<TH1 *>(h->Clone());
+        nukem.push_back(num);
+        if (TH1 * den = dynamic_cast<TH1 *>(refobj))
+        {
+          double sum = den->GetSumOfWeights();
+          if (sum)
+          {
+            if (objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)
+              norm = sum = 1.;
+            den->Scale(norm/sum);
+            num->SetStats(0); num->Sumw2();
+            num->Divide(den); num->SetMarkerStyle(kFullDotLarge);
+            num->SetMarkerSize(0.75);
+            num->SetMarkerColor(colors[n%colorIndex]);
+            num->SetTitle("");
+
+            num->GetXaxis()->SetLabelFont(43); //font in pixels
+            num->GetXaxis()->SetLabelSize(ratio_label_font_size); //in pixels
+            num->GetXaxis()->SetTitleFont(43); //font in pixels
+            num->GetXaxis()->SetTitleSize(ratio_label_font_size); //in pixels
+            num->GetXaxis()->SetTitleOffset(-1.2); //in pixels
+
+            num->GetYaxis()->SetRangeUser(0.2, 1.8);
+            num->GetYaxis()->SetTitle(""); //font in pixels
+            num->GetYaxis()->SetLabelFont(43); //font in pixels
+            num->GetYaxis()->SetLabelSize(ratio_label_font_size); //in pixels
+            if (first_plot)
+            {
+              first_plot = false;
+              num->Draw("epl");
+            }
+            else
+              num->Draw("same epl");
+          }
+        }
+      }
+    }
+
+    c.cd();
+  }
+
   // ----------------------------------------------------------------------
   // Render stacked ROOT objects.
-  bool
-  doRenderStacked(VisDQMImgInfo &i,
+  void
+  doRenderStacked(TCanvas &c,
+                  VisDQMImgInfo &i,
                   VisDQMObject *objs,
                   size_t numobjs,
-                  const VisDQMRenderInfo &ri,
+                  const VisDQMRenderInfo & /* ri */,
                   std::vector<TObject *> &nukem)
   {
     int colorIndex = sizeof(colors)/sizeof(int);
@@ -1351,13 +1522,17 @@ private:
     double absolute_y_max = 0;
     double y_max = 0;
 
+    applyTPadCustomizations(dynamic_cast<TPad*>(&c), i);
+
+    TObject *ob = objs[0].object;
     // Do not even try if we are offered TH2 or TProfile objects
-    if (dynamic_cast<TH2 *>(objs[0].object) ||
-        dynamic_cast<TProfile *>(objs[0].object))
+    if (dynamic_cast<TH2 *>(ob) ||
+        dynamic_cast<TProfile *>(ob) ||
+        dynamic_cast<TObjString *>(ob))
     {
       Color_t c = TColor::GetColor(64, 64, 64);
       doRenderMsg(objs[0].name, "Stacking not supported", c, nukem);
-      return false;
+      return;
     }
 
     if (TH1 * dataHistogram = dynamic_cast<TH1 *>(objs[0].object))
@@ -1404,51 +1579,153 @@ private:
                              dynamic_cast<TH1 *>(objs[n].object),
                              colors[n%colorIndex],
                              objs[n].name, nukem);
-
-
-    return true;
   }
 
-  void drawReferenceStatBox(VisDQMImgInfo &i,
-                            size_t order,
-                            TH1 * ref,
-                            int color,
-                            const std::string &name,
-                            std::vector<TObject *> &nukem)
+  // ----------------------------------------------------------------------
+  // Ordinary rendering of a ROOT object.
+  void doRenderOrdinary(TCanvas &c,
+                        VisDQMImgInfo &i,
+                        VisDQMObject * objs,
+                        size_t numobjs,
+                        const VisDQMRenderInfo &ri,
+                        std::vector<TObject *> &nukem)
   {
-    // Draw stats box for every additional ovelayed reference
-    // object, appending latest at the bottom of the stats box
-    // drawn last. FIXME: stats' coordinates are fixed, which
-    // is ugly, but apparently we cannot have them back from
-    // ROOT unless we use some public variable (gPad) which I
-    // do not know if it is thread safe but which I know is
-    // causing us problems.
-    TPaveStats * currentStat = new TPaveStats(0.78, 0.835 - (order + 1) * 0.16,
-                                              0.98, 0.835 - order * 0.16, "brNDC");
-    if (currentStat)
+    std::string samePlotOptions("same p");
+    TObject *ob = objs[0].object;
+    // Handle text.
+    if (TObjString *os = dynamic_cast<TObjString *>(ob))
     {
-      currentStat->SetBorderSize(1);
-      nukem.push_back(currentStat);
-      std::stringstream ss;
-      if (order == 0)
-        currentStat->AddText("StandardRef");
-      else
+      TText *t = new TText(.5, .5, os->GetName());
+      t->SetTextFont (63);
+      t->SetTextAlign (22);
+      t->SetTextSize (16);
+      nukem.push_back(t);
+      ob = t;
+    }
+
+    double xmin = NAN, xmax = NAN;
+    double ymin = NAN, ymax = NAN;
+    double zmin = NAN, zmax = NAN;
+    // If we have an object that has axes, apply the requested params.
+    // Set only the bounds that were specified, and leave the rest to
+    // the natural range.  Unset bounds have NaN as their value.
+    if (TH1 *h = dynamic_cast<TH1 *>(ob))
+    {
+      if (TAxis *a = h->GetXaxis())
       {
-        if (i.reference == DQM_REF_SAMESAMPLE)
-          ss << name;
-        else
-          ss << "Ref "<< order;
-        currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
+        if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
+        {
+          xmin = a->GetXmin();
+          xmax = a->GetXmax();
+          a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
+                          isnan(i.xaxis.max) ? xmax : i.xaxis.max);
+        }
       }
-      ss << "Entries = " << ref->GetEntries();
-      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-      ss << "Mean  = " << ref->GetMean();
-      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-      ss << "RMS   = " << ref->GetRMS();
-      currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
-      currentStat->SetOptStat(1111);
-      currentStat->SetOptFit(0);
-      currentStat->Draw();
+
+      if (TAxis *a = h->GetYaxis())
+      {
+        if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
+        {
+          ymin = a->GetXmin();
+          ymax = a->GetXmax();
+          a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
+                          isnan(i.yaxis.max) ? ymax : i.yaxis.max);
+        }
+      }
+
+      if (TAxis *a = h->GetZaxis())
+      {
+        if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
+        {
+          zmin = a->GetXmin();
+          zmax = a->GetXmax();
+          a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
+                          isnan(i.zaxis.max) ? zmax : i.zaxis.max);
+        }
+      }
+      // Increase lineWidth in case there are other objects to
+      // draw on top of the main one.
+      if (numobjs > 1)
+        h->SetLineWidth(2);
+    }
+
+    applyTPadCustomizations(dynamic_cast<TPad*>(&c), i);
+
+    // Draw the main object on top.
+    ob->Draw(ri.drawOptions.c_str());
+
+    // Maybe draw overlay from reference and other objects.
+    for (size_t n = 0; n < numobjs; ++n)
+    {
+      TObject *refobj = 0;
+      // Compute colors array size on the fly and use it to loop
+      // over defined colors in case the number of objects to
+      // overlay is greater than the available colors
+      // (n%colorIndex).
+      int colorIndex = sizeof(colors)/sizeof(int);
+      if (n == 0 && (i.reference == DQM_REF_OVERLAY
+                     || i.reference == DQM_REF_OVERLAY_RATIO))
+        refobj = objs[0].reference;
+      else if (n > 0)
+        refobj = objs[n].object;
+
+      TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
+      TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
+      TProfile *refp = dynamic_cast<TProfile *>(refobj);
+      if (refp)
+      {
+        refp->SetLineColor(colors[n%colorIndex]);
+        refp->SetLineWidth(0);
+        refp->GetListOfFunctions()->Delete();
+        refp->Draw("same hist");
+      }
+      else if (ref1f || ref1d)
+      {
+        // Perform KS statistical test only on the first available
+        // reference, excluding the (possible) default one
+        // injected during the harvesting step.
+        int color = colors[n%colorIndex];
+        double norm = 1.;
+        if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
+          norm = th1f->GetSumOfWeights();
+        else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
+          norm = th1d->GetSumOfWeights();
+
+        TH1 *ref = (ref1f
+                    ? static_cast<TH1 *>(ref1f)
+                    : static_cast<TH1 *>(ref1d));
+        if (n==1 && ! isnan(i.ktest))
+        {
+          if (TH1 *h = dynamic_cast<TH1 *>(ob))
+          {
+            double prob = h->KolmogorovTest(ref);
+            color = prob < i.ktest ? kRed-4 : kGreen-3;
+            char buffer[14];
+            snprintf(buffer, 14, "%6.5f", prob);
+            TText t;
+            t.SetTextColor(color);
+            t.DrawTextNDC(0.45, 0.9, buffer);
+          }
+        }
+
+        ref->SetLineColor(color); ref->SetMarkerColor(color);
+        ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
+        ref->GetListOfFunctions()->Delete();
+        if (i.showerrbars)
+          samePlotOptions += " e1 x0";
+
+        // Check if the original plot has been flagged as an
+        // efficieny plot at production time: if this is the case,
+        // then avoid any kind of normalization that introduces
+        // fake effects.
+        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
+          nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+        else
+          ref->Draw(samePlotOptions.c_str());
+
+        if (i.showstats)
+          drawReferenceStatBox(i, n, ref, color, objs[n].name, nukem);
+      }
     }
   }
 
@@ -1457,7 +1734,6 @@ private:
   bool
   doRender(VisDQMImgInfo &i, VisDQMObject *objs, size_t numobjs, DataBlob &imgdata)
     {
-      std::string samePlotOptions("same p");
       VisDQMObject &o = objs[0];
       VisDQMRenderInfo ri = { i.drawOptions, (info_.blacklist.count(o.name) > 0) };
 
@@ -1538,9 +1814,6 @@ private:
       }
 
       // Actually draw something.  If there's no object, inform user.
-      double xmin = NAN, xmax = NAN;
-      double ymin = NAN, ymax = NAN;
-      double zmin = NAN, zmax = NAN;
       if (! ob)
       {
         Color_t c = TColor::GetColor(64, 64, 64);
@@ -1568,159 +1841,17 @@ private:
       // It's there and wasn't black-listed, paint it.
       else
       {
-        // Handle text.
-        if (TObjString *os = dynamic_cast<TObjString *>(ob))
+        // Real drawing
+        switch (i.reference)
         {
-          TText *t = new TText(.5, .5, os->GetName());
-          t->SetTextFont (63);
-          t->SetTextAlign (22);
-          t->SetTextSize (16);
-          nukem.push_back(t);
-          ob = t;
-        }
-
-        // If we have an object that has axes, apply the requested params.
-        // Set only the bounds that were specified, and leave the rest to
-        // the natural range.  Unset bounds have NaN as their value.
-        if (TH1 *h = dynamic_cast<TH1 *>(ob))
-        {
-          if (TAxis *a = h->GetXaxis())
-          {
-            if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
-            {
-              xmin = a->GetXmin();
-              xmax = a->GetXmax();
-              a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
-                              isnan(i.xaxis.max) ? xmax : i.xaxis.max);
-            }
-
-            if (i.xaxis.type == "lin")
-              c.SetLogx(0);
-            else if (i.xaxis.type == "log")
-              c.SetLogx(1);
-          }
-
-          if (TAxis *a = h->GetYaxis())
-          {
-            if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
-            {
-              ymin = a->GetXmin();
-              ymax = a->GetXmax();
-              a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
-                              isnan(i.yaxis.max) ? ymax : i.yaxis.max);
-            }
-
-            if (i.yaxis.type == "lin")
-              c.SetLogy(0);
-            else if (i.yaxis.type == "log")
-              c.SetLogy(1);
-          }
-
-          if (TAxis *a = h->GetZaxis())
-          {
-            if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
-            {
-              zmin = a->GetXmin();
-              zmax = a->GetXmax();
-              a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
-                              isnan(i.zaxis.max) ? zmax : i.zaxis.max);
-            }
-
-            if (i.zaxis.type == "lin")
-              c.SetLogz(0);
-            else if (i.zaxis.type == "log")
-              c.SetLogz(1);
-          }
-          // Increase lineWidth in case there are other objects to
-          // draw on top of the main one.
-          if (numobjs > 1)
-            h->SetLineWidth(2);
-        }
-
-        if (gStyle)
-          gStyle->SetOptStat(i.showstats);
-
-
-        // Draw the main object on top.
-        if(i.reference == DQM_REF_STACKED)
-          doRenderStacked(i, objs, numobjs, ri, nukem);
-        else
-        {
-          // Draw the main object on top.
-          ob->Draw(ri.drawOptions.c_str());
-
-          // Maybe draw overlay from reference and other objects.
-          for (size_t n = 0; n < numobjs; ++n)
-          {
-            TObject *refobj = 0;
-            // Compute colors array size on the fly and use it to loop
-            // over defined colors in case the number of objects to
-            // overlay is greater than the available colors
-            // (n%colorIndex).
-            int colorIndex = sizeof(colors)/sizeof(int);
-            if (n == 0 && i.reference == DQM_REF_OVERLAY)
-              refobj = o.reference;
-            else if (n > 0)
-              refobj = objs[n].object;
-
-            TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
-            TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
-            TProfile *refp = dynamic_cast<TProfile *>(refobj);
-            if (refp)
-            {
-              refp->SetLineColor(colors[n%colorIndex]);
-              refp->SetLineWidth(0);
-              refp->GetListOfFunctions()->Delete();
-              refp->Draw("same hist");
-            }
-            else if (ref1f || ref1d)
-            {
-              // Perform KS statistical test only on the first available
-              // reference, excluding the (possible) default one
-              // injected during the harvesting step.
-              int color = colors[n%colorIndex];
-              double norm = 1.;
-              if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-                norm = th1f->GetSumOfWeights();
-              else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-                norm = th1d->GetSumOfWeights();
-
-              TH1 *ref = (ref1f
-                          ? static_cast<TH1 *>(ref1f)
-                          : static_cast<TH1 *>(ref1d));
-              if (n==1 && ! isnan(i.ktest))
-              {
-                if (TH1 *h = dynamic_cast<TH1 *>(ob))
-                {
-                  double prob = h->KolmogorovTest(ref);
-                  color = prob < i.ktest ? kRed-4 : kGreen-3;
-                  char buffer[14];
-                  snprintf(buffer, 14, "%6.5f", prob);
-                  TText t;
-                  t.SetTextColor(color);
-                  t.DrawTextNDC(0.45, 0.9, buffer);
-                }
-              }
-
-              ref->SetLineColor(color); ref->SetMarkerColor(color);
-              ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
-              ref->GetListOfFunctions()->Delete();
-              if (i.showerrbars)
-                samePlotOptions += " e1 x0";
-
-              // Check if the original plot has been flagged as an
-              // efficieny plot at production time: if this is the case,
-              // then avoid any kind of normalization that introduces
-              // fake effects.
-              if (norm && !(o.flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-                nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-              else
-                ref->Draw(samePlotOptions.c_str());
-
-              if (i.showstats)
-                drawReferenceStatBox(i, n, ref, color, objs[n].name, nukem);
-            }
-          }
+          case DQM_REF_STACKED:
+            doRenderStacked(c, i, objs, numobjs, ri, nukem);
+            break;
+          case DQM_REF_OVERLAY_RATIO:
+            doRenderOverlayAndRatio(c, i, objs, numobjs, ri, nukem);
+            break;
+          default:
+            doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
         }
       }
 
