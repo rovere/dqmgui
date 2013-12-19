@@ -337,7 +337,6 @@ GUI.Plugin.DQMHeaderRow = new function() {
     // guaranteed any longer that those are stacked at the end of the
     // DOM chain. We have to loop over all children and get rid of all
     // but necessary stuff, i.e. hd(header), bd(body) and ft(footer).
-    $('header').replaceChild(_toolsgroup, _toolsgroup.parentNode);
     for (i=0; i<_toolsgroup.childNodes.length; i++)
       if (_toolsgroup.childNodes[i].className != 'hd' &&
 	  _toolsgroup.childNodes[i].className != 'bd' &&

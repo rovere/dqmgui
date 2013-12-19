@@ -19,6 +19,18 @@
  ><body id='body' style="display:none" class="yui-skin-sam"
   ><div id="imgloader"></div
   ><div id="header"
+    ><img id="cmslogo" src="$ROOTPATH/static/cms-progress.gif"
+            width="46" height="46" style="cursor: pointer"
+    /><div id="serverid"
+      >CMS DQM GUI ($HOSTNAME)<br
+      /><span id='time'></span><br
+      >$USER, <a href="#" onclick="return GUI.Plugin.DQMHeaderRow.togglePanel()">View details</a
+    ></div
+    ><div id="subheader"></div
+    ><div id="canvas-opts" style="display:none"></div
+   ></div
+
+   ><div id="canvas-group"
     ><div id="header-tools-group" class="popup-panel" style="display:none"
       ><div class="hd">View Details</div
       ><div id="header-tools" class="bd"
@@ -28,62 +40,62 @@
            ><option value='all' selected='selected'>All</option
            ><option value='alarms'>Alarms</option
            ><option value='nonalarms'>Non-alarms</option
-	  ></select><label for='subhead-search'>Search</label
+          ></select><label for='subhead-search'>Search</label
           ><input id='subhead-search' type='text' style='width:8em'
           /><span id='subhead-searchres' style='margin-left:5px'>0 objects</span
-	  ><label>Stats:</label
-	  ><select id='subhead-stats'
-	  ><option value='0'>False</option
-	  ><option value='1'>True</option
-	  ></select
-	  ><label>ErrBars:</label
-	  ><select id='subhead-errbars'
-	  ><option value='0'>False</option
-	  ><option value='1'>True</option
-	  ></select
+          ><label>Stats:</label
+          ><select id='subhead-stats'
+          ><option value='0'>False</option
+          ><option value='1'>True</option
+          ></select
+          ><label>ErrBars:</label
+          ><select id='subhead-errbars'
+          ><option value='0'>False</option
+          ><option value='1'>True</option
+          ></select
          ></div
         ></fieldset
         ><fieldset class='even'><legend>Strip Chart</legend
          ><div class='group'><label for='subhead-strip-type'>Display</label
           ><select id='subhead-strip-type'
-	   ><option value='object'>Object</option
+           ><option value='object'>Object</option
 
-	   ><option value='x-mean'>X Mean</option
-	   ><option value='x-mean-rms'>X Mean and RMS</option
-	   ><option value='x-mean-min-max'>X Mean and Min-Max</option
-	   ><option value='x-min'>X Min</option
-	   ><option value='x-max'>X Max</option
-	   ><option value='x-bins'>X Bins</option
+           ><option value='x-mean'>X Mean</option
+           ><option value='x-mean-rms'>X Mean and RMS</option
+           ><option value='x-mean-min-max'>X Mean and Min-Max</option
+           ><option value='x-min'>X Min</option
+           ><option value='x-max'>X Max</option
+           ><option value='x-bins'>X Bins</option
 
-	   ><option value='y-mean'>Y Mean</option
-	   ><option value='y-mean-rms'>Y Mean and RMS</option
-	   ><option value='y-mean-min-max'>Y Mean and Min-Max</option
-	   ><option value='y-min'>Y Min</option
-	   ><option value='y-max'>Y Max</option
-	   ><option value='y-bins'>Y Bin Count</option
+           ><option value='y-mean'>Y Mean</option
+           ><option value='y-mean-rms'>Y Mean and RMS</option
+           ><option value='y-mean-min-max'>Y Mean and Min-Max</option
+           ><option value='y-min'>Y Min</option
+           ><option value='y-max'>Y Max</option
+           ><option value='y-bins'>Y Bin Count</option
 
-	   ><option value='z-mean'>Z Mean</option
-	   ><option value='z-mean-rms'>Z Mean and RMS</option
-	   ><option value='z-mean-min-max'>Z Mean and Min-Max</option
-	   ><option value='z-min'>Z Min</option
-	   ><option value='z-max'>Z Max</option
-	   ><option value='z-bins'>Z Bin Count</option
+           ><option value='z-mean'>Z Mean</option
+           ><option value='z-mean-rms'>Z Mean and RMS</option
+           ><option value='z-mean-min-max'>Z Mean and Min-Max</option
+           ><option value='z-min'>Z Min</option
+           ><option value='z-max'>Z Max</option
+           ><option value='z-bins'>Z Bin Count</option
 
-	   ><option value='num-entries'>Number of entries</option
-	   ><option value='num-bins'>Number of bins</option
-	   ><option value='num-bytes'>Serialised size</option
+           ><option value='num-entries'>Number of entries</option
+           ><option value='num-bins'>Number of bins</option
+           ><option value='num-bytes'>Serialised size</option
           ></select><label for='subhead-strip-n'>for last</label
-	  ><input id='subhead-strip-n' type='text' size='4'
-	  /><span style='margin-left:5px'>runs</span
+          ><input id='subhead-strip-n' type='text' size='4'
+          /><span style='margin-left:5px'>runs</span
          ></div
          ><div class='group'><label for='subhead-strip-axis'>Axis</label
           ><select id='subhead-strip-axis'
-	   ><option value='run'>Run Number or Version</option
-	   ><option value='time'>Time of DQM Processing</option
+           ><option value='run'>Run Number or Version</option
+           ><option value='time'>Time of DQM Processing</option
           ></select><label for='subhead-strip-omit'>Omit</label
           ><select id='subhead-strip-omit'
-	   ><option value='none'>Nothing</option
-	   ><option value='empty'>Empty Histograms</option
+           ><option value='none'>Nothing</option
+           ><option value='empty'>Empty Histograms</option
           ></select
          ></div
         ></fieldset
@@ -142,18 +154,6 @@
       ></div
       ><div class="ft"></div
     ></div
-    ><img id="cmslogo" src="$ROOTPATH/static/cms-progress.gif"
-	    width="46" height="46" style="cursor: pointer"
-    /><div id="serverid"
-      >CMS DQM GUI ($HOSTNAME)<br
-      /><span id='time'></span><br
-      >$USER, <a href="#" onclick="return GUI.Plugin.DQMHeaderRow.togglePanel()">View details</a
-    ></div
-    ><div id="subheader"></div
-    ><div id="canvas-opts" style="display:none"></div
-   /></div
-
-   ><div id="canvas-group"
      ><div id="canvas-custom-group" class="popup-panel" style="display:none"
        ><div class="hd">Customise</div
        ><div id="canvas-custom" class="bd"></div
