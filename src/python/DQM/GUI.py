@@ -4,8 +4,8 @@ from stat import *
 from copy import deepcopy, copy
 from threading import Thread, Lock
 from Monitoring.DQM import Accelerator
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, natsorted, thousands
-from cherrypy import expose, HTTPError, HTTPRedirect, tree, request, response, engine, thread_data, log, url
+from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, natsorted, thousands, ParameterManager
+from cherrypy import expose, HTTPError, HTTPRedirect, tree, request, response, engine, thread_data, log, url, tools
 from cherrypy.lib.static import serve_file
 from cherrypy.lib import cptools, http
 from struct import pack, unpack
@@ -16,6 +16,8 @@ DEF_DQM_PORT = 9090
 
 # Validate DQM file paths.
 RX_SAFE_PATH = re.compile(r"^[A-Za-z0-9][-A-Za-z0-9_]*(?:\.(?:root|zip|ig))?$")
+
+tools.params = ParameterManager()
 
 # --------------------------------------------------------------------
 # DQM uploads utility class to properly set headers, status and to
@@ -128,6 +130,7 @@ class DQMFileAccess(DQMUpload):
   # FIXME: Verify the request was submitted securely and is permitted.
   # FIXME: Determine producer from certificate information.
   @expose
+  @tools.params()
   def put(self,
           size = None,
           checksum = None,
@@ -257,6 +260,7 @@ class DQMFileAccess(DQMUpload):
   # apache mod_dir file browsing scheme.  Serves only files with valid
   # and safe path references.  FIXME: Bandwidth limiting and ACLs?
   @expose
+  @tools.params()
   def browse(self, *path, **kwargs):
     rooturl = self.server.baseUrl + "/data/browse"
     if not self.roots or len(self.roots) == 0:
@@ -341,6 +345,7 @@ class DQMLayoutAccess(DQMUpload):
   # attempts to save the file safely.  Sets headers in the response
   # to indicate what happened, either an error or success.
   @expose
+  @tools.params()
   def put(self,
           file = None,
           *args,
@@ -420,6 +425,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
                config={"/": {'request.show_tracebacks': False}})
 
   @expose
+  @tools.params()
   def samples(self, *args, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))
@@ -429,6 +435,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
     return result
 
   @expose
+  @tools.params()
   def default(self, srcname, runnr, dsP, dsW, dsT, *path, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))
@@ -488,7 +495,6 @@ class DQMOverlaySource(Accelerator.DQMOverlaySource):
 
     objs = options.get("obj", [])
     if isinstance(objs, str): objs = [objs]
-
     final = []
     for o in objs:
       (srcname, runnr, dsP, dsW, dsT, path) = o.split("/", 5)

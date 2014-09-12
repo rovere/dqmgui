@@ -1,5 +1,5 @@
 import re, time, calendar, logging
-from cherrypy import log
+from cherrypy import log, Tool, tools, request
 
 RE_DIGIT_SEQ = re.compile(r'([-+]?\d+)')
 RE_THOUSANDS = re.compile(r'(\d)(\d{3}($|\D))')
@@ -130,3 +130,31 @@ def sizevalue(val):
     return float(m.group(1)) * scale[m.group(2)]
   else:
     return float(val)
+
+class ParameterManager(Tool):
+  def __init__(self):
+    Tool.__init__(self, 'before_handler',
+                  self.load, priority=10)
+
+  def load(self):
+    req = request
+
+    ## Retrieve all parameters associated to the request and change
+    ## unicode strings back to str, so that all the C++ code that uses
+    ## them is happy.
+
+    for k in req.params.keys():
+      if isinstance(req.params[k], unicode):
+        try:
+          _loginfo("Converting %s" % req.params[k])
+          req.params[k] = str(req.params[k])
+        except Exception, e:
+          _logerr("FAILURE: cannot convert unicode value: " + value)
+      if isinstance(req.params[k], list):
+        for i in xrange(len(req.params[k])):
+          if isinstance(req.params[k][i], unicode):
+            try:
+              _loginfo("Converting in list %s" % req.params[k][i])
+              req.params[k][i] = str(req.params[k][i])
+            except Exception, e:
+              _logerr("FAILURE: cannot convert unicode value: " + value)
