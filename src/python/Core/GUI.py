@@ -11,10 +11,10 @@ from copy import deepcopy
 from cgi import escape
 from socket import gethostname
 from threading import Thread, Lock
-from cherrypy import expose, HTTPError, request, response, engine, log
+from cherrypy import expose, HTTPError, request, response, engine, log, tools, Tool
 from cherrypy.lib.static import serve_file
 from Cheetah.Template import Template
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo
+from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, ParameterManager
 from cStringIO import StringIO
 from stat import *
 from jsmin import jsmin
@@ -123,7 +123,9 @@ class SessionThread(Thread):
       time.sleep(1)
 
 # -------------------------------------------------------------------
+tools.params = ParameterManager()
 class Server:
+
   """The main server process, a CherryPy actor mounted to the URL tree.
   The basic server core orchestrates basic services such as session
   management, templates, static content and switching workspaces.
@@ -472,12 +474,14 @@ class Server:
   # Server access points.
 
   @expose
+  @tools.params()
   def index(self):
     """Main root index address: the landing address.  Create a new
     session and redirect the client there."""
     return self.start(workspace = self.workspaces[0].name);
 
   @expose
+  @tools.params()
   def static(self, *args, **kwargs):
     """Access our own static content."""
     if len(args) != 1 or not re.match(r"^[-a-z]+\.(png|gif)$", args[0]):
@@ -485,6 +489,7 @@ class Server:
     return serve_file(self.contentpath + '/images/' + args[0])
 
   @expose
+  @tools.params()
   def yui(self, *args, **kwargs):
     """Access YUI static content."""
     path = "/".join(args)
@@ -493,6 +498,7 @@ class Server:
     return serve_file(self._yui + '/' + path)
 
   @expose
+  @tools.params()
   def extjs(self, *args, **kwargs):
     """Access ExtJS static content."""
     path = "/".join(args)
@@ -501,6 +507,7 @@ class Server:
     return serve_file(self._extjs + '/' + path)
 
   @expose
+  @tools.params()
   def d3(self, *args, **kwargs):
     """Access D3 static content."""
     path = "/".join(args)
@@ -510,6 +517,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def start(self, *args, **kwargs):
     """Jump to some content.  This creates and configures a new session with
     the desired content, as if a sequence of actions was carried out.
@@ -534,6 +542,7 @@ class Server:
     return _SESSION_REDIRECT % (self.baseUrl + "/session/" + sessionid)
 
   @expose
+  @tools.params()
   def workspace(self, *args, **kwargs):
     """Backward compatible version of 'start' which understands one
     parameter, the name of the workspace to begin in.  Note that
@@ -546,6 +555,7 @@ class Server:
 
 # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def jsonfairy(self, *args, **kwargs):
     """General session-independent access path for json representation
     of plot. The first subdirectory argument contains the name of the
@@ -553,7 +563,6 @@ class Server:
     value of argument 'formatted' = true insread of pure JSON whole
     HTML page is returned.  The rest of the processing is given over
     to the hook."""
-
     try:
       if len(args) >= 1:
         for s in self.sources:
@@ -582,6 +591,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def plotfairy(self, *args, **kwargs):
     """General session-independent access path for dynamic images.
     The first subdirectory argument contains the name of the
@@ -611,6 +621,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def digest(self, *args, **kwargs):
     """Report code running in this server."""
     maxsize = max(len(str(i['srclen'])) for i in self.checksums) + 1
@@ -629,6 +640,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def authenticate(self, *args, **kwargs):
     """A hook for authenticating users.  We don't actually authenticate
     anyone here, all the authentication is done in the front-end
@@ -639,6 +651,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def session(self, *args, **kwargs):
     """Main session address.  All AJAX calls to the session land here.
     The URL is of the form "[/ROOT]/session/ID[/METHOD].  We check
