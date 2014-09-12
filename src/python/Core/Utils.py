@@ -146,7 +146,6 @@ class ParameterManager(Tool):
     for k in req.params.keys():
       if isinstance(req.params[k], unicode):
         try:
-          _loginfo("Converting %s" % req.params[k])
           req.params[k] = str(req.params[k])
         except Exception, e:
           _logerr("FAILURE: cannot convert unicode value: " + value)
@@ -154,7 +153,6 @@ class ParameterManager(Tool):
         for i in xrange(len(req.params[k])):
           if isinstance(req.params[k][i], unicode):
             try:
-              _loginfo("Converting in list %s" % req.params[k][i])
               req.params[k][i] = str(req.params[k][i])
             except Exception, e:
               _logerr("FAILURE: cannot convert unicode value: " + value)
