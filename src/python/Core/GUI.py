@@ -20,6 +20,7 @@ from stat import *
 from jsmin import jsmin
 import cPickle as pickle
 import sys, os, os.path, re, tempfile, time, inspect, logging, traceback, hashlib
+import json, cjson, httplib, base64
 
 _SESSION_REDIRECT = ("<html><head><script>location.replace('%s')</script></head>"
                      + "<body><noscript>Please enable JavaScript to use this"
@@ -697,6 +698,24 @@ class Server:
       return method(session, *args, **kwargs)
     finally:
       self._releaseSession(session)
+
+  # -----------------------------------------------------------------
+  @expose
+  @tools.params()
+  def urlshortener(self, *args, **kwargs):
+    url = '/urlshortener/v1/url'
+    if (not 'url' in kwargs.keys()):
+      return '{}'
+    conn = httplib.HTTPSConnection("www.googleapis.com")
+    headers = {"Content-Type": "application/json"}
+    params = {"longUrl": base64.b64decode(kwargs['url'])}
+    conn.request("POST", url, json.dumps(params), headers)
+    response = conn.getresponse()
+    if (response.status != 200):
+      log("WARNING: unable to shorten URL: " + base64.b64decode(kwargs['url']),
+          severity=logging.WARNING)
+      return '{}'
+    return response.read()
 
   def sessionIndex(self, session, *args ,**kwargs):
     """Generate top level session index.  This produces the main GUI web

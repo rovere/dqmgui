@@ -696,9 +696,17 @@ GUI.Plugin.DQMCanvas = new function()
     for (prop in myattrs)
       url += prop + '=' + encodePathComponent(myattrs[prop]) + ';';
 
-    _linkMe = Ext.MessageBox.show({ title: 'Cut and Paste this link:', msg: '',
-				    width: 400, prompt: true, value: url,
-				    modal: false });
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', _url().replace(/session.*/, '/urlshortener') + "?url=" + Base64.encode(url));
+    xhr.onreadystatechange = function() {
+        if (this.readyState == 4  && this.status == 200) {
+          var resp = JSON.parse(this.responseText);
+          _linkMe = Ext.MessageBox.show({ title: 'Cut and Paste this link:', msg: '',
+                                          width: 200, prompt: true, value: resp.id,
+                                          modal: false });
+        }
+    };
+    xhr.send();
   };
 
   this.attach = function(gui)
