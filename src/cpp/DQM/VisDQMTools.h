@@ -121,15 +121,6 @@ static std::string unhexlify(const std::string& s)
   return result;
 }
 
-std::ostream &operator<<(std::ostream &out, IndexKey c)
-{
-  out << std::hex << (c.sampleAndType >> 4) << "-"
-      << (c.sampleAndType & 0xf) << ":";
-  out << std::hex << (c.lumiAndObjname >> 32) << "-"
-      << (c.lumiAndObjname & 0xffffffff) << std::dec;
-  return out;
-}
-
 #if !VISDQM_NO_ROOT
 //----------------------------------------------------------------------
 /** Extract the next serialised ROOT object from @a buf.  Returns null

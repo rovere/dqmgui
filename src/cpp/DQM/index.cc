@@ -252,6 +252,15 @@ static const std::string MEROOTBOUNDARY("____MEROOTBOUNDARY____");
 static const size_t ALL_SAMPLES = ~(size_t)0;
 
 // ----------------------------------------------------------------------
+std::ostream &operator<<(std::ostream &out, IndexKey c)
+{
+  out << std::hex << (c.sampleAndType >> 4) << "-"
+      << (c.sampleAndType & 0xf) << ":";
+  out << std::hex << (c.lumiAndObjname >> 32) << "-"
+      << (c.lumiAndObjname & 0xffffffff) << std::dec;
+  return out;
+}
+
 /** Utility function to round @a value to a value divisible by @a unit. */
 static inline uint32_t
 myroundup(uint32_t value, uint32_t unit)

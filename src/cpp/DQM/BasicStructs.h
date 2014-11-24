@@ -1,0 +1,5 @@
+#ifndef DQM_BASICSTRUCTS_H
+#define DQM_BASICSTRUCTS_H
+
+
+#endif // DQM_BASICSTRUCTS_H

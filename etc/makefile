@@ -33,10 +33,21 @@ COLL_OBJ     = $(patsubst %.cc,%.o,$(notdir $(COLL_SRC)))
 COLL_LINK    = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(COLL_OBJ) \
                $(LDFLAGS) $(OTHER_LIBS)
 
+UTIL_SRC     = DQM/utils.cc
+UTIL_OBJ     = $(patsubst %.cc,%.o,$(notdir $(UTIL_SRC)))
+
+SOURCE_SRC   =  DQM/VisDQMUnknownSource.cc DQM/VisDQMCertificationSource.cc \
+                DQM/VisDQMOverlaySource.cc DQM/VisDQMStripChartSource.cc \
+                DQM/VisDQMLayoutSource.cc DQM/VisDQMLiveSource.cc \
+                DQM/VisDQMArchiveSource.cc DQM/VisDQMArchiveWatch.cc \
+                DQM/VisDQMRenderLink.cc
+SOURCE_OBJ   = $(patsubst %.cc,%.o,$(notdir $(SOURCE_SRC)))
+
 EXT_SRC      = DQM/serverext.cc DQM/DQMNet.cc DQM/DQMError.cc
 EXT_OBJ      = $(patsubst %.cc,%.o,$(notdir $(EXT_SRC)))
 EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
-               $(LDFLAGS) -lDQMGUI $(OTHER_LIBS) $(PYTHON_LIBS) -lpng
+               $(LDFLAGS) -lDQMGUI $(UTIL_OBJ) $(SOURCE_OBJ) \
+               $(OTHER_LIBS) $(PYTHON_LIBS) -lpng
 
 INDEX_SRC    = DQM/index.cc DQM/DQMNet.cc DQM/DQMError.cc \
                DQM/DQMStore.cc DQM/MonitorElement.cc \
@@ -62,7 +73,7 @@ StreamSample.pb.o: DQM/StreamSample.pb.cc
 index.o: DQM/index.cc DQM/StreamSample.pb.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 libDQMGUI.so: $(LIB_OBJ); $(LIB_LINK)
-Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
+Accelerator.so: $(EXT_OBJ) $(UTIL_OBJ) $(SOURCE_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
 visDQMIndex: $(INDEX_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(INDEX_LINK)
 visDQMRender: $(RENDER_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(RENDER_LINK)
