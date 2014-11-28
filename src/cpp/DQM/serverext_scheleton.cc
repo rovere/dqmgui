@@ -1137,18 +1137,18 @@ public:
       {
 	uint32_t words[11] =
 	  {
-	    sizeof(words) + img.pathname.size() + img.imagespec.size()
-	    + img.databytes.size() + img.qdata.size(),
+	    (uint32_t)(sizeof(words) + img.pathname.size() + img.imagespec.size()
+                       + img.databytes.size() + img.qdata.size()),
 	    (json ? DQM_MSG_GET_JSON_DATA : DQM_MSG_GET_IMAGE_DATA),
 	    img.flags,
 	    img.tag,
-	    (img.version >> 0 ) & 0xffffffff,
-	    (img.version >> 32) & 0xffffffff,
-	    img.numparts,
-	    img.pathname.size(),
-	    img.imagespec.size(),
-	    img.databytes.size(),
-	    img.qdata.size()
+	    (uint32_t)((img.version >> 0 ) & 0xffffffff),
+	    (uint32_t)((img.version >> 32) & 0xffffffff),
+	    (uint32_t)img.numparts,
+	    (uint32_t)img.pathname.size(),
+	    (uint32_t)img.imagespec.size(),
+	    (uint32_t)img.databytes.size(),
+	    (uint32_t)img.qdata.size()
 	  };
 
 	std::string message;
@@ -2378,7 +2378,9 @@ public:
 
       // Build an internal object request.
       DataBlob req(3*sizeof(uint32_t) + name.size());
-      uint32_t header[3] = { req.size(), DQM_MSG_GET_OBJECT, name.size() };
+      uint32_t header[3] = { (uint32_t)req.size(),
+                             DQM_MSG_GET_OBJECT,
+                             (uint32_t)name.size() };
       memcpy(&req[0], header, sizeof(header));
       memcpy(&req[sizeof(header)], &name[0], name.size());
 
