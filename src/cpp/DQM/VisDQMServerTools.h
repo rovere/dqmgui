@@ -186,8 +186,4 @@ bool orderSamplesByRun(const VisDQMSample &a,
   return false;
 }
 
-
-//#pragma GCC visibility pop
-
-
 #endif // DQM_VISDQMSERVERTOOLS_H

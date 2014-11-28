@@ -33,7 +33,9 @@ COLL_OBJ     = $(patsubst %.cc,%.o,$(notdir $(COLL_SRC)))
 COLL_LINK    = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(COLL_OBJ) \
                $(LDFLAGS) $(OTHER_LIBS)
 
-EXT_SRC      = DQM/serverext_scheleton.cc DQM/DQMNet.cc DQM/DQMError.cc DQM/VisDQMServerTools.cc
+EXT_SRC      = DQM/serverext_scheleton.cc DQM/DQMNet.cc \
+               DQM/DQMError.cc DQM/VisDQMServerTools.cc \
+               DQM/VisDQMRenderLink.cc
 EXT_OBJ      = $(patsubst %.cc,%.o,$(notdir $(EXT_SRC)))
 EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
                $(LDFLAGS) -lDQMGUI $(OTHER_LIBS) $(PYTHON_LIBS) -lpng
