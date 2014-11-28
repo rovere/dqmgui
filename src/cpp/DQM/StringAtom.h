@@ -6,6 +6,8 @@
 # include <cassert>
 # include <iostream>
 
+# include <limits.h>
+
 /** Simple patricia tree implementation for a ultra-fast strings.
     Maintains a patricia tree of strings; an individual string is
     just an index into this table.  */
