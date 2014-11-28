@@ -31,11 +31,6 @@ extern "C++" {
   template std::string hexlify<DQMNet::DataBlob>(const DQMNet::DataBlob &);
 }
 
-struct VisDQMRegexp;
-struct VisDQMDrawOptions;
-struct VisDQMEventNum;
-struct VisDQMSample;
-
 using namespace lat;
 using namespace boost;
 
