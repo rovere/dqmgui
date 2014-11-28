@@ -183,7 +183,7 @@ stringToJSON(const std::string &x, bool emptyIsNone /* = false */)
 }
 
 std::string
-stringsToJSON(const StringAtomSet &overlays, bool emptyIsNone /* = false */)
+stringsToJSON(const StringAtomSet &overlays, bool /* emptyIsNone  = false */)
 {
   StringAtomSet::const_iterator mi = overlays.begin();
   StringAtomSet::const_iterator me = overlays.end();
