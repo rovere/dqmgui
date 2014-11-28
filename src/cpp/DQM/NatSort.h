@@ -5,6 +5,7 @@
 # include <string>
 # include <cctype>
 # include <stdint.h>
+# include <stdlib.h>
 
 /** Compare two strings and return @c true if the first one is less
     than the second one.  This is intended to be used as a comparison

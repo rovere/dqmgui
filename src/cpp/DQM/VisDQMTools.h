@@ -121,6 +121,7 @@ static std::string unhexlify(const std::string& s)
   return result;
 }
 
+static
 std::ostream &operator<<(std::ostream &out, IndexKey c)
 {
   out << std::hex << (c.sampleAndType >> 4) << "-"
