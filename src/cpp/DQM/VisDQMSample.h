@@ -1,6 +1,8 @@
 #ifndef DQM_VISDQMSAMPLE_H
 #define DQM_VISDQMSAMPLE_H
 
+#include <stdint.h>
+
 #include <vector>
 
 class VisDQMSource;
