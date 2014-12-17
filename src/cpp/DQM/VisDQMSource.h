@@ -5,6 +5,13 @@
 #include "DQM/VisDQMIndex.h"
 #include "DQM/VisDQMSample.h"
 #include "DQM/VisDQMSourceObjects.h"
+#include "DQM/VisDQMServerTools.h"
+
+#include "boost/shared_ptr.hpp"
+#include "boost/python.hpp"
+#include "boost/python/stl_iterator.hpp"
+
+namespace py = boost::python;
 
 /** Base class for providing DQM objects. */
 class VisDQMSource
