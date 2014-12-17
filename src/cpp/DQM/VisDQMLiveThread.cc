@@ -20,7 +20,6 @@
 
 extern void buildParentNames(StringAtomList & /* to */, const StringAtom & /* from */);
 extern StringAtomTree stree;
-extern "C++" template std::string hexlify<DQMNet::DataBlob>(const DQMNet::DataBlob &);
 
 using namespace lat;
 
