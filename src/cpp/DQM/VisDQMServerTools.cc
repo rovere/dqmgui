@@ -28,7 +28,6 @@ extern StringAtomTree stree;
   // on the fact that it will be instantiated with this very same
   // signature inside serverext.cc, hence avoiding a useless
   // compilation.
-extern "C++" template std::string hexlify<DQMNet::DataBlob>(const DQMNet::DataBlob &);
 
 
 using namespace lat;
