@@ -20,7 +20,6 @@
 extern void buildParentNames(StringAtomList & /* to */, const StringAtom & /* from */);
 extern StringAtomTree stree;
 
-
 namespace py = boost::python;
 
 void
