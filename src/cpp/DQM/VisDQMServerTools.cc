@@ -17,19 +17,19 @@
 // We do not want to import ROOT stuff in here.
 # define VISDQM_NO_ROOT 1
 #include "DQM/VisDQMTools.h"
+#include "DQM/StringAtom.h"
 
 #include "classlib/utils/TimeInfo.h"
 #include "classlib/utils/StringOps.h"
 #include "classlib/utils/StringFormat.h"
 
-extern "C++" {
-  StringAtomTree stree;
+extern StringAtomTree stree;
   // WARNING: we include hexlify in the list of externals since we rely
   // on the fact that it will be instantiated with this very same
   // signature inside serverext.cc, hence avoiding a useless
   // compilation.
-  template std::string hexlify<DQMNet::DataBlob>(const DQMNet::DataBlob &);
-}
+extern "C++" template std::string hexlify<DQMNet::DataBlob>(const DQMNet::DataBlob &);
+
 
 using namespace lat;
 using namespace boost;
