@@ -41,7 +41,8 @@ EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
 EXT_SRC_SCH    = DQM/serverext_scheleton.cc DQM/DQMNet.cc \
                DQM/DQMError.cc DQM/VisDQMServerTools.cc \
                DQM/VisDQMRenderLink.cc DQM/VisDQMToJSON.cc \
-               DQM/VisDQMUnknownSource.cc
+               DQM/VisDQMUnknownSource.cc DQM/VisDQMOverlaySource.cc \
+               DQM/VisDQMStripChartSource.cc DQM/VisDQMCertificationSource.cc
 EXT_OBJ_SCH    = $(patsubst %.cc,%.o,$(notdir $(EXT_SRC_SCH)))
 EXT_LINK_SCH   = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ_SCH) \
                $(LDFLAGS) -lDQMGUI $(OTHER_LIBS) $(PYTHON_LIBS) -lpng

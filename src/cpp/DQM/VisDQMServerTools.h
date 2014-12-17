@@ -53,6 +53,7 @@ typedef std::set<StringAtom> StringAtomSet;
 typedef std::list<VisDQMEventNum> VisDQMEventNumList;
 
 static Regexp RX_THOUSANDS("(\\d)(\\d{3}($|\\D))");
+static Regexp RX_CMSSW_VERSION("CMSSW(?:_[0-9])+(?:_pre[0-9]+)?");
 
 // Custom function to log generic events prepending a properly
 // formatted time information.
