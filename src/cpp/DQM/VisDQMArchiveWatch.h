@@ -2,6 +2,7 @@
 #define DQM_VISDQMARCHIVEWATCH_H
 
 #include "classlib/iobase/Filename.h"
+#include "classlib/iobase/IOStatus.h"
 #include "classlib/utils/Time.h"
 
 #include <pthread.h>
