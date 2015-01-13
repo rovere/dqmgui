@@ -33,12 +33,7 @@ COLL_OBJ     = $(patsubst %.cc,%.o,$(notdir $(COLL_SRC)))
 COLL_LINK    = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(COLL_OBJ) \
                $(LDFLAGS) $(OTHER_LIBS)
 
-EXT_SRC      = DQM/serverext.cc DQM/DQMNet.cc DQM/DQMError.cc
-EXT_OBJ      = $(patsubst %.cc,%.o,$(notdir $(EXT_SRC)))
-EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
-               $(LDFLAGS) -lDQMGUI $(OTHER_LIBS) $(PYTHON_LIBS) -lpng
-
-EXT_SRC_SCH    = DQM/serverext_scheleton.cc DQM/DQMNet.cc \
+EXT_SRC      = DQM/serverext_scheleton.cc DQM/DQMNet.cc \
                DQM/DQMError.cc DQM/VisDQMServerTools.cc \
                DQM/VisDQMRenderLink.cc DQM/VisDQMToJSON.cc \
                DQM/VisDQMUnknownSource.cc DQM/VisDQMOverlaySource.cc \
@@ -48,8 +43,8 @@ EXT_SRC_SCH    = DQM/serverext_scheleton.cc DQM/DQMNet.cc \
                DQM/VisDQMCertificationWorkspace.cc DQM/VisDQMQualityWorkspace.cc \
                DQM/VisDQMSampleWorkspace.cc DQM/VisDQMContentWorkspace.cc \
                DQM/VisDQMPlayWorkspace.cc
-EXT_OBJ_SCH    = $(patsubst %.cc,%.o,$(notdir $(EXT_SRC_SCH)))
-EXT_LINK_SCH   = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ_SCH) \
+EXT_OBJ      = $(patsubst %.cc,%.o,$(notdir $(EXT_SRC)))
+EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
                $(LDFLAGS) -lDQMGUI $(OTHER_LIBS) $(PYTHON_LIBS) -lpng
 
 INDEX_SRC    = DQM/index.cc DQM/DQMNet.cc DQM/DQMError.cc \
@@ -66,7 +61,7 @@ RENDER_LINK  = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(RENDER_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTG_LIBS) $(OTHER_LIBS) -ljpeg
 
 vpath %.cc $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQM
-all: visDQMIndex visDQMRender DQMCollector Accelerator.so Accelerator_sch.so libDQMGUI.so
+all: visDQMIndex visDQMRender DQMCollector Accelerator.so libDQMGUI.so
 clean:; rm -f *.o *.so visDQMIndex visDQMRender
 %.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
 DQM/StreamSample.pb.cc: DQM/StreamSample.proto
@@ -77,7 +72,6 @@ index.o: DQM/index.cc DQM/StreamSample.pb.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 libDQMGUI.so: $(LIB_OBJ); $(LIB_LINK)
 Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
-Accelerator_sch.so: $(EXT_OBJ_SCH) libDQMGUI.so; $(EXT_LINK_SCH)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
 visDQMIndex: $(INDEX_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(INDEX_LINK)
 visDQMRender: $(RENDER_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(RENDER_LINK)
