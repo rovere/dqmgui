@@ -1,4 +1,5 @@
 #include "DQM/VisDQMArchiveSource.h"
+#include "DQM/VisDQMHexlify.h"
 # define VISDQM_NO_ROOT 1
 #include "DQM/VisDQMTools.h"
 

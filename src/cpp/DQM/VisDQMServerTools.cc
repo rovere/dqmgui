@@ -17,6 +17,7 @@
 // We do not want to import ROOT stuff in here.
 # define VISDQM_NO_ROOT 1
 #include "DQM/VisDQMTools.h"
+#include "DQM/VisDQMHexlify.h"
 #include "DQM/StringAtom.h"
 
 #include "classlib/utils/TimeInfo.h"
