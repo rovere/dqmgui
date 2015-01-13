@@ -8,6 +8,7 @@
 #include "DQM/VisDQMServerTools.h"
 #include "DQM/VisDQMLocks.h"
 #include "DQM/StringAtom.h"
+#include "DQM/VisDQMHexlify.h"
 // We do not want to import ROOT stuff in here.
 # define VISDQM_NO_ROOT 1
 #include "DQM/VisDQMTools.h"

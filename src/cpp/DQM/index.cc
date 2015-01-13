@@ -11,6 +11,8 @@ int debug = 0;
 #include "DQM/VisDQMFile.h"
 #include "DQM/VisDQMError.h"
 #include "DQM/VisDQMTools.h"
+#include "DQM/VisDQMHexlify.h"
+#include "DQM/VisDQMUnhexlify.h"
 #include "DQM/StringAtom.h"
 #include "DQM/Standalone.h"
 #include "DQM/DQMStore.h"
