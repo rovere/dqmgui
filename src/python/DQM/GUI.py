@@ -50,7 +50,11 @@ class DQMUpload:
   # Check that a required parameter has been given just once,
   # and the value matches the given regular expression.
   def _check(self, name, arg, rx):
+    if name == "filename":
+      arg = str(arg)
     if not arg or not isinstance(arg, str):
+      self._error(self.STATUS_ERROR_EXISTS, "Parameter %s of value %s" % (name, arg),
+                  " is of type %s" % str(type(arg)))
       self._error(self.STATUS_BAD_REQUEST,
                   "Incorrect or missing %s parameter" % name,
                   "Must provide single argument")
@@ -170,7 +174,7 @@ class DQMFileAccess(DQMUpload):
     self._check("checksum", checksum,      r"^(md5:[A-Za-z0-9]+|crc32:\d+)$")
     self._check("filename", file.filename, r"^[-A-Za-z0-9_]+\.root$")
 
-    m = re.match(r"^(DQM)_V\d+(_[A-Za-z]+)?_R(\d+)(__.*)?\.root", file.filename)
+    m = re.match(r"^(DQM)_V\d+(_[A-Za-z]+)?_R(\d+)(__.*)?\.root", str(file.filename))
     if not m:
       self._error(self.STATUS_ERROR_PARAMETER,
                   "File name does not match the expected convention")
