@@ -9,15 +9,15 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
-DROPBOX = sys.argv[1]		# Directory where we receive input ("drop box").
-IMPORTDROPBOX = sys.argv[2]	# Dropbox for visDQMImportDaemon.
-FILEREPO = sys.argv[3]		# Final file repository of original DQM files.
-QUOTASFILE = sys.argv[4]	# File that contains QUOTAS information
+DROPBOX = sys.argv[1]           # Directory where we receive input ("drop box").
+IMPORTDROPBOX = sys.argv[2]     # Dropbox for visDQMImportDaemon.
+FILEREPO = sys.argv[3]          # Final file repository of original DQM files.
+QUOTASFILE = sys.argv[4]        # File that contains QUOTAS information
 
 # Global Constants
-WAITTIME = 4 * 60			# Daemon cycle time.
-REFRESHINTERVAL = 2 * 24 * 3600	# Time between full cache refreshing.
-LOWERBOUNDARY = 0.95		# Percentage of QUOTAS to reach when deleting files
+WAITTIME = 4 * 60               # Daemon cycle time, in seconds
+REFRESHINTERVAL = 2 * 24 * 3600 # Time between full cache refreshing, in seconds
+LOWERBOUNDARY = 0.95            # Percentage of QUOTAS to reach when deleting files
 FIFORX = re.compile("^DQM_V(\d+)_.*root$")
 
 
@@ -35,6 +35,12 @@ lastRefresh = time.time()
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
   print datetime.now(), procid, msg % args
+
+# This insert method is requiring that the container receiving the
+# new item is already sorted, since it's doing a poor-man's binary
+# search to find the most appropriate location for the item to be
+# inserted. If this condition fails, the outcome is almost random and
+# very likely **not** sorted.
 
 def sortedInsert(d,i):
   head=0
@@ -108,6 +114,7 @@ while True:
       QUEUESIZES = {}
       FIFOQUEUES = {}
       filesNotInIndex = glob("%s/*.dqminfo" % IMPORTDROPBOX)
+      logme('INFO: scanning final root file repository: %s' % FILEREPO)
       for d,sd,fs in os.walk(FILEREPO):
         for f in fs:
           rootFile = FIFORX.match(f)
@@ -122,16 +129,22 @@ while True:
             fSize = info['size']
             fMtime = info['time']
             fClass = info['class']
-            fName = f.replace("V%s" % rootFile.group(1),"V*")
+            # Use exact filename and do not strip version out of it:
+            # stripping it would cause the container to be modified in
+            # case more than one version of the same file is sitting
+            # on the server. Unfortunately the modification of the
+            # container is done w/o passing through the sortedInsert,
+            # and hence spoils its internal ordering (queue is a list
+            # that holds **references** to entries in FILEDICTIONARY,
+            # hence a later change to any of those entries is
+            # reflected in a change in the corresponding reference in
+            # queue).
+            fName = f
             if "%s/%s.dqminfo" % (IMPORTDROPBOX, f) in filesNotInIndex:
               continue
 
             qEntry = FILEDICTIONARY.setdefault(fClass, {}).setdefault(
                                      fName,[fMtime,fSize,fName,d])
-
-            # Keep largest file size, and latest time of arrival
-            if qEntry[0] < fMtime: qEntry[0] = fMtime
-            if qEntry[1] < fSize:  qEntry[1] = fSize
 
             queue = FIFOQUEUES.setdefault(fClass,[])
             sortedInsert(queue,qEntry)
@@ -140,7 +153,7 @@ while True:
       for c in FILEDICTIONARY.keys():
         QUEUESIZES.setdefault(c, 0)
         QUEUESIZES[c] = sum([x[1] for x in FIFOQUEUES[c]])
-
+        logme("INFO: size for class %s is %d[%d]." % (c, QUEUESIZES[c], QUOTAS[c]))
       refreshQueues = False
 
     # Find new ROOT files in the dropbox.
@@ -163,15 +176,12 @@ while True:
       fSize = info['size']
       fClass = info['class']
       fMtime = info['time']
-      fName = f.replace("V%s" % rootFile.group(1),"V*")
+      fName = f
       qEntry = FILEDICTIONARY.setdefault(fClass, {}).setdefault(
                                      fName,[fMtime,0,fName,d])
       queue = FIFOQUEUES.setdefault(fClass,[])
       qSize = QUEUESIZES.setdefault(fClass, 0)
-      if qEntry[0] < fMtime: qEntry[0] = fMtime
-      if qEntry[1] < fSize:
-        QUEUESIZES[fClass] = qSize - qEntry[1] + fSize
-        qEntry[1] = fSize
+      QUEUESIZES[fClass] = qSize + fSize
 
       sortedInsert(queue,qEntry)
 
@@ -183,6 +193,8 @@ while True:
       if QUOTAS[c] < QUEUESIZES[c]:
         queue = FIFOQUEUES[c]
         while QUEUESIZES[c] > LOWERBOUNDARY * QUOTAS[c]:
+          logme("INFO: size for class %s is %d[%d]." % (c, QUEUESIZES[c], QUOTAS[c]))
+          logme("INFO: actual Quota: %d, limit to reach: %f " %( QUEUESIZES[c], LOWERBOUNDARY * QUOTAS[c]))
           fPat = queue[0]
           fList = glob("%s/%s" % (fPat[3],fPat[2]))
           for f in fList:
@@ -190,15 +202,16 @@ while True:
               os.remove(f)
               logme("INFO: Removed file %s",f)
             except OSError,e:
-              if not e.errno == 2:
+              if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
                 raise
-
+              
           QUEUESIZES[c] -= fPat[1]
           del FILEDICTIONARY[c][fPat[2]]
           del queue[0]
           del fPat
 
     if time.time() > lastRefresh + REFRESHINTERVAL:
+      lastRefresh = time.time()
       refreshQueues = True
 
   # If anything bad happened, barf but keep going.
