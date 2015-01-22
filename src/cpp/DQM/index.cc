@@ -270,7 +270,7 @@ static bool isStreamPBFile(const char* filename)
 }
 
 /** Utility function to read a double from a stream. */
-static inline void readDouble(ifstream &iread, double *into)
+static inline void readDouble(std::ifstream &iread, double *into)
 {
   std::string tmp;
   iread >> tmp;
@@ -278,7 +278,7 @@ static inline void readDouble(ifstream &iread, double *into)
 }
 
 /** Utility function to write a double into a stream. */
-static inline void writeDouble(ofstream &iwrite,
+static inline void writeDouble(std::ofstream &iwrite,
 			       const char *prefix,
 			       double val)
 {
