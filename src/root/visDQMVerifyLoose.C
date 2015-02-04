@@ -1,7 +1,7 @@
 void visDQMVerifyLoose(void)
 {
-  for (int i = 0; i < 15; ++i)
-    gSystem->ResetSignal(i, kTRUE);
+  for (int signal = kSigBus; signal <= kSigUser2; ++signal)
+    gSystem->ResetSignal(static_cast<ESignals>(signal), kTRUE);
 
   const char *required[] = { "Run summary" };
 

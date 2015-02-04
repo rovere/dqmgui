@@ -1,7 +1,7 @@
 void visDQMVerifyStrict(void)
 {
-  for (int i = 0; i < 15; ++i)
-    gSystem->ResetSignal(i, kTRUE);
+  for (int signal = kSigBus; signal <= kSigUser2; ++signal)
+    gSystem->ResetSignal(static_cast<ESignals>(signal), kTRUE);
 
   // NB: cannot use scalars like iRun, iEvent, iLumiSection.
   // We search for them manually out of an EventInfo.
