@@ -86,12 +86,20 @@ def persist_new_dictionary(new):
   # file in our dropbox. The file is called new.pyckle.
   pickle_file = os.path.join(DROPBOX, NEW_DICT_PICKLE_FILENAME)
   try:
-      pickle.dump(new, open(pickle_file, "wb" ))
-      logme("Succesfully dumped status of the 'new' dictionary with %s entries "
-            "in pickle file at %s." % (len(new), pickle_file))
+    pickle.dump(new, open(pickle_file, "wb" ))
+    logme("Successfully dumped status of the 'new' dictionary with %s entries "
+          "in pickle file at %s." % (len(new), pickle_file))
   except:
     logme("Couldn't dump the pickle file to %s. %s" % (pickle_file,
                                                        sys.exc_info()))
+
+def get_local_file_size(file_full_path):
+  if os.path.isfile(file_full_path):
+    return os.stat(file_full_path).st_size
+  else:
+    logme("ERROR: Trying to get size of %s, but the file is missing.",
+          file_full_path)
+    return 0
 
 def get_castor_file_size(file_full_path):
   # In the past (pre 2015), we used the rfstat command for this.
@@ -195,7 +203,7 @@ try:
 
     # Otherwise if the file already exists, we continu with some extra checks:
     castor_size = get_castor_file_size(file_full_castor_path)
-    local_size = os.stat(file_full_local_path).st_size
+    local_size = get_local_file_size(file_full_local_path)
     # Option1: The sizes are different: Mark it "exists"
     if castor_size != local_size:
       logme("ERROR: File: %s already exists in CASTOR but size"
@@ -205,9 +213,15 @@ try:
     else:
       logme("ERROR: File: %s reappeared", f)
       if "stime" in info:
-        os.remove(f)
+        if os.path.isfile(f):
+          os.remove(f)
+        else:
+          logme("ERROR: Trying to remove %s, but the file isn't there", f)
       else:
-        os.rename(f,"%s.bad" % f)
+        if os.path.isfile(f):
+          os.rename(f,"%s.bad" % f)
+        else:
+          logme("ERROR: Trying to rename %s, but the file isn't there", f)
 
     del new[f]
 
