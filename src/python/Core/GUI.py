@@ -714,7 +714,9 @@ class Server:
     if (response.status != 200):
       log("WARNING: unable to shorten URL: " + base64.b64decode(kwargs['url']),
           severity=logging.WARNING)
-      return '{}'
+      # In any case do not expose users with the failure and give them
+      # back the full URL.
+      return '{"id": "%s"}' % base64.b64decode(kwargs["url"])
     return response.read()
 
   def sessionIndex(self, session, *args ,**kwargs):
