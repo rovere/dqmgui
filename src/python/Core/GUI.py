@@ -21,6 +21,7 @@ from jsmin import jsmin
 import cPickle as pickle
 import sys, os, os.path, re, tempfile, time, inspect, logging, traceback, hashlib
 import json, cjson, httplib, base64
+from GoogleAPI import api_key
 
 _SESSION_REDIRECT = ("<html><head><script>location.replace('%s')</script></head>"
                      + "<body><noscript>Please enable JavaScript to use this"
@@ -703,19 +704,22 @@ class Server:
   @expose
   @tools.params()
   def urlshortener(self, *args, **kwargs):
-    url = '/urlshortener/v1/url'
     if (not 'url' in kwargs.keys()):
       return '{}'
-    conn = httplib.HTTPSConnection("www.googleapis.com")
-    headers = {"Content-Type": "application/json"}
-    params = {"longUrl": base64.b64decode(kwargs['url'])}
-    conn.request("POST", url, json.dumps(params), headers)
-    response = conn.getresponse()
-    if (response.status != 200):
-      log("WARNING: unable to shorten URL: " + base64.b64decode(kwargs['url']),
-          severity=logging.WARNING)
-      # In any case do not expose users with the failure and give them
-      # back the full URL.
+    if api_key:
+      url = '/urlshortener/v1/url?key=%s' % api_key
+      conn = httplib.HTTPSConnection("www.googleapis.com")
+      headers = {"Content-Type": "application/json"}
+      params = {"longUrl": base64.b64decode(kwargs['url'])}
+      conn.request("POST", url, json.dumps(params), headers)
+      response = conn.getresponse()
+      if (response.status != 200):
+        log("WARNING: unable to shorten URL: " + base64.b64decode(kwargs['url']),
+            severity=logging.WARNING)
+        # In any case do not expose users with the failure and give them
+        # back the full URL.
+        return '{"id": "%s"}' % base64.b64decode(kwargs["url"])
+    else:
       return '{"id": "%s"}' % base64.b64decode(kwargs["url"])
     return response.read()
 
