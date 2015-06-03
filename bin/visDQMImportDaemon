@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import os, os.path, time, sys
+import os, os.path, time, sys, argparse, subprocess
+from subprocess import Popen,PIPE
 from traceback import print_exc
-from datetime import datetime
+from datetime import datetime, timedelta
 from tempfile import mkstemp
 from glob import glob
 from fcntl import lockf, LOCK_EX, LOCK_UN
@@ -10,12 +11,49 @@ from socket import getfqdn
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
-DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
-FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
-INDEX = sys.argv[3]     # Location of the DQM GUI index.
-NEXT = sys.argv[4:]	# Directories for the next agents in chain.
-WAITTIME = 5		# Daemon cycle time.
-MAXFILES = 10		# Maximum number of files to register between checks.
+parser = argparse.ArgumentParser(description="Agent that imports root files "
+                "in the index. It also regularly makes a backup of the index.")
+parser.add_argument("DROPBOX",
+                    help="Directory where we receive input (\"drop box\")")
+parser.add_argument("FILEREPO",
+                    help="Final file repository of original DQM files")
+parser.add_argument("INDEX", help="Location of the DQM GUI index.")
+parser.add_argument("--next", nargs='+', default = [], help="Directories for "
+                    "the next agents in chain that pick up the root files.")
+parser.add_argument("--rsync", action="store_true", help="Use rsync to make a "
+                    "backup of the index at regular intervals.")
+parser.add_argument("--time", default="05:00", help="Time in day (HH:MM) to "
+                    "make the backup. Default = 05:00")
+parser.add_argument("--days", default=1, type=int, help="Amount of days between"
+                    " each backup. Default = 1")
+parser.add_argument("--email", help="Email to notify in case of problems. "
+                                  "Multiple addresses are accepted and should "
+                                  "be separated by commas without spaces.")
+parser.add_argument("--backupindex", help="Location of the BACKUP DQM GUI index"
+                    ". Default = <INDEX>_backup")
+parser.add_argument("--rsynclists", help="Location where to put the lists of "
+                    "files that were updated by the rsync backup. "
+                    "Default = <INDEX>_rsynclists")
+parser.add_argument("--rsyncnext", nargs='+', default = [], help="Directories "
+                    "for the next agents in chain that pick up the rsync "
+                    "directory listings.")
+args = parser.parse_args()
+
+# Manual checks for some of the command line arguments
+if not args.backupindex:
+  args.backupindex = args.INDEX + "_backup"
+
+if not args.rsynclists:
+  args.rsynclists = args.INDEX + "_rsynclists"
+
+try:
+  RSYNCTIME = datetime.strptime(args.time, "%H:%M")
+except:
+  exit("error: argument --time: should be in form HH:MM")
+
+RSYNCINTERVAL = args.days    # Amount of days between each backup
+WAITTIME = 5                 # Daemon cycle time
+MAXFILES = 10                # Maximum number of files to register between checks
 
 # Activate different features depending on where the script is running
 MODE = 'Offline'
@@ -70,32 +108,192 @@ def orderFiles(a, b):
 # Checks if the file is the newest file by comparing the version
 # number with the number of files available.
 def isNewest(info):
-  fname = "%s/%s.dqminfo" % (FILEREPO, info['path'])
+  fname = "%s/%s.dqminfo" % (args.FILEREPO, info['path'])
   fname = fname.replace('V%04d' % info['version'], "*")
   if info['version'] >= len(glob(fname)):
     return True
-
   return False
+
+# Determine the "ideal" time to take the next backup with rsync
+# As soon as this time is in the past, we try to take the backup
+def determineNextBackupTime(dayInterval):
+  # First determine the "next" time we will hit the backup "time"
+  # E.g. when at 5:00, we determine the next "5:00". Can be today or tomorrow.
+  now = datetime.now()
+  rsynctime = RSYNCTIME
+  rsynctimeOnToday = datetime(now.year, now.month, now.day,
+                              rsynctime.hour, rsynctime.minute)
+  # If the RSYNCTIME will still happen on today:
+  if rsynctimeOnToday > now:
+    result = rsynctimeOnToday
+  # ...otherwise do it tomorrow:
+  else: # rsynctimeOnToday <= now
+    result = rsynctimeOnToday + timedelta(days=1)
+  # Then we add the amount of days we have to wait between the syncs, minus 1
+  result = result + timedelta(days=dayInterval - 1)
+  logme("Next backup will be at %s.", result.strftime("%H:%M on %Y-%m-%d"))
+  return result
+
+# Determines, based on the time, whether we should run the backup procedure now
+def isTimeToBackup():
+  now = datetime.now()
+  if now > nextBackupTime:
+    logme("We should backup at %s. Time is now %s. So doing backup now.",
+          nextBackupTime, now)
+    return True
+  return False
+
+# Checks if the index can be read
+def checkIndexIntegrity():
+  # We check the index integrity by dumping the catalogue and checking if the
+  # returncode is indeed 0
+  command = ["visDQMIndex", "dump", args.INDEX, "catalogue"]
+  logme("Checking index integrity...")
+  devNullFile = open(os.devnull, 'w')
+  returncode = subprocess.call(command, stdout=devNullFile, stderr=PIPE) 
+  if returncode == 0:
+    logme("Index seems fine.")
+    return True
+  else:
+    logme("When trying to dump the index catalogue we received a non-zero"
+          "returncode! This is bad. The command was %s." % command)
+    return False
+
+# Alert email addresses given as parameter when index integrity check fails
+def sendIndexIntegrityErrorMessage():
+  logme("Sending email to %s to notify about failed index integrity check."
+                                                                % args.email)
+  process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
+  process.stdin.write("To: %s\n" % args.email)
+  process.stdin.write("Subject: Problem when checking the index integrity\n")
+  process.stdin.write("\n") # blank line separating headers from body
+  process.stdin.write("Problem when checking the index integrity\n")
+  process.stdin.write("Please check logs! This is serious!\n")
+  process.stdin.close()
+  returncode = process.wait()
+  if returncode != 0:
+    logme("ERROR: Sendmail exit with status %s", returncode)
+
+RSYNC_LOG_DIR = "" # location where rsync file lists should be dropped
+
+# Takes a backup of the index, using rsync
+def doBackupUsingRsync(source, target):
+  # We tag each execution of rsync with a unique string:
+  rsync_tag = datetime.now().strftime("%Y%m%d_%H%M%S_rsync")
+  # We choose the following options:
+  # -a for archive (copy while preserving all file metadata)
+  # -v for verbose, because we would like to have some statistics in the final
+  # logging
+  # -i for itemize changes, to get a parseable list of the actual changed files
+  # --delete to delete files that are deleted on the other side as well
+  rsync_opt1 = "-avi"
+  rsync_opt2 = "--delete"
+  rsync_exclude = "--exclude=/lock"
+  rsync_source =  "%s/" % source
+  rsync_target = "%s" % target
+  rsync_executable = "rsync"
+  rsync_command = [rsync_executable, rsync_opt1, rsync_opt2, rsync_exclude,
+                   rsync_source, rsync_target]
+  # Execute the command:
+  logme("Doing rsync to do local backup of index. Tag = %s", rsync_tag)
+  system_call = Popen(rsync_command, stdout=PIPE,stderr=PIPE)
+  (rsync_stdout, rsync_stderr) = system_call.communicate()
+  if system_call.returncode == 0:
+    # The rsync output is logged together with the other import daemon logs.
+    logme(rsync_stdout)
+    # We parse the output:
+    list_of_files = parse_rsync_output(rsync_stdout)
+    save_list_of_files(list_of_files, rsync_tag)
+    put_link_in_dropbox(rsync_tag)
+  else:
+    logme("ERROR: Rsync failed!\n%s\n%s", rsync_stdout, rsync_stderr)
+
+def parse_rsync_output(rsync_output):
+  # We parse the output:
+  # Part of the output goes to the normal logs.
+  # The list of copied files is extracted and will be used as input for the
+  # Castor backup.
+  list_of_files = []
+  for line in rsync_output.split("\n"):
+    if line.startswith(">f"):
+      # typical line would look like this: ">f+++++++++ 001/fileA"
+      list_of_files.append(line.split()[1])
+  return list_of_files
+
+def save_list_of_files(list_of_files, rsync_tag):
+  # Make sure the directory exists
+  if not os.path.exists(args.rsynclists):
+    os.makedirs(args.rsynclists)
+  file_path = os.path.join(args.rsynclists, rsync_tag)
+  with open(file_path, "a") as the_file:
+    the_file.write("\n".join(list_of_files))
+  logme("Saved list of files that were updated by rsync to %s.", rsync_tag)
+
+def put_link_in_dropbox(rsync_tag):
+  file_path = os.path.join(args.rsynclists, rsync_tag)
+  for next_dropbox_after_rsync in args.rsyncnext:
+    # First we make sure the dropbox exists
+    if not os.path.exists(next_dropbox_after_rsync):
+      default_umask = os.umask(0002)
+      os.makedirs(next_dropbox_after_rsync, 0775) # create it in mode 755
+      os.umask(default_umask)
+    # Then we create the actual link (if it doesn't exist)
+    file_link_path = os.path.join(next_dropbox_after_rsync, rsync_tag)
+    if not os.path.exists(file_link_path):
+      os.link(file_path, file_link_path)
+
+# Handles any general exception that could happen during the backup/rsync step
+def handleBackupException(e):
+  logme('error: %s', e)
+  print_exc()
+  # If we have a failure during the backup procedure, we definitely don't
+  # want to try again in the next cycle (WAITTIME seconds from now).
+  # We also don't want to wait RSYNCINTERVAL amount of days.
+  # So we try again in 1 hour:
+  result = nextBackupTime + timedelta(hours = 1)
+  logme("Will try again at %s.", result.strftime("%H:%M on %Y-%m-%d"))
+  return result
+
+# Determine the first backup time, only one time in the beginning:
+nextBackupTime = determineNextBackupTime(1)
+
 # --------------------------------------------------------------------
 # Process files forever.
 while True:
   try:
     # If the index doesn't exist yet, create it.
-    if not os.path.exists(INDEX):
-      os.system("visDQMIndex create %s" % INDEX)
+    if not os.path.exists(args.INDEX):
+       os.system("visDQMIndex create %s" % args.INDEX)
+  except Exception, e:
+    logme('error: %s', e)
+    print_exc()
 
+  try:
+    # Should we do rsync?
+    if args.rsync:
+      # If the time has come, we backup the index
+      if isTimeToBackup():
+        if checkIndexIntegrity():
+          doBackupUsingRsync(args.INDEX, args.backupindex)
+        else:
+          sendIndexIntegrityErrorMessage()
+        nextBackupTime = determineNextBackupTime(RSYNCINTERVAL)
+  except Exception, e:
+    nextBackupTime = handleBackupException(e)
+
+  try:
     # Find new input files.
     new = []
     files = []
-    files.extend(glob("%s/*.root.dqminfo" % DROPBOX))
-    files.extend(glob("%s/*.dat.dqminfo" % DROPBOX))
-    files.extend(glob("%s/*.pb.dqminfo" % DROPBOX))
+    files.extend(glob("%s/*.root.dqminfo" % args.DROPBOX))
+    files.extend(glob("%s/*.dat.dqminfo" % args.DROPBOX))
+    files.extend(glob("%s/*.pb.dqminfo" % args.DROPBOX))
     for path in files:
       # Read in the file info.
       try:
-	info = eval(file(path).read())
+        info = eval(file(path).read())
       except:
-	continue
+        continue
 
       info['infofile'] = path
       new.append(info)
@@ -108,7 +306,7 @@ while True:
     nfiles = 0
     existing = None
     for info in sorted(new, orderFiles):
-      fname = "%s/%s" % (FILEREPO, info['path'])
+      fname = "%s/%s" % (args.FILEREPO, info['path'])
       finfo = "%s.dqminfo" % fname
 
       # Detect what has already been registered.
@@ -116,33 +314,33 @@ while True:
         existing = dict((x, 1) for x in
                         os.popen("visDQMIndex dump %s catalogue |"
                                  " grep '^SOURCE-FILE #' |"
-                                 " awk -F\"'\" '{print $2}'" % INDEX)
+                                 " awk -F\"'\" '{print $2}'" % args.INDEX)
                         .read().split())
 
       # If we've already registered the file, skip it.
       if fname in existing or (MODE == 'Offline' and not isNewest(info)):
-	os.remove(info['infofile'])
+        os.remove(info['infofile'])
         # Remove hanging .(dat|pb) files from the master repository, since
         # they are meant to be temporary.
         if fname.endswith(('.dat', '.pb')):
           os.remove(fname)
-	continue
+        continue
 
       # If we've registered too many files, skip it.
       if nfiles >= MAXFILES:
-	break
+        break
 
       # Actually register the file.
       try:
-        lFile=open("%s/lock" % INDEX ,"w+")
+        lFile=open("%s/lock" % args.INDEX ,"w+")
         lockf(lFile,LOCK_EX)
         lFile.write(str(os.getpid()))
         logme('importing %s', fname)
         if info['class'] == 'online_data':
           rc = os.system('exec visDQMIndex add --dataset '
-                         ' "%s" %s %s' % (info['dataset'], INDEX, fname))
+                         ' "%s" %s %s' % (info['dataset'], args.INDEX, fname))
         else:
-          rc = os.system('exec visDQMIndex add %s %s' % (INDEX, fname))
+          rc = os.system('exec visDQMIndex add %s %s' % (args.INDEX, fname))
 
       finally:
         lockf(lFile,LOCK_UN)
@@ -151,24 +349,24 @@ while True:
       # Barf if the registration failed, mark the file as bad;
       # otherwise pass the file onwards.
       if rc != 0:
-	logme('command failed with exit code %d', rc)
-	finfobad = "%s.bad" % info['infofile']
-	os.rename(info['infofile'], finfobad)
+        logme('command failed with exit code %d', rc)
+        finfobad = "%s.bad" % info['infofile']
+        os.rename(info['infofile'], finfobad)
         if fname.endswith(('.dat', '.pb')):
           if os.path.exists(fname):
             os.remove(fname)
-	continue
+        continue
 
       else:
         existing[fname] = 1
         nfiles += 1
-        for n in NEXT:
+        for n in args.next:
           if not os.path.exists(n):
             os.makedirs(n)
           ninfo = "%s/%s" % (n, finfo.rsplit("/", 1)[-1])
           if not os.path.exists(ninfo):
             os.link(finfo, ninfo)
-	os.remove(info['infofile'])
+        os.remove(info['infofile'])
 
       if fname.endswith(('.dat', '.pb')):
         if os.path.exists(fname):

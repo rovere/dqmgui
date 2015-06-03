@@ -1,0 +1,283 @@
+#!/usr/bin/env python
+
+import os, time, sys, re, argparse
+from subprocess import Popen,PIPE
+from traceback import print_exc
+from datetime import datetime, timedelta
+from glob import glob
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
+parser = argparse.ArgumentParser(description="Agent that copies the backup of "
+                                             "the index to CASTOR.")
+parser.add_argument("DROPBOX",
+                    help="Directory where we receive input (\"drop box\")")
+parser.add_argument("INDEX", help="Location of the primary DQM GUI index.")
+parser.add_argument("CASTORREPO", help="Index repository in CASTOR.")
+parser.add_argument("EMAIL", help="Email to notify in case of problems. "
+                                  "Multiple addresses are accepted and should "
+                                  "be separated by commas without spaces.")
+parser.add_argument("--fullbackup", default=0, type=int, help="Sets the amount"
+                    " of days between each full backup of the index. If not "
+                    "set, the daemon will not take any full backups.")
+parser.add_argument("--backupindex", help="Location of the BACKUP DQM GUI "
+                    "index. Default = <INDEX>_backup")
+parser.add_argument("--rsynclists", help="Location where to put the lists of "
+                    "files that were updated by the rsync backup. "
+                    "Default = <INDEX>_rsynclists")
+
+args = parser.parse_args()
+
+# Manual checks for some of the command line arguments
+if not args.backupindex:
+  args.backupindex = args.INDEX + "_backup"
+
+if not args.rsynclists:
+  args.rsynclists = args.INDEX + "_rsynclists"
+
+# Method definitions:
+
+def logme(msg, *args):
+  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
+  print datetime.now(), procid, msg % args
+
+def current_umask():
+  val = os.umask(0)
+  os.umask(val)
+  return val
+
+myumask = current_umask()
+
+# Master method to backup a file to CASTOR. Will first make sure that the 
+# folder exists, will calculate checksum and finally send the file.
+# We talk about full paths and relative paths
+#
+# The relFilePath is the path of the file, relative to the root of the index.
+# This is what we get from the rsync file.
+# E.g. data/000/00000-00096.dqm
+#
+# The fullLocalFilePath is the full path of the file on the local server,
+# including the path to the backup index, specific for the server you're on:
+# E.g. /data/srv/state/dqmgui/dev/ix128_backup/data/000/00000-00096.dqm
+#
+# The relFolderPath is just the folder part of the relFilePath. Note that for
+# files in the root folder of the index, this is an empty string.
+# E.g. data/000   (not ending with /)
+# 
+# The fullCastorFilePath is the full path of the file on CASTOR.
+# E.g. /castor/cern.ch/cms/store/dqm/test/20150521_234722_rsync/data/000/
+#                                                             00000-00096.dqm
+# 
+# The fullCastorFolderPath is the folder part of the fullCastorFilePath.
+# E.g. /castor/cern.ch/cms/store/dqm/test/20150521_234722_rsync/data/000 
+#                 (not ending with /)
+#
+def castorBackupFile(relFilePath, folderTag):
+  # The folderTag is basically the UID for this backup.
+  # This is decided by the visDQMImportDaemon.
+  # Will be something like "20150521_234722_rsync".
+  fullLocalFilePath = os.path.join(args.backupindex, relFilePath)
+  fullCastorFilePath = os.path.join(args.CASTORREPO, folderTag, relFilePath)
+  relFolderPath = os.path.dirname(relFilePath)
+  fullCastorFolderPath = os.path.join(args.CASTORREPO, folderTag, relFolderPath)
+  # Make sure the folder exists on Castor:
+  castorCreateFolder(fullCastorFolderPath)
+  # Make sure the file exists locally
+  if localFileExists(fullLocalFilePath):
+    # Send the file:
+    castorJustSendFile(fullLocalFilePath, fullCastorFolderPath)
+    # Check if the checksum is correct. Otherwise: Crash the process
+    castorCheckChecksum(fullLocalFilePath, fullCastorFilePath)
+
+# Will check if the file we want to copy exists locally
+def localFileExists(fullLocalFilePath):
+  if os.path.isfile(fullLocalFilePath):
+    return True
+  else:
+    logme("WARNING: The file %s does not exist. If this is the master file "
+          "and we are some ryncs's behind on doing the copy to CASTOR, then "
+          "this is normal. Otherwise, this needs investigation.")
+    return False
+
+# Will check if a folder exists.
+def castorExistsFolder(fullCastorFolderPath):
+  try:
+    executeCommand(["nsls", fullCastorFolderPath])
+  except:
+    return False
+  return True
+
+# Will create a folder, only if it doesn't exist.
+def castorCreateFolder(fullCastorFolderPath):
+  if not castorExistsFolder(fullCastorFolderPath):
+    executeCommand(["nsmkdir", "-p", fullCastorFolderPath])
+
+# Copies a file to CASTOR, using checkSum to check correct transfer.
+def castorJustSendFile(fullLocalFilePath, fullCastorFolderPath):
+  source = fullLocalFilePath
+  target = "root://castorcms.cern.ch/" + fullCastorFolderPath
+  svcClass = "-ODsvcClass=archive"
+  # We force-overwrite the file if it's already present
+  executeCommand(["xrdcp", "-f", source, target, svcClass])
+  logme("Successfully transferred file %s to %s" % (source, target))
+
+# Compare the checksum between local file and Castor file.
+# We assume here that the checksum on Castor side is ADLER32.
+# If not, there's not much we can do.
+def castorCheckChecksum(fullLocalFilePath, fullCastorFilePath):
+  castorResult = executeCommand(["nsls", "--checksum", fullCastorFilePath])
+  castorParts = castorResult.split()
+  # Check if the checksum on CASTOR is ADler
+  if castorParts[0] == "AD":
+    castorChecksum = castorParts[1].lstrip("0")
+    localResult = executeCommand(["xrdadler32", fullLocalFilePath])
+    # Important remark about the checksums:
+    # It seems that on the CASTOR side, leading zeros are stripped of.
+    # So in order to compare, we do the same on the local side.
+    localChecksum = localResult.split()[0].lstrip("0")
+    if not castorChecksum == localChecksum:
+      raise Exception("Castor upload failed! Checksums did not match! \n"
+                      "Local checksum: %s - CASTOR checksum: %s."
+                       % (localChecksum, castorChecksum)) 
+    else:
+      logme("Checksums match: Local checksum: %s - CASTOR checksum: %s."
+                              % (localChecksum, castorChecksum)) 
+  else:
+      logme("WARNING: Checksum was not checked. Checksum on the CASTOR side "
+            "did not start with \"AD\".")
+
+# If there is no *_full_backup filename in our dropbox. This means that no
+# backup is currently scheduled and we schedule the next full backup: NOW!
+# This only applies when the "--fullbackup" parameter is set.
+def scheduleFirstFullBackup():
+  if args.fullbackup:
+    if not glob("%s/*_full_backup" % args.DROPBOX):
+      logme("No full backup scheduled. Scheduling one to happen now.")
+      scheduleFullBackup(datetime.now())
+
+# We do this after completion of a successfull full backup. We schedule the 
+# next full backup: N days from now.
+# We check first to make sure that the "--fullbackup" parameter is set.
+def scheduleNextFullBackup():
+  if args.fullbackup:
+    now = datetime.now() 
+    # The exact time to do the backup really doesn't matter a lot.
+    # We hardcode it here to be 1 o'clock in the night.
+    nowAt1 = datetime(now.year, now.month, now.day, 1, 0)
+    nextTime = nowAt1 + timedelta(days = args.fullbackup)
+    logme("Scheduling next full backup on %s." % nextTime)
+    scheduleFullBackup(nextTime)
+
+# Put a file in our own dropbox to schedule the next time we do a full backup
+def scheduleFullBackup(timestamp):
+  # First we make sure the dropbox exists
+  if not os.path.exists(args.DROPBOX):
+    default_umask = os.umask(0002)
+    os.makedirs(args.DROPBOX, 0775) # create it in mode 755
+    os.umask(default_umask)
+  # Then we write a file to the dropbox
+  full_backup_file_name = timestamp.strftime("%Y%m%d_%H%M%S_full_backup")
+  full_backup_full_file_path = os.path.join(args.DROPBOX, full_backup_file_name)
+  with open(full_backup_full_file_path, "w") as full_backup_file:
+    full_backup_file.write("This file has no important content.\n"
+                           "It just schedules the next full complete backup "
+                           "of the DQM index at %s." % timestamp)
+  logme("Wrote file %s to dropbox." % full_backup_file_name)
+
+# Parses the timestamp from the file in the dropbox and checks if the time is
+# in the past.
+def isTimeToDoFullBackup(full_backup_tag):
+  # Tag should be something like "20150528_010000_full_backup"
+  timestamp = datetime.strptime(full_backup_tag, "%Y%m%d_%H%M%S_full_backup")
+  # Return True when the time to do the backup is in the past
+  return timestamp < datetime.now()
+
+# Returns a list of all the files in the index that need to be backed up.
+# The paths are relative to the base of the index backup.
+# (So comparible to the content of what you find in the rsync files.)
+def getListOfAllFilesInIndex():
+  result = []
+  index_path = args.backupindex
+  for root, dirnames, filenames in os.walk(index_path):
+    for filename in filenames:
+      rel_path = (os.path.relpath(os.path.join(root, filename), index_path))
+      # We filter away some certain file(s) that we don't want to backup
+      if rel_path not in ["lock"]:
+        # All the rest we add to our resulting list:
+        result.append(rel_path)
+  return result
+
+# Execute command and return stdout.
+# General note: If it fails, it fails and we should stop. No catching at this
+# level.
+def executeCommand(command):
+  process = Popen(command, stdout=PIPE, stderr=PIPE)
+  stdout, stderr = process.communicate()
+  returncode = process.returncode
+  # If returncode not 0, we raise an exception:
+  if returncode != 0:
+    raise Exception("Execution of command %s resulted in error %s" % (command, 
+                                                                      stderr))
+  # Otherwise
+  return stdout
+
+# Alert email addresses given as parameter about a failure of the process.
+def alertBySendingEmail(errorText):
+  process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
+  process.stdin.write("To: %s\n" % args.EMAIL)
+  process.stdin.write("Subject: Problem sending DQM GUI index backup to CASTOR\n")
+  process.stdin.write("\n") # blank line separating headers from body
+  process.stdin.write("Problem sending DQM GUI index backup to CASTOR\n")
+  process.stdin.write("%s\n" % errorText)
+  process.stdin.write("Please check logs!\n")
+  process.stdin.close()
+  returncode = process.wait()
+  if returncode != 0:
+    logme("ERROR: Sendmail exit with status %s", returncode)
+
+logme("Starting visDQMIndexCastorStager ...........")
+
+try:
+  scheduleFirstFullBackup()
+
+  # Full backup: We do this when we find a "full backup" file in our dropbox
+  #              that lies in the past.
+  #              Something like "20150528_010000_full_backup"
+  # (Note that this file is placed there by this process itself, after 
+  #  successfull completion of the previous full backup.)
+  for full_backup_file_name in glob("%s/*_full_backup" % args.DROPBOX):
+    full_backup_tag = os.path.basename(full_backup_file_name)
+    if isTimeToDoFullBackup(full_backup_tag):
+      for fileToBackup in getListOfAllFilesInIndex():
+        # For each file in the index, put it in CASTOR
+        logme("Sending %s to CASTOR now." %fileToBackup)
+        castorBackupFile(fileToBackup, full_backup_tag)
+      # Only when all files were transferred successfully, we schedule the next
+      # full backup
+      os.remove(full_backup_file_name)
+      scheduleNextFullBackup()
+
+  # Incremental backup: We do this when we find an "rsync" file in our dropbox
+  #                     Something like "20150528_123520_rsync"
+  for rsync_list_file_name in glob("%s/*_rsync" % args.DROPBOX):
+    rsync_tag = os.path.basename(rsync_list_file_name)
+    logme("Found rsync list file %s.", rsync_list_file_name)
+    logme("The rsync tag for this backup is %s.", rsync_tag)
+    # Open the file
+    for syncedfile in [f.rstrip() for f in list(file(rsync_list_file_name))]:
+      # For each file in the file, put it in CASTOR
+      logme("Sending %s to CASTOR now." % syncedfile)
+      castorBackupFile(syncedfile, rsync_tag)
+    # Remove the rsync list file
+    os.remove(rsync_list_file_name)
+
+# If anything bad happened, we stop and try again on the next execution.
+except KeyboardInterrupt, e:
+  sys.exit(0)
+
+except Exception, e:
+  logme('ERROR: %s', e)
+  print_exc()
+  alertBySendingEmail(e)
+
+logme("........ visDQMIndexCastorStager is finished")
