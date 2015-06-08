@@ -1,0 +1,182 @@
+#! /usr/bin/python
+
+# General use case:
+# This script is intended to scan the folder that contains the dqm data (the
+# root files) on a DQM GUI server and show statistics.
+#
+# Specific use case for the online:
+# It can also delete files that meet certain requirements, namely:
+# Either:
+# - being older than a certain run-number
+# - and not being the last version
+# Or, in case the first didn't clean enough:
+# - being older than a certain run-number
+#
+# The script will output a bash script for both possibilities.
+# Use with care!
+#
+# The most important non-functional requirement of the script are simplicity
+# and re-usability.
+# Since the script is in python and the source code will be always available,
+# we don't work with command line arguments, but set the parameters below in
+# the script's code.
+
+# The path to scan (in the original script's intend, this is
+# /dqmdata/dqm/repository/original/OnlineData)
+# Should not end with '/'
+SCAN_PATH = "/dqmdata/dqm/repository/original/OnlineData"
+# The run number for which we want to make the cut
+# Only runs with number lower than this one will be considered for deletion
+RUN_CUT_NUMBER = 240001
+
+import os
+import re
+import sys
+
+# We keep a dictionary that contains statics information for each first level
+# subfolder
+statistics_dict = {}
+
+# We define a class to contain our statistics info
+class Statistics:
+    # Per folder, we keep track of three numbers:
+    total_size = 0
+    total_size_old_files = 0
+    total_size_old_files_not_last = 0
+
+    def add_to_total_size(self, size_to_add):
+        self.total_size += size_to_add
+
+    def add_to_total_size_old_files(self, size_to_add):
+        self.total_size_old_files += size_to_add
+
+    def add_to_total_size_old_files_not_last(self, size_to_add):
+        self.total_size_old_files_not_last += size_to_add
+
+    # Method to print a nice overview
+    def __repr__(self):
+        lines = []
+        line = ("Total size of root files: %s" %
+                Statistics.nice_size(self.total_size))
+        lines.append("  %s" % line)
+        if self.total_size > 0:
+            line = ("Total size of root files older than run %d: %s" % (
+                    RUN_CUT_NUMBER,
+                    Statistics.nice_size(self.total_size_old_files)))
+            lines.append("  %s" % line)
+            line = ("Total size of root files older than run %d and not "
+                    "last version: %s" % (
+                    RUN_CUT_NUMBER,
+                    Statistics.nice_size(self.total_size_old_files_not_last)))
+            lines.append("  %s" % line)
+        return "\n".join(lines)
+
+    @staticmethod
+    def nice_size(size, suffix='B'):
+        for unit in ['','Ki','Mi','Gi','Ti']:
+            if abs(size) < 1024.0:
+                return "%3.1f%s%s" % (size, unit, suffix)
+            size /= 1024.0
+
+
+# Regular expression used to determine run number of a file
+runnum_exp = re.compile(r"R\d{9}")
+
+def is_older_than(file_name, run_cut_number):
+    # determine the run_number of the file
+    runnum_match = runnum_exp.search(file_name)
+    if not runnum_match:
+        # If we can not determine the run number, we consider it younger
+        return False
+    else:
+        runnum = runnum_match.group(0)
+        # If the runnumber is smaller than the cut, it's older: return True
+        return int(runnum[1:]) < run_cut_number
+
+# Regular expression used to determine version number of a file
+version_exp = re.compile(r"V\d{4}")
+
+def is_last_version(file_name, fileset):
+    # determine the version of the file
+    version_match = version_exp.search(file_name)
+    if not version_match:
+        # If we can not determine the version, we consider it the last version
+        return True
+    else:
+        version = version_match.group(0)
+        # what would the next version be?
+        next_version = 'V%04d' % (int(version[1:]) + 1)
+        # what would the filename be for the next version?
+        next_version_file_name = file_name.replace(version, next_version)
+        # If the next version does not exist, return True
+        return not next_version_file_name in fileset
+
+# We keep two lists of files:
+# All the root files that are older that the given cut run:
+old_files = []
+# All the root files that are older that the given cut run and are not the last
+# version (i.e. there is a higher version of this file)
+old_files_not_last_version = []
+
+print "Total amount of files can be up to 1M. Be patient."
+
+# The actual program flow.
+# We start by running over all the files and hold statistics for all the first
+# level subfolders:
+file_counter = 0
+for root, sub_folders, files in os.walk(SCAN_PATH):
+    # We prepare a statistics object for each firs level subfolder:
+    if root == SCAN_PATH:
+        for sub_folder in sorted(sub_folders):
+            # Initializing the statistics for this folder in the dictionary
+            statistics_dict[sub_folder] = Statistics()
+    if files:
+        # If the folder contains files, we start gathering statistics
+        first_level_subfolder = root[len(SCAN_PATH)+1:].split("/")[0]
+        folder_stats = statistics_dict[first_level_subfolder]
+        # For fast lookup, we turn the files "list" into a "set"
+        fileset = set(files)
+        for file in files:
+          # We only gather statistics for root files
+          if file.endswith(".root"):
+              file_full_path = os.path.join(root, file)
+              file_size = os.path.getsize(file_full_path)
+              folder_stats.add_to_total_size(file_size)
+              # Question 1: Is this older than the given run
+              older_than_given_run = is_older_than(file, RUN_CUT_NUMBER)
+              if older_than_given_run:
+                  folder_stats.add_to_total_size_old_files(file_size)
+                  old_files.append(file_full_path)
+                  # Question 2: Is this the last version?
+                  last_version = is_last_version(file, fileset)
+                  if not last_version:
+                      folder_stats.add_to_total_size_old_files_not_last(
+                              file_size)
+                      old_files_not_last_version.append(file_full_path)
+          file_counter += 1
+          if file_counter % 1000 == 0:
+              sys.stdout.write("\rFiles scanned: %d" % file_counter)
+              sys.stdout.flush()
+
+# Print statistics dictionary:
+for sub_folder, stats in sorted(statistics_dict.iteritems()):
+    print "Subfolder %s" % sub_folder
+    print stats
+print "---"
+
+# Print info on amount of files:
+print("Amount of files with run number < %d: %d" % (
+       RUN_CUT_NUMBER, len(old_files)))
+print("Amount of files with run number < %d, that are not the last version: "
+      "%d" % (RUN_CUT_NUMBER, len(old_files_not_last_version)))
+
+file_all = "delete_ALL_old_files_from_before_run_%d.sh" % RUN_CUT_NUMBER
+with open(file_all, 'w') as file:
+    for file_path in old_files:
+        file.write("rm %s\n" % file_path)
+
+file_only = ("delete_ONLY_old_files_from_before_run_%d_"
+             "that_have_a_newer_version.sh" % RUN_CUT_NUMBER)
+with open(file_only, 'w') as file:
+    for file_path in old_files_not_last_version:
+        file.write("rm %s\n" % file_path)
