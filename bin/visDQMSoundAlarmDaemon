@@ -1,11 +1,43 @@
 #!/usr/bin/env python
 
-import urllib2, re, os, time, sys, cjson
+import urllib2
+import re
+import os
+import time
+import sys
+import cjson
 from traceback import print_exc
 from datetime import datetime
 from urllib import quote
 from fcntl import lockf, LOCK_EX, LOCK_UN
-from socket import socket, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM, gethostname
+from subprocess import Popen,PIPE
+
+# IMPORTANT: If you want to play a test sound, just start the program with
+# all the usual parameters, but add "test" as last parameter.
+# Then the program will not start in daemon mode, but just send a test sound to
+# the sound server.
+
+# --------------------------------------------------------------------
+# The SoundAlarm agent monitors the state of alarms in histograms
+# located in ERROR_FOLDER. This location is a layout with a selection
+# of MEs that follow very closely the state of the detector. The agent
+# makes the following assumptions:
+# 1. Each ME listed in the layout will raise an alarm if its QT fails,
+# however, the ME and QT have to be done in such way that, if the
+# condition for the QT to fail ceases, the QT should be successful
+# and thus the alarm should be turned off.
+# 2. Trend plots located in this layout should *not* raise alarms, if
+# they do, they must comply with assumption 1.
+# 3. The GUI that is specified by BASEURL has a Live source.
+#
+# Once a ME raises an alarm it would be immediately broadcasted, after
+# that it gets bundled with all actives alarms so that only one
+# message is broadcasted every REMINDERINTERVAL seconds. An alarm
+# ceases to be broadcasted if it has been sent more than REBROADCAST
+# times. In order to generate the most efficient use of the CMS-WOW
+# system, the global clock gets reset every time we pass from 0 alarms
+# to at least 1 alarm.
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
@@ -16,6 +48,18 @@ SOUNDSERVER = sys.argv[2] # CMS-WOW server's name
 PORT = int(sys.argv[3]) # Listening port on the CMS-WOW server
 REMINDERINTERVAL = int(sys.argv[4]) # Seconds between sonourous alarms
 REBROADCAST = int(sys.argv[5]) # Number of times the same alarm is broadcasted
+if len(sys.argv) >= 7:
+  EMAIL_ADDRESSES = sys.argv[6] # Emails to notify, multiple addresses are
+                                # accepted, separated by ','
+else:
+  EMAIL_ADDRESSES = ''
+# To enable the special "test-mode" add a 7th argument "test"
+# Otherwise the daemon does its normal stuff (which is good)
+if len(sys.argv) >= 8:
+  IS_TEST = (sys.argv[7] == "test")
+else:
+  IS_TEST = False
+
 
 # GLOBAL CONSTANTS
 # location of the error folder that contains alarms histos.
@@ -23,7 +67,8 @@ ERROR_FOLDER = quote("00 Shift/Errors", ':/-_')
 DATA_LOCATION = quote("data/json/live/1/Global/Online/ALL", ':/-_')
 
 # Body of the XML message that is sent to CMS-WOW
-MSGBODY = '<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">%s Check plots in the DQM Error folder.</alarm></CommandSequence>'
+MSGBODY = ('<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">'
+           '%s Check plots in the DQM Error folder.</alarm></CommandSequence>')
 
 SESSIONLIFE = 24 * 3600 # Session life time in seconds
 WAITTIME = 30
@@ -38,7 +83,7 @@ def logme(msg, *args):
   print datetime.now(), procid, msg % args
 
 # Short hand to send XML message to CMS-WOW
-def sendMsg(msg, spoken_msg):
+def send_sound_msg(msg, spoken_msg):
   s = socket(AF_INET, SOCK_STREAM)
   s.connect((SOUNDSERVER, PORT))
   s.send(MSGBODY % (spoken_msg, msg))
@@ -46,11 +91,34 @@ def sendMsg(msg, spoken_msg):
   s.close()
   if data == "All ok\n":
     logme("INFO: Broadcasted message: %s ", msg)
+    send_email_msg('We (DQM) just played a sound in the control room.\n'
+                   'The message we played was: "%s"' % msg)
     return True
-
   else:
-    logme("ERROR: Unexpected answer from CMS-WOW: %s", repr(data))
+    error_msg = "ERROR: Unexpected answer from CMS-WOW: %s" % repr(data)
+    logme(error_msg)
+    send_email_msg(error_msg)
     return False
+
+# Short hand to send email message
+def send_email_msg(msg):
+  if EMAIL_ADDRESSES:
+    logme("Sending email to %s with following message:\n%s" % 
+                                                (EMAIL_ADDRESSES, msg))
+    process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
+    process.stdin.write("To: %s\n" % EMAIL_ADDRESSES)
+    process.stdin.write("Subject: Message from the visDQMSoundAlarmDaemon on "
+                        "%s at P5\n" % gethostname())
+    process.stdin.write("\n") # blank line separating headers from body
+    process.stdin.write("%s\n\n" % msg)
+    process.stdin.write("The logs should be here: /home/dqmlocal/logs/dqmgui/"
+                        "online/\n")
+    process.stdin.close()
+    returncode = process.wait()
+    if returncode != 0:
+      logme("ERROR: Sendmail exit with status %s", returncode)
+  else:
+    logme("Not sending email, since no emailaddresses were set.")
 
 # Short hand to extract GUI information, it fails if the retrieved
 # data is not python format.
@@ -63,26 +131,6 @@ def getGuiData(opener,url):
     raise e
   page1.close()
   return contents
-# --------------------------------------------------------------------
-# The SoundAlarm agent monitors the state of alarm in histograms
-# located in ERROR_FOLDER. This location is a layout with a selection
-# of MEs that follow very closely the state of the detector. The agent
-# makes the following assumptions:
-# 1. Each ME listed in the layout will rise an alarm if its QT fails,
-# however, the ME and QT have to be done in such way that, if the
-# condition for the QT to fail ceases, the QT should be successful
-# and thus the alarm should be turned off.
-# 2. Trend plots located in this layout should *not* rise alarms, if
-# they do, they must comply with assumption 1.
-# 3. The GUI that is specified by BASEURL has a Live source.
-#
-# Once a ME rises an alarm it would be immediately broadcasted, after
-# that it gets bundled with all actives alarms so that only one
-# message is broadcasted every REMINDERINTERVAL seconds. An alarm
-# ceases to be broadcasted if it has been sent more than REBROADCAST
-# times. In order to generate the most efficient use of CMS-WOW
-# system, the global clock gets reset every time we pass from 0 alarms
-# to at least 1 alarm.
 
 
 # Construct URL pointing to the Error folder
@@ -96,106 +144,141 @@ BASEURL = "%s/%s/%s/" % (BASEURL, DATA_LOCATION, ERROR_FOLDER)
 alarms = {}
 activeAlarmsList = []
 
-while True:
+# This method is just to test the sound infrastructure.
+# It will try to play a test message, send a test email and then exit.
+def run_test():
+  logme("Running in test mode.")
+  msg = 'This is a test'
+  spoken_msg = 'This is a test'
+  # First try to test sending a sound message
+  logme("Trying to send a sound message.")
   try:
-    now = time.time()
-
-    datareq = urllib2.Request(BASEURL)
-    result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
-    state = result.read()
-    state = cjson.decode(state)
-
-    ## Detect No run state
-    if noRun == False and len(state["contents"]) <= 1:
-      noRun = True
-      alarms = {}
-      lastGlobalReminder = 0
-
-    if noRun and len(state["contents"]) > 1:
-      noRun = False
-
-    if noRun:
-      time.sleep(WAITTIME)
-      continue
-
-    # Find new alarm histos, and update alarm states
-    newAlarmsList = []
-    for histo in state["contents"]:
-      if histo.has_key('obj'):
-        name = histo['obj']
-      else:
-        continue
-
-      alarms.setdefault(name,{'state':0, 'lastBroadcast':0,
-                              'numOfBroadcasts':0, 'broadcast':False})
-
-      if histo['properties']['report']['alarm'] == 1:
-        if alarms[name]['numOfBroadcasts'] < REBROADCAST:
-          alarms[name]['state'] = 1
-          alarms[name]['broadcast'] = True
-          if alarms[name]['lastBroadcast'] == 0:
-            newAlarmsList.append(name)
-            alarms[name]['broadcast'] = False
-
-        else:
-          alarms[name]['broadcast'] = False
-
-      else:
-        alarms[name]={'state':0, 'lastBroadcast':0,
-                       'numOfBroadcasts':0, 'broadcast':False}
-        if name in activeAlarmsList:
-          activeAlarmsList.remove(name)
-
-    now = time.time()
-
-    # Broadcast new alarms
-    if len(newAlarmsList):
-      if len(newAlarmsList) > 1:
-        msg = "There are %d new DQM alarms!"
-        spoken_msg = "There are %d new D Q M alarms. Check plots in the D Q M Error folder."
-      else:
-        msg = "There is %d new DQM alarm!"
-        spoken_msg = "There is %d new D Q M alarm. Check plots in the D Q M Error folder."
-
-      msg = msg % len(newAlarmsList)
-      spoken_msg = spoken_msg % len(newAlarmsList)
-      sendMsg(msg, spoken_msg)
-      for a in newAlarmsList:
-        alarms[a]['lastBroadcast'] = now
-        alarms[a]['numOfBroadcasts'] += 1
-
-    # Do compiled broadcast
-    alarmsToBroadcastList = []
-    for a in activeAlarmsList:
-      if alarms[a]['broadcast']:
-        alarmsToBroadcastList.append(a)
-        alarms[a]['numOfBroadcasts'] += 1
-
-    if now - lastGlobalReminder > REMINDERINTERVAL and len(alarmsToBroadcastList):
-      if len(alarmsToBroadcastList) > 1:
-        msg = "There are %d DQM alarms!"
-        spoken_msg = "There are %d D Q M alarms. Check plots in the D Q M Error folder."
-      else:
-        msg = "There is %d DQM alarm!"
-        spoken_msg = "There is %d D Q M alarm. Check plots in the D Q M Error folder."
-
-      msg = msg % len(activeAlarmsList)
-      spoken_msg = spoken_msg % len(activeAlarmsList)
-      sendMsg(msg, spoken_msg)
-      lastGlobalReminder = now
-
-    activeAlarmsList += newAlarmsList
-
-    # Sync all lastBroadcast times to have a consistent group
-    for a in activeAlarmsList:
-      if lastGlobalReminder > 0:
-        alarms[a]['lastBroadcast'] = lastGlobalReminder
-
-  except KeyboardInterrupt, e:
-    sys.exit(0)
-
+    send_sound_msg(msg, spoken_msg)
   except Exception, e:
-    logme('error: %s', e)
+    logme('ERROR: %s', e)
+    print_exc()
+  # Then try to test sending an email message
+  logme("Trying to send an email message.")
+  try:
+    send_email_msg(msg)
+  except Exception, e:
+    logme('ERROR: %s', e)
     print_exc()
 
-  time.sleep(WAITTIME) 
+# This method will start the actual daemon, checking the GUI every WAITTIME
+# seconds
+def run_daemon():
+  while True:
+    try:
+      now = time.time()
+  
+      datareq = urllib2.Request(BASEURL)
+      result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
+      state = result.read()
+      state = cjson.decode(state)
+  
+      ## Detect No run state
+      if noRun == False and len(state["contents"]) <= 1:
+        noRun = True
+        alarms = {}
+        lastGlobalReminder = 0
+  
+      if noRun and len(state["contents"]) > 1:
+        noRun = False
+  
+      if noRun:
+        logme("Daemon woke up. No run going on. Going back to sleep.")
+        time.sleep(WAITTIME)
+        continue
+  
+      # Find new alarm histos, and update alarm states
+      newAlarmsList = []
+      for histo in state["contents"]:
+        if histo.has_key('obj'):
+          name = histo['obj']
+        else:
+          continue
+  
+        alarms.setdefault(name,{'state':0, 'lastBroadcast':0,
+                                'numOfBroadcasts':0, 'broadcast':False})
+  
+        if histo['properties']['report']['alarm'] == 1:
+          if alarms[name]['numOfBroadcasts'] < REBROADCAST:
+            alarms[name]['state'] = 1
+            alarms[name]['broadcast'] = True
+            if alarms[name]['lastBroadcast'] == 0:
+              newAlarmsList.append(name)
+              alarms[name]['broadcast'] = False
+  
+          else:
+            alarms[name]['broadcast'] = False
+  
+        else:
+          alarms[name]={'state':0, 'lastBroadcast':0,
+                         'numOfBroadcasts':0, 'broadcast':False}
+          if name in activeAlarmsList:
+            activeAlarmsList.remove(name)
+  
+      now = time.time()
+  
+      # Broadcast new alarms
+      if len(newAlarmsList):
+        if len(newAlarmsList) > 1:
+          msg = "There are %d new DQM alarms!"
+          spoken_msg = "There are %d new D Q M alarms. Check plots in the D Q M Error folder."
+        else:
+          msg = "There is %d new DQM alarm!"
+          spoken_msg = "There is %d new D Q M alarm. Check plots in the D Q M Error folder."
+  
+        msg = msg % len(newAlarmsList)
+        spoken_msg = spoken_msg % len(newAlarmsList)
+        send_sound_msg(msg, spoken_msg)
+        for a in newAlarmsList:
+          alarms[a]['lastBroadcast'] = now
+          alarms[a]['numOfBroadcasts'] += 1
+  
+      # Do compiled broadcast
+      alarmsToBroadcastList = []
+      for a in activeAlarmsList:
+        if alarms[a]['broadcast']:
+          alarmsToBroadcastList.append(a)
+          alarms[a]['numOfBroadcasts'] += 1
+  
+      if now - lastGlobalReminder > REMINDERINTERVAL and len(alarmsToBroadcastList):
+        if len(alarmsToBroadcastList) > 1:
+          msg = "There are %d DQM alarms!"
+          spoken_msg = "There are %d D Q M alarms. Check plots in the D Q M Error folder."
+        else:
+          msg = "There is %d DQM alarm!"
+          spoken_msg = "There is %d D Q M alarm. Check plots in the D Q M Error folder."
+  
+        msg = msg % len(activeAlarmsList)
+        spoken_msg = spoken_msg % len(activeAlarmsList)
+        send_sound_msg(msg, spoken_msg)
+        lastGlobalReminder = now
+  
+      activeAlarmsList += newAlarmsList
+  
+      # Sync all lastBroadcast times to have a consistent group
+      for a in activeAlarmsList:
+        if lastGlobalReminder > 0:
+          alarms[a]['lastBroadcast'] = lastGlobalReminder
+  
+      # Done some heartbeat logging:
+      logme("Daemon woke up. A run was going on. %d active alarm(s)."
+                                                      % len(activeAlarmsList))
+
+    except KeyboardInterrupt, e:
+      sys.exit(0)
+  
+    except Exception, e:
+      logme('ERROR: %s', e)
+      print_exc()
+      send_email_msg('ERROR: %s\n\n', e)
+  
+    time.sleep(WAITTIME) 
+
+if IS_TEST:
+  run_test()
+else:
+  run_daemon()
