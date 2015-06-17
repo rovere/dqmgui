@@ -70,12 +70,7 @@ DATA_LOCATION = quote("data/json/live/1/Global/Online/ALL", ':/-_')
 MSGBODY = ('<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">'
            '%s Check plots in the DQM Error folder.</alarm></CommandSequence>')
 
-SESSIONLIFE = 24 * 3600 # Session life time in seconds
 WAITTIME = 30
-
-# Control Variables:
-lastGlobalReminder = 0
-noRun = True
 
 # --------------------------------------------------------------------
 def logme(msg, *args):
@@ -168,6 +163,8 @@ def run_test():
 # This method will start the actual daemon, checking the GUI every WAITTIME
 # seconds
 def run_daemon():
+  lastGlobalReminder = 0
+  noRun = True
   while True:
     try:
       now = time.time()
@@ -203,6 +200,10 @@ def run_daemon():
                                 'numOfBroadcasts':0, 'broadcast':False})
   
         if histo['properties']['report']['alarm'] == 1:
+          # If it finds an error, we print the info in the logs for later
+          # reference
+          logme("Info from the DQM GUI: %s" % str(histo))
+          # Continue by checking is this is a new alarm or not
           if alarms[name]['numOfBroadcasts'] < REBROADCAST:
             alarms[name]['state'] = 1
             alarms[name]['broadcast'] = True
@@ -274,7 +275,7 @@ def run_daemon():
     except Exception, e:
       logme('ERROR: %s', e)
       print_exc()
-      send_email_msg('ERROR: %s\n\n', e)
+      send_email_msg('ERROR: %s\n\n' % e)
   
     time.sleep(WAITTIME) 
 
