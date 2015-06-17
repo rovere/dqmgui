@@ -136,9 +136,6 @@ if not sr:
 
 BASEURL = "%s/%s/%s/" % (BASEURL, DATA_LOCATION, ERROR_FOLDER)
 
-alarms = {}
-activeAlarmsList = []
-
 # This method is just to test the sound infrastructure.
 # It will try to play a test message, send a test email and then exit.
 def run_test():
@@ -165,6 +162,8 @@ def run_test():
 def run_daemon():
   lastGlobalReminder = 0
   noRun = True
+  alarms = {}
+  activeAlarmsList = []
   while True:
     try:
       now = time.time()
@@ -280,6 +279,10 @@ def run_daemon():
     time.sleep(WAITTIME) 
 
 if IS_TEST:
+  # If we're in test mode
   run_test()
 else:
+  # After starting the script, we wait a while before we try, because maybe the GUI isn't started yet.
+  time.sleep(10)
+  # Now start the real daemon
   run_daemon()
