@@ -164,13 +164,19 @@ def run_daemon():
   noRun = True
   alarms = {}
   activeAlarmsList = []
+  activeURLErrors = 0
   while True:
     try:
       now = time.time()
   
+      # Get data from DQM GUI: 
       datareq = urllib2.Request(BASEURL)
       result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
       state = result.read()
+      # Arriving here, connection to GUI was successful, resetting error
+      # counter.
+      activeURLErrors = 0
+      
       state = cjson.decode(state)
   
       ## Detect No run state
@@ -271,6 +277,28 @@ def run_daemon():
     except KeyboardInterrupt, e:
       sys.exit(0)
   
+    except urllib2.URLError, e:
+      activeURLErrors += 1
+      # It happens from time to time that the daemon can't connect to the GUI
+      # This can have many reasons. Usually it's solved in the next cycle, so
+      # there is no point in alerting people.
+      if activeURLErrors <= 3:
+        logme("Daemon woke up. Couldn't connect to GUI (%d). Going back to "
+              "sleep." % activeURLErrors)
+      # However, when we see more then 3 times in a row that the network
+      # connection is failing, then we start sending emails:
+      else:
+        logme("Daemon woke up. Couldn't connect to GUI for the %dth time! "
+              "Sending mail and going back to sleep." % activeURLErrors)
+        logme('BASEURL: %s', BASEURL)
+        logme('ERROR: %s', e)
+        print_exc()
+        send_email_msg('ERROR: %s\n\n' % e)
+        # Reset counter to -20. Otherwise you would start receiving a message
+        # every 30 seconds now.
+        # At least this way, the next email will only be in >10 minutes.
+        activeURLErrors = -20
+
     except Exception, e:
       logme('ERROR: %s', e)
       print_exc()
@@ -282,7 +310,8 @@ if IS_TEST:
   # If we're in test mode
   run_test()
 else:
-  # After starting the script, we wait a while before we try, because maybe the GUI isn't started yet.
+  # After starting the script, we wait a while before we try, because maybe the
+  # GUI isn't started yet.
   time.sleep(10)
   # Now start the real daemon
   run_daemon()
