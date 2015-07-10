@@ -5,6 +5,7 @@ from subprocess import Popen,PIPE
 from traceback import print_exc
 from datetime import datetime, timedelta
 from glob import glob
+from socket import gethostname
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
@@ -48,7 +49,7 @@ def current_umask():
 
 myumask = current_umask()
 
-# Master method to backup a file to CASTOR. Will first make sure that the 
+# Master method to backup a file to CASTOR. Will first make sure that the
 # folder exists, will calculate checksum and finally send the file.
 # We talk about full paths and relative paths
 #
@@ -63,13 +64,13 @@ myumask = current_umask()
 # The relFolderPath is just the folder part of the relFilePath. Note that for
 # files in the root folder of the index, this is an empty string.
 # E.g. data/000   (not ending with /)
-# 
+#
 # The fullCastorFilePath is the full path of the file on CASTOR.
 # E.g. /castor/cern.ch/cms/store/dqm/test/20150521_234722_rsync/data/000/
 #                                                             00000-00096.dqm
-# 
+#
 # The fullCastorFolderPath is the folder part of the fullCastorFilePath.
-# E.g. /castor/cern.ch/cms/store/dqm/test/20150521_234722_rsync/data/000 
+# E.g. /castor/cern.ch/cms/store/dqm/test/20150521_234722_rsync/data/000
 #                 (not ending with /)
 #
 def castorBackupFile(relFilePath, folderTag):
@@ -94,23 +95,15 @@ def localFileExists(fullLocalFilePath):
   if os.path.isfile(fullLocalFilePath):
     return True
   else:
-    logme("WARNING: The file %s does not exist. If this is the master file "
-          "and we are some ryncs's behind on doing the copy to CASTOR, then "
-          "this is normal. Otherwise, this needs investigation.")
+    logme("WARNING: The file %s does not exist. If we are behind and a new "
+          "rsync already happened, removing the old file, then this is normal "
+          "and the next cycle will fill in the file. Otherwise, this needs "
+          "investigation." % fullLocalFilePath)
     return False
 
-# Will check if a folder exists.
-def castorExistsFolder(fullCastorFolderPath):
-  try:
-    executeCommand(["nsls", fullCastorFolderPath])
-  except:
-    return False
-  return True
-
-# Will create a folder, only if it doesn't exist.
+# Will create a folder - No problem if it already exists
 def castorCreateFolder(fullCastorFolderPath):
-  if not castorExistsFolder(fullCastorFolderPath):
-    executeCommand(["nsmkdir", "-p", fullCastorFolderPath])
+  executeCommandWithPerseverance(["nsmkdir", "-p", fullCastorFolderPath])
 
 # Copies a file to CASTOR, using checkSum to check correct transfer.
 def castorJustSendFile(fullLocalFilePath, fullCastorFolderPath):
@@ -118,14 +111,15 @@ def castorJustSendFile(fullLocalFilePath, fullCastorFolderPath):
   target = "root://castorcms.cern.ch/" + fullCastorFolderPath
   svcClass = "-ODsvcClass=archive"
   # We force-overwrite the file if it's already present
-  executeCommand(["xrdcp", "-f", source, target, svcClass])
-  logme("Successfully transferred file %s to %s" % (source, target))
+  executeCommandWithPerseverance(["xrdcp", "-f", source, target, svcClass])
+  logme("Successfully transferred file %s to %s." % (source, target))
 
 # Compare the checksum between local file and Castor file.
 # We assume here that the checksum on Castor side is ADLER32.
 # If not, there's not much we can do.
 def castorCheckChecksum(fullLocalFilePath, fullCastorFilePath):
-  castorResult = executeCommand(["nsls", "--checksum", fullCastorFilePath])
+  castorResult = executeCommandWithPerseverance(["nsls", "--checksum",
+                                                 fullCastorFilePath])
   castorParts = castorResult.split()
   # Check if the checksum on CASTOR is ADler
   if castorParts[0] == "AD":
@@ -138,10 +132,10 @@ def castorCheckChecksum(fullLocalFilePath, fullCastorFilePath):
     if not castorChecksum == localChecksum:
       raise Exception("Castor upload failed! Checksums did not match! \n"
                       "Local checksum: %s - CASTOR checksum: %s."
-                       % (localChecksum, castorChecksum)) 
+                       % (localChecksum, castorChecksum))
     else:
       logme("Checksums match: Local checksum: %s - CASTOR checksum: %s."
-                              % (localChecksum, castorChecksum)) 
+                              % (localChecksum, castorChecksum))
   else:
       logme("WARNING: Checksum was not checked. Checksum on the CASTOR side "
             "did not start with \"AD\".")
@@ -155,12 +149,12 @@ def scheduleFirstFullBackup():
       logme("No full backup scheduled. Scheduling one to happen now.")
       scheduleFullBackup(datetime.now())
 
-# We do this after completion of a successfull full backup. We schedule the 
+# We do this after completion of a successfull full backup. We schedule the
 # next full backup: N days from now.
 # We check first to make sure that the "--fullbackup" parameter is set.
 def scheduleNextFullBackup():
   if args.fullbackup:
-    now = datetime.now() 
+    now = datetime.now()
     # The exact time to do the backup really doesn't matter a lot.
     # We hardcode it here to be 1 o'clock in the night.
     nowAt1 = datetime(now.year, now.month, now.day, 1, 0)
@@ -207,6 +201,29 @@ def getListOfAllFilesInIndex():
         result.append(rel_path)
   return result
 
+# Execute command and return stdout
+# We implement a retry mechanism here, because Castor might be down for a
+# while. We retry maximum 5 times, with an exponentially growing waiting
+# time between the different attempts: [100, 200, 400, 800, 1600]
+def executeCommandWithPerseverance(command):
+  max_trials = 6
+  for trial in range(max_trials):
+    try:
+      return executeCommand(command)
+    except:
+      # So, something went wrong.
+      logme("Failed execution of command: %s" % command)
+      logme("This was trial number %d." % (trial + 1))
+      if trial < max_trials - 1:
+        seconds_to_sleep = 2**(trial)*100
+        logme("We will sleep for %d seconds and then try again." %
+                                                           seconds_to_sleep)
+        time.sleep(seconds_to_sleep)
+      else:
+        logme("This was our last attempt. We're stopping now, raising the "
+              "last error.")
+        raise
+
 # Execute command and return stdout.
 # General note: If it fails, it fails and we should stop. No catching at this
 # level.
@@ -216,7 +233,7 @@ def executeCommand(command):
   returncode = process.returncode
   # If returncode not 0, we raise an exception:
   if returncode != 0:
-    raise Exception("Execution of command %s resulted in error %s" % (command, 
+    raise Exception("Execution of command %s resulted in error %s" % (command,
                                                                       stderr))
   # Otherwise
   return stdout
@@ -228,6 +245,8 @@ def alertBySendingEmail(errorText):
   process.stdin.write("Subject: Problem sending DQM GUI index backup to CASTOR\n")
   process.stdin.write("\n") # blank line separating headers from body
   process.stdin.write("Problem sending DQM GUI index backup to CASTOR\n")
+  process.stdin.write("Hostname: %s\n" % gethostname())
+  process.stdin.write("Index: %s\n" % args.INDEX)
   process.stdin.write("%s\n" % errorText)
   process.stdin.write("Please check logs!\n")
   process.stdin.close()
@@ -243,7 +262,7 @@ try:
   # Full backup: We do this when we find a "full backup" file in our dropbox
   #              that lies in the past.
   #              Something like "20150528_010000_full_backup"
-  # (Note that this file is placed there by this process itself, after 
+  # (Note that this file is placed there by this process itself, after
   #  successfull completion of the previous full backup.)
   for full_backup_file_name in glob("%s/*_full_backup" % args.DROPBOX):
     full_backup_tag = os.path.basename(full_backup_file_name)
