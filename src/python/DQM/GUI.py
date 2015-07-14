@@ -174,7 +174,7 @@ class DQMFileAccess(DQMUpload):
     self._check("checksum", checksum,      r"^(md5:[A-Za-z0-9]+|crc32:\d+)$")
     self._check("filename", file.filename, r"^[-A-Za-z0-9_]+\.root$")
 
-    m = re.match(r"^(DQM)_V\d+(_[A-Za-z]+)?_R(\d+)(__.*)?\.root", str(file.filename))
+    m = re.match(r"^(DQM)_V\d+(_[A-Za-z0-9]+)?_R(\d+)(__.*)?\.root", str(file.filename))
     if not m:
       self._error(self.STATUS_ERROR_PARAMETER,
                   "File name does not match the expected convention")
