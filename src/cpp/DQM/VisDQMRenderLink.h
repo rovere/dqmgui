@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 
+#include "DQM/VisDQMXSourceFix.h"
 #include "DQM/DQMNet.h"
 #include "DQM/VisDQMLocks.h"
 

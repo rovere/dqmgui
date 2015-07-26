@@ -3,11 +3,13 @@
 
 #include <string>
 
+#include "DQM/VisDQMXSourceFix.h"
+#include "DQM/VisDQMSource.h"
+
 #include "boost/shared_ptr.hpp"
 #include "boost/python.hpp"
 #include "boost/python/stl_iterator.hpp"
 
-#include "DQM/VisDQMSource.h"
 
 class VisDQMRenderLink;
 

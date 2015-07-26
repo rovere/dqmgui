@@ -1,0 +1,12 @@
+#ifndef VISDQMXSOURCEFIX_H
+#define VISDQMXSOURCEFIX_H
+
+#if _POSIX_C_SOURCE != 200112L
+# undef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE 200112L
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE 600
+#endif
+
+
+#endif

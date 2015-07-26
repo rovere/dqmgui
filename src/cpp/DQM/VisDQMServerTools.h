@@ -12,10 +12,7 @@
 // harmless conflict between _GNU_SOURCE and python header files.
 //#define NDEBUG 1
 #include <unistd.h>
-#if _POSIX_C_SOURCE != 200112L
-# undef _POSIX_C_SOURCE
-# define _POSIX_C_SOURCE 200112L
-#endif
+#include "DQM/VisDQMXSourceFix.h"
 #define DEBUG(n,x)
 
 #include <iostream>
