@@ -21,6 +21,7 @@
 #include "DQM/VisDQMServerTools.h"
 #include "DQM/VisDQMSource.h"
 #include "DQM/VisDQMLocks.h"
+#include "DQM/VisDQMSampleTypes.h"
 
 #include "classlib/utils/Argz.h"
 #include "classlib/utils/DebugAids.h"

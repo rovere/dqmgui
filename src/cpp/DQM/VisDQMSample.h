@@ -20,16 +20,6 @@ enum VisDQMSampleType
   SAMPLE_ANY
 };
 
-static const char *sampleTypeLabel[] =
-{
-  "live",
-  "online_data",
-  "offline_data",
-  "offline_relval",
-  "offline_mc",
-  "any"
-};
-
 struct VisDQMSample
 {
   VisDQMSampleType              type;

@@ -3,6 +3,7 @@
 #include "DQM/VisDQMSample.h"
 #include "DQM/VisDQMLocks.h"
 #include "DQM/VisDQMServerTools.h"
+#include "DQM/VisDQMSampleTypes.h"
 
 #include "classlib/utils/Time.h"
 #include "classlib/utils/RegexpMatch.h"

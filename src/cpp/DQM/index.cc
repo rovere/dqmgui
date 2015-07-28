@@ -605,6 +605,18 @@ classifyMonitorElementRange(void *arg)
   return 0;
 }
 
+
+static
+std::ostream &operator<<(std::ostream &out, IndexKey c)
+{
+  out << std::hex << (c.sampleAndType >> 4) << "-"
+      << (c.sampleAndType & 0xf) << ":";
+  out << std::hex << (c.lumiAndObjname >> 32) << "-"
+      << (c.lumiAndObjname & 0xffffffff) << std::dec;
+  return out;
+}
+
+
 // ----------------------------------------------------------------------
 /** Extract a numeric run number from a regexp string match into @a
     si.  Returns true on success, false on failure.  In case of
