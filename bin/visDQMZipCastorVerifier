@@ -79,6 +79,7 @@ def load_persistent_state():
   # If the file exists, we try to unpickle it, to get our "new".
   # If it does not exist, we just start with an empty dictionary.
   pickle_file = os.path.join(DROPBOX, STATE_PICKLE_FILENAME)
+
   if os.path.isfile(pickle_file):
     logme("Found a persistent version of the state in file %s." % pickle_file)
     try:
@@ -92,8 +93,8 @@ def load_persistent_state():
       return (new, WARNINGS, last_warnings_flush)
     except:
       logme("Couldn't load the pickle file. %s" % sys.exc_info()[0])
-      logme("Started with a new empty dictionary.")
-      return {}
+      logme("Started with a new epty dictionary.")
+      return ({}, {}, time.time())
   else:
     logme("Could not find a persistent version of the state in the "
           "dropbox. Started with a new empty dictionary.")
