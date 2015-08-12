@@ -200,8 +200,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     _gui = gui;
     _gui.setIdleMessage
       ("<span style='font-size: 95%'>"
-       + "Please file any feature requests and any bugs you find in <a href='"
-       + "https://savannah.cern.ch/bugs/?group=iguana'>Savannah</a>. Find "
+       + "Find "
        + "<a href='https://twiki.cern.ch/twiki/bin/view/CMS/DQMShiftInstructions'>"
        + "shift instructions here</a>.</span>");
     _service = this.heading("Service", "<span>_</span>:", "pickMenu(\"service\")").firstChild;
