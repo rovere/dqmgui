@@ -5,9 +5,7 @@ var GUI = new function()
   //////////////////////////////////////////////////////////////////////
   // Various parameters.
   var _DEFAULT_IDLE_MESSAGE =
-    "<span style='font-size: 95%'>"
-    + "Please file any feature requests and any bugs you find in <a href='"
-    + "https://savannah.cern.ch/bugs/?group=iguana'>Savannah</a>.</span>";
+    "<span style='font-size: 95%'>Welcome to the DQM GUI!</span>";
   var _IDLE_MESSAGE = _DEFAULT_IDLE_MESSAGE;
 
   // Most recent AJAX state.
