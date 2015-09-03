@@ -1,4 +1,4 @@
-#include "VisMonitoring/DQMServer/interface/DQMRenderPlugin.h"
+#include "DQM/DQMRenderPlugin.h"
 #include "TCanvas.h"
 #include "TText.h"
 #include "TColor.h"
