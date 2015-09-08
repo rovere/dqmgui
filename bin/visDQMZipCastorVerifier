@@ -191,7 +191,7 @@ try:
       (rc, so, se) = runme("nsls -T %s", cname)
       if not rc == 0:
         assert False, "WARNING: %s: nsls -T failed with following error:[%d,'%s']" % \
-              (cname,rc,so,se)
+              (cname,rc,se)
 
       if so == "":
         (rc, so, se) = runme("stager_qry -M %s", cname)
