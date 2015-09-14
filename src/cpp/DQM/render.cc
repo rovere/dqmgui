@@ -1730,26 +1730,24 @@ private:
         // injected during the harvesting step.
         int color = colors[n%colorIndex];
         double norm = 1.;
-        if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-          norm = th1f->GetSumOfWeights();
-        else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-          norm = th1d->GetSumOfWeights();
+        TH1 * h = nullptr;
+        if ((h = dynamic_cast<TH1 *>(ob)))
+          norm = h->GetSumOfWeights();
 
         TH1 *ref = (ref1f
                     ? static_cast<TH1 *>(ref1f)
                     : static_cast<TH1 *>(ref1d));
-        if (n==1 && ! isnan(i.ktest))
+        if (n==1 && (! isnan(i.ktest))
+            && h && norm
+            && ref && ref->GetSumOfWeights())
         {
-          if (TH1 *h = dynamic_cast<TH1 *>(ob))
-          {
-            double prob = h->KolmogorovTest(ref);
-            color = prob < i.ktest ? kRed-4 : kGreen-3;
-            char buffer[14];
-            snprintf(buffer, 14, "%6.5f", prob);
-            TText t;
-            t.SetTextColor(color);
-            t.DrawTextNDC(0.45, 0.9, buffer);
-          }
+          double prob = h->KolmogorovTest(ref);
+          color = prob < i.ktest ? kRed-4 : kGreen-3;
+          char buffer[14];
+          snprintf(buffer, 14, "%6.5f", prob);
+          TText t;
+          t.SetTextColor(color);
+          t.DrawTextNDC(0.45, 0.9, buffer);
         }
 
         ref->SetLineColor(color); ref->SetMarkerColor(color);
