@@ -248,22 +248,87 @@ static string statWithErrorToJson(const TH1* const hist, const char* const name)
       "'value':%1"
       ",'error':%2"
       "}";
-  if (strcmp(name,"mean") == 0)
+  if (strcmp(name,"mean") == 0) {
+    if (std::isfinite(hist->GetMean(X)) && std::isfinite(hist->GetMeanError(X)))
+      return StringFormat(format)
+          .arg(hist->GetMean(X))
+          .arg(hist->GetMeanError(X_ERROR));
+    if (!std::isfinite(hist->GetMean(X))) {
+      if (!std::isfinite(hist->GetMeanError(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetMeanError(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetMean(X))
-        .arg(hist->GetMeanError(X));
-  if (strcmp(name,"rms") == 0)
+        .arg("'NaN");
+  }
+  if (strcmp(name,"rms") == 0) {
+    if (std::isfinite(hist->GetRMS(X)) && std::isfinite(hist->GetRMSError(X_ERROR)))
+      return StringFormat(format)
+          .arg(hist->GetRMS(X))
+          .arg(hist->GetRMSError(X_ERROR));
+    if (!std::isfinite(hist->GetRMS(X))) {
+      if (!std::isfinite(hist->GetRMSError(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetRMSError(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetRMS(X))
-        .arg(hist->GetRMSError(X));
-  if (strcmp(name,"kurtosis") == 0)
+        .arg("'NaN");
+  }
+  if (strcmp(name,"kurtosis") == 0) {
+    if (std::isfinite(hist->GetKurtosis(X)) && std::isfinite(hist->GetKurtosis(X_ERROR)))
+      return StringFormat(format)
+          .arg(hist->GetKurtosis(X))
+          .arg(hist->GetKurtosis(X_ERROR));
+    if (!std::isfinite(hist->GetKurtosis(X))) {
+      if (!std::isfinite(hist->GetKurtosis(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetKurtosis(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetKurtosis(X))
-        .arg(hist->GetKurtosis(X_ERROR));
-  if (strcmp(name,"skewness") == 0)
+        .arg("'NaN");
+  }
+  if (strcmp(name,"skewness") == 0) {
+    if (std::isfinite(hist->GetSkewness(X)) && std::isfinite(hist->GetSkewness(X_ERROR)))
+      return StringFormat(format)
+          .arg(hist->GetSkewness(X))
+          .arg(hist->GetSkewness(X_ERROR));
+    if (!std::isfinite(hist->GetSkewness(X))) {
+      if (!std::isfinite(hist->GetSkewness(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetSkewness(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetSkewness(X))
-        .arg(hist->GetSkewness(X_ERROR));
+        .arg("'NaN");
+  }
+
   // name not recognized
   return StringFormat("'%1':'has not been recognised'")
       .arg(name);
