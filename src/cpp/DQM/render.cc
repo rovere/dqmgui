@@ -1875,13 +1875,6 @@ private:
         doRenderMsg(o.name, "blacklisted for crashing ROOT", c, nukem);
       }
 
-      // If the stats are bad avoid drawing it, ROOT destabilises.
-      else if (unsafe)
-      {
-        Color_t c = TColor::GetColor(178, 32, 32);
-        doRenderMsg(o.name, "not shown due to NaNs", c, nukem);
-      }
-
       // It's there and wasn't black-listed, paint it.
       else
       {
@@ -1896,6 +1889,13 @@ private:
             break;
           default:
             doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
+        }
+
+        // If the stats are bad draw alert on top.
+        if (unsafe)
+        {
+          Color_t c = TColor::GetColor(178, 32, 32);
+          doRenderMsg(o.name, "NaNs", c, nukem);
         }
       }
 
