@@ -1411,6 +1411,39 @@ private:
   }
 
   // ----------------------------------------------------------------------
+  // Extract the minimum and maximum range of a histogram, excluding
+  // bin with 0 content or with 0 value.
+
+  void computeMinAndMaxForEfficiency(const TH1* h,
+                                     double ratio_min, double ratio_max,
+                                     double &minimum, double &maximum) {
+    int bin, binx, biny, binz;
+    int xfirst  = h->GetXaxis()->GetFirst();
+    int xlast   = h->GetXaxis()->GetLast();
+    int yfirst  = h->GetYaxis()->GetFirst();
+    int ylast   = h->GetYaxis()->GetLast();
+    int zfirst  = h->GetZaxis()->GetFirst();
+    int zlast   = h->GetZaxis()->GetLast();
+    double value = 0;
+    for (binz = zfirst; binz <= zlast; binz++) {
+      for (biny = yfirst; biny <= ylast; biny++) {
+        for (binx = xfirst; binx <= xlast; binx++) {
+          bin = h->GetBin(binx, biny, binz);
+          value = h->GetBinContent(bin);
+          if (value == 0)
+            continue;
+          if (value < minimum && value > ratio_min) {
+            minimum = value;
+          }
+          if (value > maximum && value < ratio_max) {
+            maximum = value;
+          }
+        }
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
   // Render ovelaid ROOT objects and their ratio at the bottom.
   void
   doRenderOverlayAndRatio(TCanvas &c,
@@ -1497,8 +1530,8 @@ private:
             num->GetXaxis()->SetTitleSize(ratio_label_font_size);
             num->GetXaxis()->SetTitleOffset(-1.2);
 
-            ratio_min = std::min(ratio_min, num->GetMinimum(RATIO_MIN));
-            ratio_max = std::max(ratio_max, num->GetMaximum(RATIO_MAX));
+            computeMinAndMaxForEfficiency(num, RATIO_MIN, RATIO_MAX,
+                                          ratio_min, ratio_max);
             num->GetYaxis()->SetTitle("");
             num->GetYaxis()->SetLabelFont(42);
             num->GetYaxis()->SetLabelSize(ratio_label_font_size);
