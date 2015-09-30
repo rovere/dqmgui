@@ -72,7 +72,7 @@ static string binsToArray(const TH1* const h)
       isWidthDef = false;
     sum += h->GetBinContent(i);
     contentList += StringFormat("%1,")
-        .arg(h->GetBinContent(i));
+        .arg((double)h->GetBinContent(i), 14, 'g', 11);
     widthList += StringFormat("%1,")
         .arg(h->GetXaxis()->GetBinWidth(i));
     errorList += StringFormat("%1,")
