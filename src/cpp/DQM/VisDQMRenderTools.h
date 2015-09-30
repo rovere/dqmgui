@@ -35,7 +35,7 @@ static string arrayToJson(const string arrayString, const char* const name = NUL
 }
 
 
-static string integralToJson(Double_t** integral )
+static string integralToJson(Double_t integral[][3] )
 {
   return StringFormat("'integral':["
                       "[%7,%8,%9],"
@@ -93,10 +93,8 @@ static string binsToArray(const TH2* const h)
   string content = "";
   string widthX  = "";
   string widthY  = "";
-  Double_t** sum = new double*[2];
-  sum[0] = new double[2];
-  sum[1] = new double[2];
-  sum[2] = new double[2];
+  Double_t sum[3][3];
+  bzero((void *)sum, 9*sizeof(Double_t));
   const Int_t Xlast = h->GetXaxis()->GetLast(), Ylast = h->GetYaxis()->GetLast();
   /** Naming conventions:
       ux - underflow X, uy = underflow Y
