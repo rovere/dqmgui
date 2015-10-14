@@ -1,0 +1,16 @@
+sudo: required
+
+language: c++
+
+services:
+  - docker
+
+env:
+  global:
+    - HTTPG_TAG=HG1510f_gcc493
+
+before_install:
+  - docker pull rovere/dqmgui:${HTTPG_TAG}
+
+script:
+  - docker run -i -t --name dqmgui -v ${PWD}:/data/srv/GHM rovere/dqmgui:${HTTPG_TAG} /bin/sh -c '. /data/srv/current/apps/dqmgui/128/etc/profile.d/env.sh && for s in /data/srv/current/*/*/*/*/*/etc/profile.d/init.sh; do . $s; done && cd GHM && monDistPatch -s DQM'
