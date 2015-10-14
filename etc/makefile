@@ -16,7 +16,7 @@ ROOTG_LIBS   = $(ROOTC_LIBS) -lTreePlayer -lGpad -lGraf3d -lGraf \
 OTHER_LIBS_Darwin =
 OTHER_LIBS_Linux  = -lrt
 OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -lprotobuf -ldl $(OTHER_LIBS_$(PLATFORM))
-PYTHON_LIBS  = -lboost_python -lpython2.6
+PYTHON_LIBS  = -lboost_python -lpython2.7
 
 LIB_SRC      = DQM/DQMRenderPlugin.cc \
                DQM/VisDQMBuf.cc \
