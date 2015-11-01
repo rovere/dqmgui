@@ -486,7 +486,7 @@ class Server:
   @tools.params()
   def static(self, *args, **kwargs):
     """Access our own static content."""
-    if len(args) != 1 or not re.match(r"^[-a-z]+\.(png|gif)$", args[0]):
+    if len(args) != 1 or not re.match(r"^[-a-z_]+\.(png|gif|svg)$", args[0]):
       return self._invalidURL()
     return serve_file(self.contentpath + '/images/' + args[0])
 

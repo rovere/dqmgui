@@ -204,22 +204,22 @@ GUI.Plugin.DQMHeaderRow = new function() {
        + "<a href='https://twiki.cern.ch/twiki/bin/view/CMS/DQMShiftInstructions'>"
        + "shift instructions here</a>.</span>");
     _service = this.heading("Service", "<span>_</span>:", "pickMenu(\"service\")").firstChild;
-    _workspace = this.heading("<img src='" + ROOTPATH + "/static/previous.png'"
-			      + "style='margin-left:5px;padding-bottom:1px; height: 8px' "
+    _workspace = this.heading("<img src='" + ROOTPATH + "/static/left_arrow.png'"
+			      + "style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
 			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopWorkspaces(event,\"previous\")' />"
 			      + "&nbsp;Workspace"
-			      + "<img src='" + ROOTPATH + "/static/next.png'"
-			      + "style='margin-left:5px;padding-bottom:1px; height: 8px' "
+			      + "<img src='" + ROOTPATH + "/static/right_arrow.png'"
+			      + "style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
 			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopWorkspaces(event,\"next\")' />",
 			      "<span>_</span><span class='delimiter'>&nbsp;&nbsp;.</span>",
 			      "pickMenu(\"workspace\")").firstChild;
 
-    _runNr = this.heading("<img src='" + ROOTPATH + "/static/previous.png'"
-			      + "style='margin-left:5px;padding-bottom:1px; height: 8px' "
+    _runNr = this.heading("<img src='" + ROOTPATH + "/static/left_arrow.png'"
+			      + "style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
 			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"backward\")' />"
 			      + "&nbsp;Run #"
-			      + "<img src='" + ROOTPATH + "/static/next.png'"
-			      + "style='margin-left:5px;padding-bottom:1px; height: 8px' "
+			      + "<img src='" + ROOTPATH + "/static/right_arrow.png'"
+			      + "style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
 			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"forward\")' />", "<span>_</span><span class='delimiter'>"
 		          + "&nbsp;&nbsp;.</span>", "pickSample(\"run\", \"dataset\")").firstChild;
     _lumiNr = this.heading("LS #", "<span>_</span><span class='delimiter'>"
