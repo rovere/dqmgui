@@ -216,10 +216,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
 
     _runNr = this.heading("<img src='" + ROOTPATH + "/static/previous.png'"
 			      + "style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
-			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"backward\")' />"
+			      + "id='run_previous' onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"backward\")' />"
 			      + "&nbsp;Run #"
 			      + "<img src='" + ROOTPATH + "/static/next.png'"
-			      + "style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
+			      + "id='run_next' style='margin-left:5px;padding-bottom:1px; height: 0.95em' "
 			      + "onclick = 'return GUI.Plugin.DQMHeaderRow.loopRuns(event,\"forward\")' />", "<span>_</span><span class='delimiter'>"
 		          + "&nbsp;&nbsp;.</span>", "pickSample(\"run\", \"dataset\")").firstChild;
     _lumiNr = this.heading("LS #", "<span>_</span><span class='delimiter'>"
@@ -548,6 +548,11 @@ GUI.Plugin.DQMHeaderRow = new function() {
     _runNr.innerHTML = data.run;
     _lumiNr.innerHTML = data.lumi;
     _eventNr.innerHTML = data.event;
+    if (data.view.sample.type == 'live') {
+      $('run_previous').style.display = 'none';
+      $('run_next').style.display = "none";
+    }
+
     _runStart.innerHTML = "<span title='UTC time'>" + data.runstart + "</span>";
 
     var title = data.service + " - " + data.workspace + " - " + HEADING;
