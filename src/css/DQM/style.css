@@ -89,7 +89,7 @@ pre.wide
 
 #serverid {
   float:                right;
-  margin:		10px 10px;
+  margin:		7px 7px;
   min-height:		46px;
   font-size:		75%;
   line-height:		1.25em;
@@ -212,7 +212,7 @@ pre.wide
 #cmslogo {
   float:		left;
   overflow:		show;
-  margin:		7px -8px 7px 7px;
+  margin:		7px 7px 7px 7px;
   border:		3px solid transparent;
 }
 
@@ -227,7 +227,7 @@ pre.wide
   float:		left;
   font-size:		80%;
   line-height:		1.5em;
-  margin:		-13px 0px 7px 71px;
+  margin:		-5px 0px 5px 86px;
 }
 
 #subheader .item {
