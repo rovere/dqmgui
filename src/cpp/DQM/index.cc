@@ -2499,6 +2499,9 @@ fixStreamerInfo(const Filename &indexdir)
       const std::string &original = streamers.key(i);
       if (i == (e - 1)) {
         extended_streamers.insert(partial_streamerinfoFromRoot);
+        DEBUG(2, partial_streamerinfoFromRoot.size()
+              << " bytes of new streamerInfo will replace " << original.size()
+              << " bytes of previous streamer info at position " << i << "\n");
       } else {
         extended_streamers.insert(original);
       }
