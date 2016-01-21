@@ -98,7 +98,7 @@ def send_sound_msg(msg, spoken_msg):
 # Short hand to send email message
 def send_email_msg(msg):
   if EMAIL_ADDRESSES:
-    logme("Sending email to %s with following message:\n%s" % 
+    logme("Sending email to %s with following message:\n%s" %
                                                 (EMAIL_ADDRESSES, msg))
     process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
     process.stdin.write("To: %s\n" % EMAIL_ADDRESSES)
@@ -106,7 +106,7 @@ def send_email_msg(msg):
                         "%s at P5\n" % gethostname())
     process.stdin.write("\n") # blank line separating headers from body
     process.stdin.write("%s\n\n" % msg)
-    process.stdin.write("The logs should be here: /home/dqmlocal/logs/dqmgui/"
+    process.stdin.write("The logs should be here: /data/srv/logs/dqmgui/"
                         "online/\n")
     process.stdin.close()
     returncode = process.wait()
@@ -168,31 +168,31 @@ def run_daemon():
   while True:
     try:
       now = time.time()
-  
-      # Get data from DQM GUI: 
+
+      # Get data from DQM GUI:
       datareq = urllib2.Request(BASEURL)
       result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
       state = result.read()
       # Arriving here, connection to GUI was successful, resetting error
       # counter.
       activeURLErrors = 0
-      
+
       state = cjson.decode(state)
-  
+
       ## Detect No run state
       if noRun == False and len(state["contents"]) <= 1:
         noRun = True
         alarms = {}
         lastGlobalReminder = 0
-  
+
       if noRun and len(state["contents"]) > 1:
         noRun = False
-  
+
       if noRun:
         logme("Daemon woke up. No run going on. Going back to sleep.")
         time.sleep(WAITTIME)
         continue
-  
+
       # Find new alarm histos, and update alarm states
       newAlarmsList = []
       for histo in state["contents"]:
@@ -200,10 +200,10 @@ def run_daemon():
           name = histo['obj']
         else:
           continue
-  
+
         alarms.setdefault(name,{'state':0, 'lastBroadcast':0,
                                 'numOfBroadcasts':0, 'broadcast':False})
-  
+
         if histo['properties']['report']['alarm'] == 1:
           # If it finds an error, we print the info in the logs for later
           # reference
@@ -215,18 +215,18 @@ def run_daemon():
             if alarms[name]['lastBroadcast'] == 0:
               newAlarmsList.append(name)
               alarms[name]['broadcast'] = False
-  
+
           else:
             alarms[name]['broadcast'] = False
-  
+
         else:
           alarms[name]={'state':0, 'lastBroadcast':0,
                          'numOfBroadcasts':0, 'broadcast':False}
           if name in activeAlarmsList:
             activeAlarmsList.remove(name)
-  
+
       now = time.time()
-  
+
       # Broadcast new alarms
       if len(newAlarmsList):
         if len(newAlarmsList) > 1:
@@ -235,21 +235,21 @@ def run_daemon():
         else:
           msg = "There is %d new DQM alarm!"
           spoken_msg = "There is %d new D Q M alarm. Check plots in the D Q M Error folder."
-  
+
         msg = msg % len(newAlarmsList)
         spoken_msg = spoken_msg % len(newAlarmsList)
         send_sound_msg(msg, spoken_msg)
         for a in newAlarmsList:
           alarms[a]['lastBroadcast'] = now
           alarms[a]['numOfBroadcasts'] += 1
-  
+
       # Do compiled broadcast
       alarmsToBroadcastList = []
       for a in activeAlarmsList:
         if alarms[a]['broadcast']:
           alarmsToBroadcastList.append(a)
           alarms[a]['numOfBroadcasts'] += 1
-  
+
       if now - lastGlobalReminder > REMINDERINTERVAL and len(alarmsToBroadcastList):
         if len(alarmsToBroadcastList) > 1:
           msg = "There are %d DQM alarms!"
@@ -257,26 +257,26 @@ def run_daemon():
         else:
           msg = "There is %d DQM alarm!"
           spoken_msg = "There is %d D Q M alarm. Check plots in the D Q M Error folder."
-  
+
         msg = msg % len(activeAlarmsList)
         spoken_msg = spoken_msg % len(activeAlarmsList)
         send_sound_msg(msg, spoken_msg)
         lastGlobalReminder = now
-  
+
       activeAlarmsList += newAlarmsList
-  
+
       # Sync all lastBroadcast times to have a consistent group
       for a in activeAlarmsList:
         if lastGlobalReminder > 0:
           alarms[a]['lastBroadcast'] = lastGlobalReminder
-  
+
       # Done some heartbeat logging:
       logme("Daemon woke up. A run was going on. %d active alarm(s)."
                                                       % len(activeAlarmsList))
 
     except KeyboardInterrupt, e:
       sys.exit(0)
-  
+
     except urllib2.URLError, e:
       activeURLErrors += 1
       # It happens from time to time that the daemon can't connect to the GUI
@@ -303,8 +303,8 @@ def run_daemon():
       logme('ERROR: %s', e)
       print_exc()
       send_email_msg('ERROR: %s\n\n' % e)
-  
-    time.sleep(WAITTIME) 
+
+    time.sleep(WAITTIME)
 
 if IS_TEST:
   # If we're in test mode
