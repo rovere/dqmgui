@@ -7,11 +7,7 @@ services:
 
 env:
   global:
-<<<<<<< HEAD
-    - HTTPG_TAG=HG1511b
-=======
     - HTTPG_TAG=HG1510f_gcc493
->>>>>>> c8fb803... Add prototype travis-CI build configuration file
 
 before_install:
   - docker pull rovere/dqmgui:${HTTPG_TAG}
