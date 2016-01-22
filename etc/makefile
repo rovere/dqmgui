@@ -39,7 +39,7 @@ EXT_LINK     = $(CXX) $(CXXFLAGS) -shared -o $@ $(EXT_OBJ) \
                $(LDFLAGS) -lDQMGUI $(OTHER_LIBS) $(PYTHON_LIBS) -lpng
 
 INDEX_SRC    = DQM/index.cc DQM/DQMNet.cc DQM/DQMError.cc \
-               DQM/DQMStore.cc DQM/MonitorElement.cc \
+               DQM/DQMStore.cc DQM/MonitorElement.cc DQM/ROOTFilePB.pb.cc \
                DQM/QTest.cc DQM/QReport.cc \
                DQM/StreamSample.pb.cc
 INDEX_OBJ    = $(patsubst %.cc,%.o,$(notdir $(INDEX_SRC)))
@@ -52,6 +52,7 @@ RENDER_LINK  = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(RENDER_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTG_LIBS) $(OTHER_LIBS) -ljpeg
 
 vpath %.cc $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQM
+vpath %.proto $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include
 all: visDQMIndex visDQMRender DQMCollector Accelerator.so libDQMGUI.so
 clean:; rm -f *.o *.so visDQMIndex visDQMRender
 %.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
@@ -68,3 +69,5 @@ Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
 visDQMIndex: $(INDEX_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(INDEX_LINK)
 visDQMRender: $(RENDER_OBJ) libDQMGUI.so; $(RENDER_LINK)
+DQM/ROOTFilePB.pb.cc: DQM/ROOTFilePB.proto; protoc --cpp_out=. $< -I$(SRCDIR)/DQM -I $(MONITOR_ROOT)/xinclude/DQM -I $(MONITOR_ROOT)/include
+ROOTFilePB.pb.o: DQM/ROOTFilePB.pb.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
