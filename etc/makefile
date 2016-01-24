@@ -52,7 +52,7 @@ RENDER_LINK  = $(CXX) $(CXXFLAGS) -fPIE -o $@ $(RENDER_OBJ) \
                $(LDFLAGS) -lDQMGUI $(ROOTG_LIBS) $(OTHER_LIBS) -ljpeg
 
 vpath %.cc $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include/DQM
-vpath %.proto $(SRCDIR)/DQM $(MONITOR_ROOT)/xinclude/DQM $(MONITOR_ROOT)/include
+vpath %.proto $(SRCDIR)/ $(MONITOR_ROOT)/xinclude/ $(MONITOR_ROOT)/include
 all: visDQMIndex visDQMRender DQMCollector Accelerator.so libDQMGUI.so
 clean:; rm -f *.o *.so visDQMIndex visDQMRender
 %.o: %.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
@@ -69,5 +69,9 @@ Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
 visDQMIndex: $(INDEX_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(INDEX_LINK)
 visDQMRender: $(RENDER_OBJ) libDQMGUI.so; $(RENDER_LINK)
-DQM/ROOTFilePB.pb.cc: DQM/ROOTFilePB.proto; protoc --cpp_out=. $< 
+ifeq ($(strip $(MONITOR_ROOT)),)
+DQM/ROOTFilePB.pb.cc: DQM/ROOTFilePB.proto; protoc --cpp_out=. $<
+else
+DQM/ROOTFilePB.pb.cc: DQM/ROOTFilePB.proto; protoc --cpp_out=. $< -I$(MONITOR_ROOT)/xinclude/ -I$(MONITOR_ROOT)/include/
+endif
 ROOTFilePB.pb.o: DQM/ROOTFilePB.pb.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
