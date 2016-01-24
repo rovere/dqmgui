@@ -69,5 +69,5 @@ Accelerator.so: $(EXT_OBJ) libDQMGUI.so; $(EXT_LINK)
 DQMCollector: $(COLL_OBJ); $(COLL_LINK)
 visDQMIndex: $(INDEX_OBJ) DQM/VisDQMTools.h libDQMGUI.so; $(INDEX_LINK)
 visDQMRender: $(RENDER_OBJ) libDQMGUI.so; $(RENDER_LINK)
-DQM/ROOTFilePB.pb.cc: DQM/ROOTFilePB.proto; protoc --cpp_out=. $< -I$(SRCDIR)/DQM -I $(MONITOR_ROOT)/xinclude/DQM -I $(MONITOR_ROOT)/include
+DQM/ROOTFilePB.pb.cc: DQM/ROOTFilePB.proto; protoc --cpp_out=. $< 
 ROOTFilePB.pb.o: DQM/ROOTFilePB.pb.cc; $(CXX) $(CXXFLAGS) -c $< -o $@
