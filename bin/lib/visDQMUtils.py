@@ -36,11 +36,12 @@ def classifyDQMFile(path):
       if version != 1:
         return False, "file version is not 1"
       elif runnr <= 10000:
-	return False, "online file has run number <= 10000"
+        return False, "online file has run number <= 10000"
       else:
+        # online_data
         return True, { 'class': 'online_data', 'version': version,
-	               'subsystem': subsys, 'runnr': runnr,
-	               'dataset': "/Global/Online/ALL" }
+                       'subsystem': subsys, 'runnr': runnr,
+                       'dataset': "/Global/Online/ALL" }
 
     m = re.match(RXOFFLINE, path)
     if m:
@@ -56,48 +57,48 @@ def classifyDQMFile(path):
       if version != 1:
         return False, "file version is not 1"
       if runnr < 1:
-	 return False, "file matches offline naming, but run number is < 1"
+         return False, "file matches offline naming, but run number is < 1"
       elif rundepmc:
         if runnr == 1:
           return False,  "file matches Run Dependent MonteCarlo naming, but run number is 1"
         else:
-          ## 1
+          # simulated_rundep
           return True, { 'class': 'simulated_rundep', 'version': version,
                          'runnr': runnr, 'dataset': dataset }
       elif relvalrundepmc:
         if runnr == 1:
           return False, "file matches Run Dependent MonteCarlo naming, but run number is 1"
         else:
-          ## 2
+          # relval_rundepmc
           return True, { 'class': 'relval_rundepmc', 'version': version,
                          'runnr': runnr, 'dataset': dataset,
                          'release': relvalrundepmc.group(1)}
       elif relvalmc:
-	if runnr != 1:
-	  return False, "file matches relval mc naming, but run number != 1"
+        if runnr != 1:
+          return False, "file matches relval mc naming, but run number != 1"
         else:
-          ## 3
-	  return True, { 'class': 'relval_mc', 'version': version,
-		         'runnr': runnr, 'dataset': dataset,
-		         'release': relvalmc.group(1) }
+          # relval_mc
+          return True, { 'class': 'relval_mc', 'version': version,
+                         'runnr': runnr, 'dataset': dataset,
+                         'release': relvalmc.group(1) }
       elif relvaldata:
         if runnr == 1:
           return False, "file matches relval data naming, but run number = 1"
         else:
-          ## 4
+          # relval_data
           return True, { 'class': 'relval_data', 'version': version,
                          'runnr': runnr, 'dataset': dataset,
                          'release': relvaldata.group(1) }
       elif dataset.find("CMSSW") >= 0:
-	return False, "non-relval dataset name contains 'CMSSW'"
+        return False, "non-relval dataset name contains 'CMSSW'"
       elif runnr > 1:
-        ## 5
-	return True, { 'class': 'offline_data', 'version': version,
-		       'runnr': runnr, 'dataset': dataset }
+        # offline_data
+        return True, { 'class': 'offline_data', 'version': version,
+                       'runnr': runnr, 'dataset': dataset }
       else:
-        ## 6
-	return True, { 'class': 'simulated', 'version': int(m.group(1)),
-		       'runnr': runnr, 'dataset': dataset }
+        # simulated
+        return True, { 'class': 'simulated', 'version': int(m.group(1)),
+                       'runnr': runnr, 'dataset': dataset }
 
     return False, "file matches no known naming convention"
   except:

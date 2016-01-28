@@ -9,10 +9,10 @@ from lib import visDQMUtils
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
-DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
+DROPBOX = sys.argv[1]        # Directory where we receive input ("drop box").
 FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
-NEXT = sys.argv[3:]	# Directories for the next agent in chain.
-WAITTIME = 5		# Daemon cycle time.
+NEXT = sys.argv[3:]        # Directories for the next agent in chain.
+WAITTIME = 5                # Daemon cycle time.
 
 # Regexp for save file name paths. We don't process anything else.
 RXSAFEPATH = re.compile(r"^[-A-Za-z0-9_/]+\.root$")
@@ -77,7 +77,7 @@ def verifyDQMFile(path, md5sum, size, xpath, origin):
   # Verify the file size is as expected.
   if size != info[ST_SIZE]:
     warnPath(origin, path, "size mismatch, expected %d, found %d bytes"
-	     % (size, info[ST_SIZE]))
+             % (size, info[ST_SIZE]))
     return None
 
   # Ask for file classification, and fail if it fails.
@@ -105,23 +105,23 @@ def findNewFiles():
     for f in files:
       # We are only interested in ROOT files.
       if not f.endswith(".root"):
-	continue
+        continue
 
       # Locate the file and its upload info, and read the latter in.
       # If we fail to do so, skip the file.
       path = "%s/%s" % (dir, f)
       origin = "%s.origin" % path
       try:
-	m = re.match(RXORIGIN, file(origin).read())
-	if not m:
+        m = re.match(RXORIGIN, file(origin).read())
+        if not m:
           continue
-	md5sum = m.group(1)
-	size = int(m.group(2))
+        md5sum = m.group(1)
+        size = int(m.group(2))
         xpath = m.group(3)
         # path will be local to the dropbox, coming from the walk
         # xpath will be the complete path, like found in the origin file
       except:
-	continue
+        continue
 
       # If the file is ok, append it to the list of new files.
       c = verifyDQMFile(path, md5sum, size, xpath, origin)
@@ -199,7 +199,7 @@ def finaliseOneFile(info):
   curmd5 = hashlib.md5(file(path).read()).hexdigest()
   if curmd5 != info['md5sum']:
     warnPath(info, path, "md5 checksum mismatch, expected [%s], found [%s]"
-	     % (info['md5sum'], curmd5))
+             % (info['md5sum'], curmd5))
     return False
 
   # Verify it's a ROOT file.
@@ -232,13 +232,13 @@ def finaliseOneFile(info):
     subsys = info['subsystem']
     if subsys:
       info['filepat'] = ("OnlineData/%05dxxxx/%07dxx/DQM_V%%04d_%s_R%09d.root"
-	                 % (info['runnr']/10000, info['runnr']/100,
-			    subsys, info['runnr']))
+                         % (info['runnr']/10000, info['runnr']/100,
+                            subsys, info['runnr']))
     else:
       info['filepat'] = ("OnlineData/%05dxxxx/%07dxx/DQM_V%%04d_R%09d.root"
-	                 % (info['runnr']/10000, info['runnr']/100, info['runnr']))
+                         % (info['runnr']/10000, info['runnr']/100, info['runnr']))
     info['zippat'] = ("OnlineData/%05dxxxx/DQM_Online_R%07dxx_S%%04d.zip"
-		      % (info['runnr']/10000, info['runnr']/100))
+                      % (info['runnr']/10000, info['runnr']/100))
     assignUniqueVersion(info)
     ok = True
 
@@ -252,11 +252,11 @@ def finaliseOneFile(info):
     assert info['runnr'] > 1
     if checkDataset(info):
       info['filepat'] = ("OfflineData/%s/%s/%07dxx/DQM_V%%04d_R%09d%s.root"
-	                 % (info['era'], info['primds'], info['runnr']/100,
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % (info['era'], info['primds'], info['runnr']/100,
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("OfflineData/%s/%s/DQM_Offline_%s_%s_R%07dxx_S%%04d.zip"
-	                % (info['era'], info['primds'], info['era'], info['primds'],
-	                   info['runnr']/100))
+                        % (info['era'], info['primds'], info['era'], info['primds'],
+                           info['runnr']/100))
       assignUniqueVersion(info)
       ok = True
 
@@ -272,11 +272,11 @@ def finaliseOneFile(info):
     assert info['release'].startswith("CMSSW")
     if checkDataset(info):
       info['filepat'] = ("RelValData/%s_x/DQM_V%%04d_R%09d%s.root"
-	                 % ("_".join(info['release'].split("_")[0:3]),
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % ("_".join(info['release'].split("_")[0:3]),
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("RelValData/%s_x_x/DQM_RelValData_%s_%s_S%%04d.zip"
-	                % ("_".join(info['release'].split("_")[0:2]),
-	                   info['release'], info['primds']))
+                        % ("_".join(info['release'].split("_")[0:2]),
+                           info['release'], info['primds']))
       assignUniqueVersion(info)
       ok = True
 
@@ -289,11 +289,11 @@ def finaliseOneFile(info):
     assert info['release'].startswith("CMSSW")
     if checkDataset(info):
       info['filepat'] = ("RelVal/%s_x/DQM_V%%04d_R%09d%s.root"
-	                 % ("_".join(info['release'].split("_")[0:3]),
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % ("_".join(info['release'].split("_")[0:3]),
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("RelVal/%s_x_x/DQM_RelVal_%s_S%%04d.zip"
-	                % ("_".join(info['release'].split("_")[0:2]),
-	                   info['release']))
+                        % ("_".join(info['release'].split("_")[0:2]),
+                           info['release']))
       assignUniqueVersion(info)
       ok = True
 
@@ -323,10 +323,10 @@ def finaliseOneFile(info):
     if checkDataset(info):
       filedate = time.strftime("%Y%m", time.gmtime(info['time']))
       info['filepat'] = ("MonteCarlo/%s/DQM_V%%04d_R%09d%s.root"
-	                 % (info['era'], info['runnr'],
-			    info['dataset'].replace("/", "__")))
+                         % (info['era'], info['runnr'],
+                            info['dataset'].replace("/", "__")))
       info['zippat'] = ("MonteCarlo/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
-	                % (info['era'], info['era'], info['primds'], filedate))
+                        % (info['era'], info['era'], info['primds'], filedate))
       assignUniqueVersion(info)
       ok = True
 
@@ -340,10 +340,10 @@ def finaliseOneFile(info):
     if checkDataset(info):
       filedate = time.strftime("%Y%m", time.gmtime(info['time']))
       info['filepat'] = ("MonteCarlo_RunDep/%s/DQM_V%%04d_R%09d%s.root"
-	                 % (info['era'], info['runnr'],
-			    info['dataset'].replace("/", "__")))
+                         % (info['era'], info['runnr'],
+                            info['dataset'].replace("/", "__")))
       info['zippat'] = ("MonteCarlo_RunDep/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
-	                % (info['era'], info['era'], info['primds'], filedate))
+                        % (info['era'], info['era'], info['primds'], filedate))
       assignUniqueVersion(info)
       ok = True
 
