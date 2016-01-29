@@ -5,7 +5,7 @@ from traceback import print_exc
 from datetime import datetime
 from tempfile import mkstemp
 from stat import *
-from lib import visDQMUtils
+from Monitoring.DQM import visDQMUtils
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 

@@ -13,7 +13,7 @@ import gzip
 import hashlib
 from cStringIO import StringIO
 from stat import *
-from lib import visDQMUtils
+from Monitoring.DQM import visDQMUtils
 
 HTTPS = httplib.HTTPS
 if sys.version_info[:3] >= (2, 4, 0):
