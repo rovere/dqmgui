@@ -7,7 +7,7 @@ services:
 
 env:
   global:
-    - HTTPG_TAG=HG1603g
+    - HTTPG_TAG=HG1603g_private
 
 before_install:
   - docker pull rovere/dqmgui:${HTTPG_TAG}
