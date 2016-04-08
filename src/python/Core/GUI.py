@@ -7,6 +7,8 @@
 # interpreter yields the lock only every N byte code instructions;
 # this server configures a large N (1'000'000).
 
+from importlib import import_module
+from imp import get_suffixes
 from copy import deepcopy
 from cgi import escape
 from socket import gethostname
@@ -26,13 +28,6 @@ from GoogleAPI import api_key
 _SESSION_REDIRECT = ("<html><head><script>location.replace('%s')</script></head>"
                      + "<body><noscript>Please enable JavaScript to use this"
                      + " service</noscript></body></html>")
-
-def import_module(name):
-  mod = __import__(name)
-  for part in name.split('.')[1:]:
-    mod = getattr(mod, part, None)
-    if not mod: break
-  return mod
 
 def extension(modules, what, *args):
   for m in modules:
@@ -267,11 +262,24 @@ class Server:
            and name.rsplit(".", 1)[-1][0].isupper())
           or name == "__main__") \
 	 and m and m.__dict__.has_key('__file__'):
-        self._addChecksum(name,
-			  inspect.getsourcefile(m) \
-			  or inspect.getabsfile(m)
-			  or name,
-			  inspect.getsource(m))
+        processed = False
+        # Check if the module is a binary module, since this needs a
+        # special handling in python 2.7 (due to buggy handling of
+        # binary modules and the inspect module )
+        for suffix, mode, kind in get_suffixes():
+          source = inspect.getabsfile(m)
+          if 'b' in mode and source.lower()[-len(suffix):] == suffix:
+            if os.path.exists(source) and os.stat(source):
+              data = open(source, 'rb').read()
+              self._addChecksum(name, source, data)
+              processed = True
+              break
+        if not processed:
+            self._addChecksum(name,
+                              inspect.getsourcefile(m) \
+                              or inspect.getabsfile(m)
+                              or name,
+                              inspect.getsource(m))
 
     self.sessionthread.start()
     engine.subscribe('stop', self.sessionthread.stop)
@@ -486,7 +494,7 @@ class Server:
   @tools.params()
   def static(self, *args, **kwargs):
     """Access our own static content."""
-    if len(args) != 1 or not re.match(r"^[-a-z]+\.(png|gif)$", args[0]):
+    if len(args) != 1 or not re.match(r"^[-a-z_]+\.(png|gif|svg)$", args[0]):
       return self._invalidURL()
     return serve_file(self.contentpath + '/images/' + args[0])
 

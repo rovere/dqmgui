@@ -177,6 +177,7 @@ buildExtendedStreamerInfo(std::string &data)
       "TH2F", "TH2S", "TH2D", "TH2I",
       "TH3F", "TH3S", "TH3D", "TH3I",
       "TProfile", "TProfile2D",
+      "TF1",
       0
     };
 

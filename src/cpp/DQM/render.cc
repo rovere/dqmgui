@@ -43,6 +43,7 @@
 #include <cassert>
 #include <cerrno>
 #include <map>
+#include <algorithm>
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/mman.h>
@@ -1410,6 +1411,39 @@ private:
   }
 
   // ----------------------------------------------------------------------
+  // Extract the minimum and maximum range of a histogram, excluding
+  // bin with 0 content or with 0 value.
+
+  void computeMinAndMaxForEfficiency(const TH1* h,
+                                     double ratio_min, double ratio_max,
+                                     double &minimum, double &maximum) {
+    int bin, binx, biny, binz;
+    int xfirst  = h->GetXaxis()->GetFirst();
+    int xlast   = h->GetXaxis()->GetLast();
+    int yfirst  = h->GetYaxis()->GetFirst();
+    int ylast   = h->GetYaxis()->GetLast();
+    int zfirst  = h->GetZaxis()->GetFirst();
+    int zlast   = h->GetZaxis()->GetLast();
+    double value = 0;
+    for (binz = zfirst; binz <= zlast; binz++) {
+      for (biny = yfirst; biny <= ylast; biny++) {
+        for (binx = xfirst; binx <= xlast; binx++) {
+          bin = h->GetBin(binx, biny, binz);
+          value = h->GetBinContent(bin);
+          if (value == 0)
+            continue;
+          if (value < minimum && value > ratio_min) {
+            minimum = value;
+          }
+          if (value > maximum && value < ratio_max) {
+            maximum = value;
+          }
+        }
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
   // Render ovelaid ROOT objects and their ratio at the bottom.
   void
   doRenderOverlayAndRatio(TCanvas &c,
@@ -1426,24 +1460,24 @@ private:
         dynamic_cast<TObjString *>(ob))
     {
       doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
-      Color_t c = TColor::GetColor(64, 64, 64);
-      doRenderMsg(""/*ob.name*/, "Ratio not supported", c, nukem);
       return;
     }
 
     int colorIndex = sizeof(colors)/sizeof(int);
-    int ratio_label_font_size = 14;
-    // Prepare the TPads
-    TPad *pad1 = new TPad("main","main",0,0.3,1,1);
-    pad1->SetBottomMargin(0);
+    float ratio_label_font_size = 0.12;
+    // Prepare the TPads.  We do not locally delete the TPad nor mark
+    // them to be deleted since they will be take care of by the
+    // TCanvas in which they are rendered.
+    TPad *pad1 = new TPad("main", "main", 0, 0.3, 1, 1);
+    pad1->SetBottomMargin(0.05);
     applyTPadCustomizations(pad1, i);
     pad1->Draw();
     pad1->cd();
 
     doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
     c.cd();
-    TPad *pad2 = new TPad("ratio","ratio",0,0.05,1,0.3);
-    pad2->SetTopMargin(0);
+    TPad *pad2 = new TPad("ratio", "ratio", 0, 0.05, 1, 0.3);
+    pad2->SetTopMargin(0.05);
     if (i.xaxis.type == "lin")
       pad2->SetLogx(0);
     else if (i.xaxis.type == "log")
@@ -1451,59 +1485,102 @@ private:
     pad2->Draw();
     pad2->cd();
 
-    if (TH1 * h = dynamic_cast<TH1 *>(ob))
+    TH1 * h = nullptr;
+    if ( (h = dynamic_cast<TH1 *>(ob)) && (h->GetEntries() != 0))
     {
-      double norm = 1.;
-      if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-        norm = th1f->GetSumOfWeights();
-      else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-        norm = th1d->GetSumOfWeights();
-      bool first_plot = true;
+      double norm = h->GetSumOfWeights();
+      static const double RATIO_MIN = 0.001;
+      static const double RATIO_MAX = 10.0;
+      double ratio_min = RATIO_MAX;
+      double ratio_max = RATIO_MIN;
+      size_t histograms_to_be_drawn = nukem.size();
       for (size_t n = 0; n < numobjs; ++n)
       {
-        TObject *refobj = 0;
+        // Skip the embedded reference histograms, in case it is
+        // there.
         if (n == 0)
-          refobj = objs[0].reference;
-        else
-          refobj = dynamic_cast<TH1 *>(objs[n].object);
-        TH1 * num = dynamic_cast<TH1 *>(h->Clone());
-        nukem.push_back(num);
-        if (TH1 * den = dynamic_cast<TH1 *>(refobj))
+          continue;
+
+        if (TH1 *  den = dynamic_cast<TH1 *>(objs[n].object))
         {
+          // No point in making the ratio if we do have an empty
+          // denominator. The numerator has been already checked.
+          if (den->GetEntries() == 0 or den->GetSumOfWeights() == 0)
+            continue;
+
+          TH1 * num = dynamic_cast<TH1 *>(h->Clone());
+          nukem.push_back(num);
           double sum = den->GetSumOfWeights();
           if (sum)
           {
             if (objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)
               norm = sum = 1.;
             den->Scale(norm/sum);
-            num->SetStats(0); num->Sumw2();
-            num->Divide(den); num->SetMarkerStyle(kFullDotLarge);
+            num->SetStats(0);
+            if (!num->GetSumw2N())
+              num->Sumw2();
+            num->Divide(den); num->SetMarkerStyle(kFullCircle);
             num->SetMarkerSize(0.75);
             num->SetMarkerColor(colors[n%colorIndex]);
             num->SetTitle("");
 
-            num->GetXaxis()->SetLabelFont(43); //font in pixels
-            num->GetXaxis()->SetLabelSize(ratio_label_font_size); //in pixels
-            num->GetXaxis()->SetTitleFont(43); //font in pixels
-            num->GetXaxis()->SetTitleSize(ratio_label_font_size); //in pixels
-            num->GetXaxis()->SetTitleOffset(-1.2); //in pixels
+            num->GetXaxis()->SetLabelFont(42);
+            num->GetXaxis()->SetLabelSize(ratio_label_font_size);
+            num->GetXaxis()->SetTitleFont(42);
+            num->GetXaxis()->SetTitleSize(ratio_label_font_size);
+            num->GetXaxis()->SetTitleOffset(-1.2);
 
-            num->GetYaxis()->SetRangeUser(0.2, 1.8);
-            num->GetYaxis()->SetTitle(""); //font in pixels
-            num->GetYaxis()->SetLabelFont(43); //font in pixels
-            num->GetYaxis()->SetLabelSize(ratio_label_font_size); //in pixels
-            if (first_plot)
-            {
-              first_plot = false;
-              num->Draw("epl");
-            }
-            else
-              num->Draw("same epl");
+            computeMinAndMaxForEfficiency(num, RATIO_MIN, RATIO_MAX,
+                                          ratio_min, ratio_max);
+            num->GetYaxis()->SetTitle("");
+            num->GetYaxis()->SetLabelFont(42);
+            num->GetYaxis()->SetLabelSize(ratio_label_font_size);
+
+            TH1 * ratio_shadow_error_range = dynamic_cast<TH1 *>(num->Clone());
+            nukem.push_back(ratio_shadow_error_range);
+            ratio_shadow_error_range->SetFillStyle(3001);
+            ratio_shadow_error_range->SetFillColor(TColor::GetColorTransparent(colors[n%colorIndex], 0.3));
+            ratio_shadow_error_range->SetLineColor(TColor::GetColorTransparent(colors[n%colorIndex], 0.3));
+            ratio_shadow_error_range->SetMarkerColor(TColor::GetColorTransparent(colors[n%colorIndex], 0.3));
+            ratio_shadow_error_range->SetMarkerSize(0);
+            for (int bin = 1; bin < ratio_shadow_error_range->GetNbinsX(); ++bin)
+              ratio_shadow_error_range->SetBinContent(bin, 1.0);
+          }
+        }
+      }
+
+      // Finally do the actual drawing, not that all limits have been
+      // globally computed across all references.
+
+      // We need some further checking on the limits here. If the
+      // ratio-plot is empty, the minimum value is set to RATIO_MAX
+      // and the maximum value is correctly set to 0. We arbirarily
+      // set the minimum to RATIO_MIN and the maximum to be
+      // RATIO_MAX. We generically check this condition by requiring
+      // that the maximum found is lower than the minimum.
+      if (ratio_max <= ratio_min) {
+        if (ratio_min == 1) {
+          ratio_min = 0.2;
+          ratio_max = 1.8;
+        } else {
+          ratio_min = RATIO_MIN;
+          ratio_max = RATIO_MAX;
+        }
+      }
+      for (size_t histo = histograms_to_be_drawn; histo < nukem.size(); ++histo) {
+        TH1 * to_draw = dynamic_cast<TH1 *>(nukem[histo]);
+        to_draw->GetYaxis()->SetRangeUser(ratio_min, ratio_max);
+        if (histo == histograms_to_be_drawn) {
+          to_draw->Draw("epl");
+        } else {
+          if (to_draw->GetMarkerSize() == 0) {
+            to_draw->Draw("same e2");
+          } else {
+            to_draw->Draw("same epl");
           }
         }
       }
     }
-
     c.cd();
   }
 
@@ -1686,26 +1763,24 @@ private:
         // injected during the harvesting step.
         int color = colors[n%colorIndex];
         double norm = 1.;
-        if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-          norm = th1f->GetSumOfWeights();
-        else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-          norm = th1d->GetSumOfWeights();
+        TH1 * h = nullptr;
+        if ((h = dynamic_cast<TH1 *>(ob)))
+          norm = h->GetSumOfWeights();
 
         TH1 *ref = (ref1f
                     ? static_cast<TH1 *>(ref1f)
                     : static_cast<TH1 *>(ref1d));
-        if (n==1 && ! isnan(i.ktest))
+        if (n==1 && (! isnan(i.ktest))
+            && h && norm
+            && ref && ref->GetSumOfWeights())
         {
-          if (TH1 *h = dynamic_cast<TH1 *>(ob))
-          {
-            double prob = h->KolmogorovTest(ref);
-            color = prob < i.ktest ? kRed-4 : kGreen-3;
-            char buffer[14];
-            snprintf(buffer, 14, "%6.5f", prob);
-            TText t;
-            t.SetTextColor(color);
-            t.DrawTextNDC(0.45, 0.9, buffer);
-          }
+          double prob = h->KolmogorovTest(ref);
+          color = prob < i.ktest ? kRed-4 : kGreen-3;
+          char buffer[14];
+          snprintf(buffer, 14, "%6.5f", prob);
+          TText t;
+          t.SetTextColor(color);
+          t.DrawTextNDC(0.45, 0.9, buffer);
         }
 
         ref->SetLineColor(color); ref->SetMarkerColor(color);
@@ -1718,10 +1793,12 @@ private:
         // efficieny plot at production time: if this is the case,
         // then avoid any kind of normalization that introduces
         // fake effects.
-        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-          nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-        else
+        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)) {
+          if (ref->GetSumOfWeights())
+            nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+        } else {
           ref->Draw(samePlotOptions.c_str());
+        }
 
         if (i.showstats)
           drawReferenceStatBox(i, n, ref, color, objs[n].name, nukem);
@@ -1831,13 +1908,6 @@ private:
         doRenderMsg(o.name, "blacklisted for crashing ROOT", c, nukem);
       }
 
-      // If the stats are bad avoid drawing it, ROOT destabilises.
-      else if (unsafe)
-      {
-        Color_t c = TColor::GetColor(178, 32, 32);
-        doRenderMsg(o.name, "not shown due to NaNs", c, nukem);
-      }
-
       // It's there and wasn't black-listed, paint it.
       else
       {
@@ -1852,6 +1922,13 @@ private:
             break;
           default:
             doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
+        }
+
+        // If the stats are bad draw alert on top.
+        if (unsafe)
+        {
+          Color_t c = TColor::GetColor(178, 32, 32);
+          doRenderMsg(o.name, "NaNs", c, nukem);
         }
       }
 
