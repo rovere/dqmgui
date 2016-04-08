@@ -255,6 +255,11 @@ bool VisDQMRenderLink::render(std::string &image,
     }
   }
 
+  // If absurd image sizes were re-computed due to some weirdly
+  // formatted request (extremely large ratio), return nothing.
+  if (width >= 2500 || height >= 2500)
+    return false;
+
   sprintf(buf, "%sw=%d;h=%d",
           reqspec.empty() ? "" : ";",
           width, height);
