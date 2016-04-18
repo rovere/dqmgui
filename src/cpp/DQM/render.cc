@@ -1752,7 +1752,7 @@ private:
       if (refp)
       {
         refp->SetLineColor(colors[n%colorIndex]);
-        refp->SetLineWidth(0);
+        refp->SetLineWidth(2);
         refp->GetListOfFunctions()->Delete();
         refp->Draw("same hist");
       }
