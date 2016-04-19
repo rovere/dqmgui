@@ -336,12 +336,14 @@ while True:
         lockf(lFile,LOCK_EX)
         lFile.write(str(os.getpid()))
         logme('importing %s', fname)
+        start = time.time()
         if info['class'] == 'online_data':
           rc = os.system('exec visDQMIndex add --dataset '
                          ' "%s" %s %s' % (info['dataset'], args.INDEX, fname))
         else:
           rc = os.system('exec visDQMIndex add %s %s' % (args.INDEX, fname))
-
+        end = time.time()
+        logme('imported %s with status %d in %5.3fs', fname, rc, end-start)
       finally:
         lockf(lFile,LOCK_UN)
         lFile.close()
