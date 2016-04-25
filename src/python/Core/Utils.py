@@ -148,11 +148,11 @@ class ParameterManager(Tool):
         try:
           req.params[k] = str(req.params[k])
         except Exception, e:
-          _logerr("FAILURE: cannot convert unicode value: " + value)
+          _logerr("FAILURE: cannot convert unicode value: " + ''.join([hex(ord(c)) for c in req.params[k]]))
       if isinstance(req.params[k], list):
         for i in xrange(len(req.params[k])):
           if isinstance(req.params[k][i], unicode):
             try:
               req.params[k][i] = str(req.params[k][i])
             except Exception, e:
-              _logerr("FAILURE: cannot convert unicode value: " + value)
+              _logerr("FAILURE: cannot convert unicode value: " + ''.join([hex(ord(c)) for c in req.params[k][i]]))
