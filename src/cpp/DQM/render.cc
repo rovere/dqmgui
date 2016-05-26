@@ -1801,7 +1801,10 @@ private:
         // efficieny plot at production time: if this is the case,
         // then avoid any kind of normalization that introduces
         // fake effects.
-        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)) {
+        // Also, if the option norm=False has been supplied, avoid
+        // doing any normalization.
+        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT) &&
+            i.refnorm != "False") {
           if (ref->GetSumOfWeights())
             nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
         } else {
