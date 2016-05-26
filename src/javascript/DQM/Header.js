@@ -264,6 +264,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     // Set up actions for reference changes.
     $('subhead-ref-show').onchange
       = $('subhead-ref-position').onchange
+      = $('subhead-ref-normalize').onchange
       = function(e) { _self.updateRefView(); };
 
     var refupdate = function(e) {
@@ -479,9 +480,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
       Passes the request to server which will prompt for details. */
   this.updateRefView = function()
   {
-    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos}",
+    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos};normalize=${norm}",
 			     {show: $('subhead-ref-show').value,
-			      pos: $('subhead-ref-position').value }));
+			      pos: $('subhead-ref-position').value,
+                              norm: $('subhead-ref-normalize').value}));
     return false;
   };
 
@@ -737,6 +739,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     // Update the overlay/on-side/customise reference switch.
     var refpos = $('subhead-ref-position');
     var refshow = $('subhead-ref-show');
+    var refnorm = $('subhead-ref-normalize');
     if (refpos.selectedIndex != _REFERENCEPOS[_data.view.reference.position])
       refpos.selectedIndex = _REFERENCEPOS[_data.view.reference.position];
     if (refshow.selectedIndex != _REFERENCESHOW[_data.view.reference.show])
