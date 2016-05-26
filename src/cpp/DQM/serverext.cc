@@ -4792,10 +4792,11 @@ protected:
       std::string ref2(sessionReferenceOne(py::extract<py::dict>(refspec[1])));
       std::string ref3(sessionReferenceOne(py::extract<py::dict>(refspec[2])));
       std::string ref4(sessionReferenceOne(py::extract<py::dict>(refspec[3])));
-      return StringFormat("{'position':'%1', 'show':'%2', \
-                            'param':[%3,%4,%5,%6]}")
+      return StringFormat("{'position':'%1', 'show':'%2', 'norm': '%3',\
+                            'param':[%4,%5,%6,%7]}")
         .arg(py::extract<std::string>(refdict.get("position")))    // overlay, on-side
 	.arg(py::extract<std::string>(refdict.get("show")))        // all, none, custom
+        .arg(py::extract<std::string>(refdict.get("norm")))        // true, false, as string
 	.arg(ref1).arg(ref2).arg(ref3).arg(ref4);
     }
 
