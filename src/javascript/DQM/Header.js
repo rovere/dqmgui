@@ -119,6 +119,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
   var _STRIPOMIT	= _optionmap(_stripomit);
   var _REFERENCEPOS     = _optionmap($('subhead-ref-position'));
   var _REFERENCESHOW    = _optionmap($('subhead-ref-show'));
+  var _REFERENCENORM    = _optionmap($('subhead-ref-normalize'));
 
   /** A time-out timer for strip chart changes.  Started when a key
       press or paste is received on strip chart run field, or the
@@ -480,7 +481,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       Passes the request to server which will prompt for details. */
   this.updateRefView = function()
   {
-    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos};normalize=${norm}",
+    _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos};norm=${norm}",
 			     {show: $('subhead-ref-show').value,
 			      pos: $('subhead-ref-position').value,
                               norm: $('subhead-ref-normalize').value}));
@@ -744,6 +745,8 @@ GUI.Plugin.DQMHeaderRow = new function() {
       refpos.selectedIndex = _REFERENCEPOS[_data.view.reference.position];
     if (refshow.selectedIndex != _REFERENCESHOW[_data.view.reference.show])
       refshow.selectedIndex = _REFERENCESHOW[_data.view.reference.show];
+    if (refnorm.selectedIndex != _REFERENCENORM[_data.view.reference.norm])
+      refnorm.selectedIndex = _REFERENCENORM[_data.view.reference.norm];
 
     for (var i = 0; !_refDelay && i < 4; ++i)
     {
