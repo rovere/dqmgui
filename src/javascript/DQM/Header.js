@@ -896,6 +896,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       filter:        _data.view.filter,
       referencepos:  _data.view.reference.position,
       referenceshow: _data.view.reference.show,
+      referencenorm: _data.view.reference.norm,
       referenceobj1: makerefobj(_data.view.reference.param[0]),
       referenceobj2: makerefobj(_data.view.reference.param[1]),
       referenceobj3: makerefobj(_data.view.reference.param[2]),
