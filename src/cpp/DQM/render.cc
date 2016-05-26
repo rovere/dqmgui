@@ -1444,6 +1444,49 @@ private:
   }
 
   // ----------------------------------------------------------------------
+  // Set user-defined ranges for histograms
+  void applyUserRange(TH1* obj, VisDQMImgInfo &i) {
+    double xmin = NAN, xmax = NAN;
+    double ymin = NAN, ymax = NAN;
+    double zmin = NAN, zmax = NAN;
+    // If we have an object that has axes, apply the requested params.
+    // Set only the bounds that were specified, and leave the rest to
+    // the natural range.  Unset bounds have NaN as their value.
+    if (TAxis *a = obj->GetXaxis())
+    {
+      if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
+      {
+        xmin = a->GetXmin();
+        xmax = a->GetXmax();
+        a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
+                        isnan(i.xaxis.max) ? xmax : i.xaxis.max);
+      }
+    }
+
+    if (TAxis *a = obj->GetYaxis())
+    {
+      if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
+      {
+        ymin = a->GetXmin();
+        ymax = a->GetXmax();
+        a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
+                        isnan(i.yaxis.max) ? ymax : i.yaxis.max);
+      }
+    }
+
+    if (TAxis *a = obj->GetZaxis())
+    {
+      if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
+      {
+        zmin = a->GetXmin();
+        zmax = a->GetXmax();
+        a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
+                        isnan(i.zaxis.max) ? zmax : i.zaxis.max);
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
   // Render ovelaid ROOT objects and their ratio at the bottom.
   void
   doRenderOverlayAndRatio(TCanvas &c,
@@ -1680,46 +1723,9 @@ private:
       ob = t;
     }
 
-    double xmin = NAN, xmax = NAN;
-    double ymin = NAN, ymax = NAN;
-    double zmin = NAN, zmax = NAN;
-    // If we have an object that has axes, apply the requested params.
-    // Set only the bounds that were specified, and leave the rest to
-    // the natural range.  Unset bounds have NaN as their value.
     if (TH1 *h = dynamic_cast<TH1 *>(ob))
     {
-      if (TAxis *a = h->GetXaxis())
-      {
-        if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
-        {
-          xmin = a->GetXmin();
-          xmax = a->GetXmax();
-          a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
-                          isnan(i.xaxis.max) ? xmax : i.xaxis.max);
-        }
-      }
-
-      if (TAxis *a = h->GetYaxis())
-      {
-        if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
-        {
-          ymin = a->GetXmin();
-          ymax = a->GetXmax();
-          a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
-                          isnan(i.yaxis.max) ? ymax : i.yaxis.max);
-        }
-      }
-
-      if (TAxis *a = h->GetZaxis())
-      {
-        if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
-        {
-          zmin = a->GetXmin();
-          zmax = a->GetXmax();
-          a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
-                          isnan(i.zaxis.max) ? zmax : i.zaxis.max);
-        }
-      }
+      applyUserRange(h, i);
       // Increase lineWidth in case there are other objects to
       // draw on top of the main one.
       if (numobjs > 1)
@@ -1770,6 +1776,7 @@ private:
         TH1 *ref = (ref1f
                     ? static_cast<TH1 *>(ref1f)
                     : static_cast<TH1 *>(ref1d));
+
         if (n==1 && (! isnan(i.ktest))
             && h && norm
             && ref && ref->GetSumOfWeights())
@@ -1800,8 +1807,13 @@ private:
           ref->Draw(samePlotOptions.c_str());
         }
 
-        if (i.showstats)
+        if (i.showstats) {
+          // Apply user-defined ranges also to reference histograms, so
+          // that the shown statistics is consistent with the one of the
+          // main plot.
+          applyUserRange(ref, i);
           drawReferenceStatBox(i, n, ref, color, objs[n].name, nukem);
+        }
       }
     }
   }
