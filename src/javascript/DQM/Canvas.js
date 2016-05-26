@@ -316,6 +316,8 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
         xargs += ';showstats=' + showstats;
       if (showerrbars)
         xargs += ';showerrbars=' + showerrbars;
+      if (ref.norm === 'False')
+        xargs += ';norm=False';
 
       if ((overlay || xargs != "") && ref.position == "stacked")
         showref = "stacked";
