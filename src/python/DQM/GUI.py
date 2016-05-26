@@ -703,11 +703,11 @@ class DQMWorkspace:
                  'dqm.strip.n':        "",
                  'dqm.showstats':      "1",
                  'dqm.showerrbars':    "0",
-                 'dqm.reference':      {'show': "customise", 'position': "overlay", 'param':
-                                        [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
-					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
-					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
-					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""}]},
+                 'dqm.reference':      {'show': "customise", 'position': "overlay", 'norm': "True", 'param':
+                                          [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
+                                           {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
+                                           {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
+                                           {'type': "none",   'run': "", 'dataset': "", 'ktest': ""}]},
                  'dqm.submenu':	       "data",
                  'dqm.size':           "M",
                  'dqm.root':           {},
@@ -777,6 +777,7 @@ class DQMWorkspace:
            showerrbars = None,
            referencepos  = None,
            referenceshow = None,
+           referencenorm = None,
            referenceobj1 = None,
            referenceobj2 = None,
            referenceobj3 = None,
@@ -888,6 +889,11 @@ class DQMWorkspace:
          or referencepos not in ("overlay", "ratiooverlay", "on-side", "stacked"):
         raise HTTPError(500, "Incorrect referencepos parameter")
       session['dqm.reference']['position'] = referencepos
+
+    if referencenorm != None:
+      if not isinstance(referencenorm, str):
+        raise HTTPError(500, "Incorrect referencenorm parameter")
+      session['dqm.reference']['norm'] = referencenorm
 
     for refidx, refobj in ((0, referenceobj1),
 			   (1, referenceobj2),
@@ -1078,6 +1084,7 @@ class DQMWorkspace:
     self._set(session,
 	      referencepos         = kwargs.get("position", None),
 	      referenceshow        = kwargs.get("show", None),
+              referencenorm        = kwargs.get("norm", None),
 	      referenceobj1 = kwargs.get("r1", None),
 	      referenceobj2 = kwargs.get("r2", None),
 	      referenceobj3 = kwargs.get("r3", None),
