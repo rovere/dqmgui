@@ -352,7 +352,8 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
 	&& ! parseDouble    (p, "zmax=",         5, i.zaxis.max)
 	&& ! parseDouble    (p, "ktest=",        6, i.ktest)
 	&& ! parseAxisType  (p, "ztype=",        6, i.zaxis.type)
-	&& ! parseOption    (p, "drawopts=",     9, i.drawOptions))
+	&& ! parseOption    (p, "drawopts=",     9, i.drawOptions)
+	&& ! parseOption    (p, "norm=",         5, i.refnorm))
       return false;
 
     if (*p && *p != ';')

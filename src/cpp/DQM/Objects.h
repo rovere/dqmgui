@@ -72,6 +72,7 @@ struct VisDQMImgInfo
   VisDQMAxisInfo	xaxis;
   VisDQMAxisInfo	yaxis;
   VisDQMAxisInfo	zaxis;
+  std::string           refnorm;
 };
 
 struct VisDQMObject : DQMNet::Object
