@@ -107,5 +107,11 @@ class ServerDef:
       else:
 	p['old'].append(cand)
 
+    # We do want the header (*.h) files to be used for the fingerprint, so
+    # that we can detect if any of them change.
+    # However after creating the finger print, we remove them from the list of
+    # files to compile. The make-file is only happy with *.cc files.
+    p['sources'] = [srce for srce in p['sources'] if srce['path'][-2:] != ".h"]
+
     # Return this plug-in.
     return p
