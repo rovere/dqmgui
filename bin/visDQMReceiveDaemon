@@ -5,36 +5,23 @@ from traceback import print_exc
 from datetime import datetime
 from tempfile import mkstemp
 from stat import *
+from Monitoring.DQM import visDQMUtils
+
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
-DROPBOX = sys.argv[1]	# Directory where we receive input ("drop box").
+DROPBOX = sys.argv[1]        # Directory where we receive input ("drop box").
 FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
-NEXT = sys.argv[3:]	# Directories for the next agent in chain.
-WAITTIME = 5		# Daemon cycle time.
+NEXT = sys.argv[3:]        # Directories for the next agent in chain.
+WAITTIME = 5                # Daemon cycle time.
 
 # Regexp for save file name paths. We don't process anything else.
 RXSAFEPATH = re.compile(r"^[-A-Za-z0-9_/]+\.root$")
 
-# Regexp for valid dataset names.
-RXDATASET = re.compile(r"^(/[-A-Za-z0-9_]+){3}$")
-
-# Regexp for valid RelVal dataset names.
-RXRELVALMC = re.compile(r"^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$")
-RXRELVALRUNDEPMC = re.compile(r"^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*rundepMC.*$")
-RXRELVALDATA = re.compile(r"^/[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*$")
-RXRUNDEPMC = re.compile(r"^/(?!RelVal)[^/]+/.*rundepMC.*$")
-
-# Regexp for online DQM files.
-RXONLINE = re.compile(r"^(?:.*/)?DQM_V(\d+)(_[A-Za-z0-9]+)?_R(\d+)\.root$")
-
-# Regexp for offline DQM files.
-RXOFFLINE = re.compile(r"^(?:.*/)?DQM_V(\d+)_R(\d+)((?:__[-A-Za-z0-9_]+){3})\.root$")
+# Regexp for .origin file contents.
+RXORIGIN = re.compile(r"^md5:([0-9a-f]+) (\d+) (\S+)$")
 
 # Regexp for acquisition era part of the processed dataset name.
 RXERA = re.compile(r"^([A-Za-z]+\d+|CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)")
-
-# Regexp for .origin file contents.
-RXORIGIN = re.compile(r"^md5:([0-9a-f]+) (\d+) (\S+)$")
 
 # Location of the ROOT verification scripts.
 CHECKDIR = os.path.normcase(os.path.abspath(__file__)).rsplit('/', 2)[0]
@@ -62,86 +49,14 @@ def current_umask():
   os.umask(val)
   return val
 
-# --------------------------------------------------------------------
-# Pre-classify a file into main category based on file name structure.
-def classifyDQMFile(path, origin):
-  try:
-    m = re.match(RXONLINE, path)
-    if m:
-      version = int(m.group(1))
-      runnr = int(m.group(3))
-      subsys = m.group(2) and m.group(2)[1:]
-      if version != 1:
-       warnPath(origin, path, "file version is not 1")
-       return None
-      if runnr <= 10000:
-	warnPath(origin, path, "online file has run number <= 10000")
-	return None
-      return { 'class': 'online_data', 'version': version,
-	       'subsystem': subsys, 'runnr': runnr,
-	       'dataset': "/Global/Online/ALL" }
-
-    m = re.match(RXOFFLINE, path)
-    if m:
-      version = int(m.group(1))
-      dataset = m.group(3).replace("__", "/")
-      relvalmc = re.match(RXRELVALMC, dataset)
-      relvaldata = re.match(RXRELVALDATA, dataset)
-      relvalrundepmc = re.match(RXRELVALRUNDEPMC, dataset)
-      rundepmc = re.match(RXRUNDEPMC, dataset)
-      runnr = int(m.group(2))
-      if version != 1:
-       warnPath(origin, path, "file version is not 1")
-       return None
-      if runnr < 1:
-	warnPath(origin, path, "file matches offline naming, but run number is < 1")
-	return None
-      elif rundepmc:
-        if runnr == 1:
-          warnPath(origin, path, "file matches Run Dependent MonteCarlo naming, but run number is 1")
-          return None
-        return  { 'class': 'simulated_rundep', 'version': version,
-                  'runnr': runnr, 'dataset': dataset }
-      elif relvalrundepmc:
-        if runnr == 1:
-          warnPath(origin, path, "file matches Run Dependent MonteCarlo naming, but run number is 1")
-          return None
-        return  { 'class': 'relval_rundepmc', 'version': version,
-                  'runnr': runnr, 'dataset': dataset,
-                  'release': relvalrundepmc.group(1)}
-      elif relvalmc:
-	if runnr != 1:
-	  warnPath(origin, path, "file matches relval mc naming, but run number != 1")
-	  return None
-	return { 'class': 'relval_mc', 'version': version,
-		 'runnr': runnr, 'dataset': dataset,
-		 'release': relvalmc.group(1) }
-      elif relvaldata:
-        if runnr == 1:
-          warnPath(origin, path, "file matches relval data naming, but run number = 1")
-          return None
-        return { 'class': 'relval_data', 'version': version,
-                 'runnr': runnr, 'dataset': dataset,
-                 'release': relvaldata.group(1) }
-      elif dataset.find("CMSSW") >= 0:
-	warnPath(origin, path, "non-relval dataset name contains 'CMSSW'")
-	return None
-      elif runnr > 1:
-	return { 'class': 'offline_data', 'version': version,
-		 'runnr': runnr, 'dataset': dataset }
-      else:
-	return { 'class': 'simulated', 'version': int(m.group(1)),
-		 'runnr': runnr, 'dataset': dataset }
-
-    warnPath(origin, path, "file matches no known naming convention")
-    return None
-  except:
-    warnPath(origin, path, "error while classifying file name")
-    return None
-
 # Verify DQM file. This makes initial checks required to ensure
 # the file is suitable for registration into the DQM GUI, enough
 # to make a tentative ordering for file registration.
+#   path: path (relative to the uploads dir, coming from the walk) of the root file
+#   md5sum: md5sum as string (info coming from the origin file)
+#   size: size in bytes as int (info coming from the origin file)
+#   xpath: full path of the root file (info coming from the origin file)
+#   origin: path (relative) of the origin file
 def verifyDQMFile(path, md5sum, size, xpath, origin):
   # Verify the path name is completely safe
   if not re.match(RXSAFEPATH, path):
@@ -162,22 +77,23 @@ def verifyDQMFile(path, md5sum, size, xpath, origin):
   # Verify the file size is as expected.
   if size != info[ST_SIZE]:
     warnPath(origin, path, "size mismatch, expected %d, found %d bytes"
-	     % (size, info[ST_SIZE]))
+             % (size, info[ST_SIZE]))
     return None
 
   # Ask for file classification, and fail if it fails.
-  c = classifyDQMFile(path, origin)
-  if not c:
+  classification_ok, classification_result = visDQMUtils.classifyDQMFile(path)
+  if not classification_ok:
+    warnPath(origin, path, classification_result)
     return None
-
-  # OK for now, return classification.
-  c['origin'] = origin
-  c['import'] = path
-  c['size'] = size
-  c['md5sum'] = md5sum
-  c['xpath'] = xpath
-  c['time'] = info[ST_MTIME]
-  return c
+  else:
+    # OK for now, return result of the classification
+    classification_result['origin'] = origin
+    classification_result['import'] = path
+    classification_result['size'] = size
+    classification_result['md5sum'] = md5sum
+    classification_result['xpath'] = xpath
+    classification_result['time'] = info[ST_MTIME]
+    return classification_result
 
 # --------------------------------------------------------------------
 # Find new files. Look for specific ROOT file names with complete
@@ -189,20 +105,23 @@ def findNewFiles():
     for f in files:
       # We are only interested in ROOT files.
       if not f.endswith(".root"):
-	continue
+        continue
 
       # Locate the file and its upload info, and read the latter in.
       # If we fail to do so, skip the file.
       path = "%s/%s" % (dir, f)
       origin = "%s.origin" % path
       try:
-	m = re.match(RXORIGIN, file(origin).read())
-	if not m: continue
-	md5sum = m.group(1)
-	size = int(m.group(2))
+        m = re.match(RXORIGIN, file(origin).read())
+        if not m:
+          continue
+        md5sum = m.group(1)
+        size = int(m.group(2))
         xpath = m.group(3)
+        # path will be local to the dropbox, coming from the walk
+        # xpath will be the complete path, like found in the origin file
       except:
-	continue
+        continue
 
       # If the file is ok, append it to the list of new files.
       c = verifyDQMFile(path, md5sum, size, xpath, origin)
@@ -280,7 +199,7 @@ def finaliseOneFile(info):
   curmd5 = hashlib.md5(file(path).read()).hexdigest()
   if curmd5 != info['md5sum']:
     warnPath(info, path, "md5 checksum mismatch, expected [%s], found [%s]"
-	     % (info['md5sum'], curmd5))
+             % (info['md5sum'], curmd5))
     return False
 
   # Verify it's a ROOT file.
@@ -294,7 +213,7 @@ def finaliseOneFile(info):
     checklevel = 'Strict'
   checkprog = "%s/visDQMVerify%s.C" % (CHECKDIR, checklevel)
   check = os.popen("exec perl -e 'alarm(30); exec qw(root -n -l -b -q %s %s)' 2>&1 >/dev/null"
-		   % (path, checkprog)).read().rstrip()
+                % (path, checkprog)).read().rstrip()
   if not check.startswith("VERIFY: Good to go"):
     warnPath(info, path, check)
     return False
@@ -313,118 +232,118 @@ def finaliseOneFile(info):
     subsys = info['subsystem']
     if subsys:
       info['filepat'] = ("OnlineData/%05dxxxx/%07dxx/DQM_V%%04d_%s_R%09d.root"
-	                 % (info['runnr']/10000, info['runnr']/100,
-			    subsys, info['runnr']))
+                         % (info['runnr']/10000, info['runnr']/100,
+                            subsys, info['runnr']))
     else:
       info['filepat'] = ("OnlineData/%05dxxxx/%07dxx/DQM_V%%04d_R%09d.root"
-	                 % (info['runnr']/10000, info['runnr']/100, info['runnr']))
+                         % (info['runnr']/10000, info['runnr']/100, info['runnr']))
     info['zippat'] = ("OnlineData/%05dxxxx/DQM_Online_R%07dxx_S%%04d.zip"
-		      % (info['runnr']/10000, info['runnr']/100))
+                      % (info['runnr']/10000, info['runnr']/100))
     assignUniqueVersion(info)
     ok = True
 
   elif info['class'] == 'offline_data':
     assert 'dataset' in info
-    assert re.match(RXDATASET, info['dataset'])
-    assert not re.match(RXRELVALMC, info['dataset'])
-    assert not re.match(RXRELVALDATA, info['dataset'])
-    assert not re.match(RXRELVALRUNDEPMC, info['dataset'])
-    assert not re.match(RXRUNDEPMC, info['dataset'])
+    assert re.match(visDQMUtils.RXDATASET, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALDATA, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALRUNDEPMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRUNDEPMC, info['dataset'])
     assert info['runnr'] > 1
     if checkDataset(info):
       info['filepat'] = ("OfflineData/%s/%s/%07dxx/DQM_V%%04d_R%09d%s.root"
-	                 % (info['era'], info['primds'], info['runnr']/100,
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % (info['era'], info['primds'], info['runnr']/100,
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("OfflineData/%s/%s/DQM_Offline_%s_%s_R%07dxx_S%%04d.zip"
-	                % (info['era'], info['primds'], info['era'], info['primds'],
-	                   info['runnr']/100))
+                        % (info['era'], info['primds'], info['era'], info['primds'],
+                           info['runnr']/100))
       assignUniqueVersion(info)
       ok = True
 
   elif info['class'] == 'relval_data':
     assert 'dataset' in info
     assert 'release' in info
-    assert re.match(RXDATASET, info['dataset'])
-    assert not re.match(RXRELVALMC, info['dataset'])
-    assert not re.match(RXRELVALRUNDEPMC, info['dataset'])
-    assert not re.match(RXRUNDEPMC, info['dataset'])
-    assert re.match(RXRELVALDATA, info['dataset'])
+    assert re.match(visDQMUtils.RXDATASET, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALRUNDEPMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRUNDEPMC, info['dataset'])
+    assert re.match(visDQMUtils.RXRELVALDATA, info['dataset'])
     assert info['runnr'] > 1
     assert info['release'].startswith("CMSSW")
     if checkDataset(info):
       info['filepat'] = ("RelValData/%s_x/DQM_V%%04d_R%09d%s.root"
-	                 % ("_".join(info['release'].split("_")[0:3]),
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % ("_".join(info['release'].split("_")[0:3]),
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("RelValData/%s_x_x/DQM_RelValData_%s_%s_S%%04d.zip"
-	                % ("_".join(info['release'].split("_")[0:2]),
-	                   info['release'], info['primds']))
+                        % ("_".join(info['release'].split("_")[0:2]),
+                           info['release'], info['primds']))
       assignUniqueVersion(info)
       ok = True
 
   elif info['class'] == 'relval_mc':
     assert 'dataset' in info
     assert 'release' in info
-    assert re.match(RXDATASET, info['dataset'])
-    assert re.match(RXRELVALMC, info['dataset'])
+    assert re.match(visDQMUtils.RXDATASET, info['dataset'])
+    assert re.match(visDQMUtils.RXRELVALMC, info['dataset'])
     assert info['runnr'] == 1
     assert info['release'].startswith("CMSSW")
     if checkDataset(info):
       info['filepat'] = ("RelVal/%s_x/DQM_V%%04d_R%09d%s.root"
-	                 % ("_".join(info['release'].split("_")[0:3]),
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % ("_".join(info['release'].split("_")[0:3]),
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("RelVal/%s_x_x/DQM_RelVal_%s_S%%04d.zip"
-	                % ("_".join(info['release'].split("_")[0:2]),
-	                   info['release']))
+                        % ("_".join(info['release'].split("_")[0:2]),
+                           info['release']))
       assignUniqueVersion(info)
       ok = True
 
   elif info['class'] == 'relval_rundepmc':
     assert 'dataset' in info
     assert 'release' in info
-    assert re.match(RXDATASET, info['dataset'])
-    assert re.match(RXRELVALRUNDEPMC, info['dataset'])
+    assert re.match(visDQMUtils.RXDATASET, info['dataset'])
+    assert re.match(visDQMUtils.RXRELVALRUNDEPMC, info['dataset'])
     assert info['runnr'] > 1
     assert info['release'].startswith("CMSSW")
     if checkDataset(info):
       info['filepat'] = ("RelVal/%s_x/DQM_V%%04d_R%09d%s.root"
-	                 % ("_".join(info['release'].split("_")[0:3]),
-		            info['runnr'], info['dataset'].replace("/", "__")))
+                         % ("_".join(info['release'].split("_")[0:3]),
+                            info['runnr'], info['dataset'].replace("/", "__")))
       info['zippat'] = ("RelVal/%s_x_x/DQM_RelVal_%s_S%%04d.zip"
-	                % ("_".join(info['release'].split("_")[0:2]),
-	                   info['release']))
+                        % ("_".join(info['release'].split("_")[0:2]),
+                           info['release']))
       assignUniqueVersion(info)
       ok = True
 
   elif info['class'] == 'simulated':
     assert 'dataset' in info
-    assert re.match(RXDATASET, info['dataset'])
-    assert not re.match(RXRELVALMC, info['dataset'])
-    assert not re.match(RXRELVALDATA, info['dataset'])
+    assert re.match(visDQMUtils.RXDATASET, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALDATA, info['dataset'])
     assert info['runnr'] == 1
     if checkDataset(info):
       filedate = time.strftime("%Y%m", time.gmtime(info['time']))
       info['filepat'] = ("MonteCarlo/%s/DQM_V%%04d_R%09d%s.root"
-	                 % (info['era'], info['runnr'],
-			    info['dataset'].replace("/", "__")))
+                         % (info['era'], info['runnr'],
+                            info['dataset'].replace("/", "__")))
       info['zippat'] = ("MonteCarlo/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
-	                % (info['era'], info['era'], info['primds'], filedate))
+                        % (info['era'], info['era'], info['primds'], filedate))
       assignUniqueVersion(info)
       ok = True
 
   elif info['class'] == 'simulated_rundep':
     assert 'dataset' in info
-    assert re.match(RXDATASET, info['dataset'])
-    assert not re.match(RXRELVALMC, info['dataset'])
-    assert not re.match(RXRELVALRUNDEPMC, info['dataset'])
-    assert not re.match(RXRELVALDATA, info['dataset'])
+    assert re.match(visDQMUtils.RXDATASET, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALRUNDEPMC, info['dataset'])
+    assert not re.match(visDQMUtils.RXRELVALDATA, info['dataset'])
     assert info['runnr'] > 1
     if checkDataset(info):
       filedate = time.strftime("%Y%m", time.gmtime(info['time']))
       info['filepat'] = ("MonteCarlo_RunDep/%s/DQM_V%%04d_R%09d%s.root"
-	                 % (info['era'], info['runnr'],
-			    info['dataset'].replace("/", "__")))
+                         % (info['era'], info['runnr'],
+                            info['dataset'].replace("/", "__")))
       info['zippat'] = ("MonteCarlo_RunDep/%s/DQM_MC_%s_%s_%s_S%%04d.zip"
-	                % (info['era'], info['era'], info['primds'], filedate))
+                        % (info['era'], info['era'], info['primds'], filedate))
       assignUniqueVersion(info)
       ok = True
 

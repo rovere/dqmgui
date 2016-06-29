@@ -11,3 +11,10 @@ src/cpp/DQMCollector
 src/cpp/visDQMIndex
 src/cpp/visDQMRender
 src/cpp/DQM/StreamSample.pb.*
+
+# Python byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Vim swap files
+*.swp
