@@ -49,7 +49,7 @@ class UploadTest(helper.CPWebCase):
     args = { 'size': len(data), 'xtra': 'foo' }
     files = { 'file': (name, data) }
     type, body = self._encode(args, files, with_length)
-    headers = [('Content-Type', type), ('Content-Length', len(body))]
+    headers = [('Content-Type', type), ('Content-Length', str(len(body)))]
     return headers, body
 
   def _run_test(self, kind, kbytes, with_length):
