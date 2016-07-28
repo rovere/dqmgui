@@ -51,6 +51,7 @@
 #include <dlfcn.h>
 #include <math.h>
 #include <string>
+#include <limits>
 
 using namespace lat;
 
@@ -1713,6 +1714,9 @@ private:
   {
     std::string samePlotOptions("same p");
     TObject *ob = objs[0].object;
+    TH1 * h = dynamic_cast<TH1 *>(ob);
+    float max_value_in_Y = std::numeric_limits<float>::lowest();
+
     // Handle text.
     if (TObjString *os = dynamic_cast<TObjString *>(ob))
     {
@@ -1724,8 +1728,37 @@ private:
       ob = t;
     }
 
-    if (TH1 *h = dynamic_cast<TH1 *>(ob))
+    // The logic to account for possible user-supplied ranges
+    // (especially in Y) and the automatic selection of the best Y
+    // range in case of overlaid histograms is rather tricky. As a
+    // final solution, the values supplied by the user (if any) are
+    // applied *last*, so that they will prevail over the automatic
+    // algorithm.
+
+    // Maybe draw overlay from reference and other objects.
+    if (h)
     {
+      max_value_in_Y = h->GetMaximum();
+      logme() << "Starting value for max: " << max_value_in_Y << std::endl;
+      float norm = h->GetSumOfWeights();
+      if (i.refnorm != "False")
+      {
+        for (size_t n = 0; n < numobjs; ++n)
+        {
+          TObject *refobj = 0;
+          if (n == 0)
+            refobj = objs[0].reference;
+          else if (n > 0)
+            refobj = objs[n].object;
+          TH1F *ref1 = dynamic_cast<TH1F *>(refobj);
+          if (ref1) {
+            float den = ref1->GetSumOfWeights();
+            max_value_in_Y = max_value_in_Y > ref1->GetMaximum()*norm/den
+                ? max_value_in_Y : ref1->GetMaximum()*norm/den;
+          }
+        }
+        h->SetMaximum(max_value_in_Y*1.05);
+      }
       applyUserRange(h, i);
       // Increase lineWidth in case there are other objects to
       // draw on top of the main one.
@@ -1753,8 +1786,7 @@ private:
       else if (n > 0)
         refobj = objs[n].object;
 
-      TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
-      TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
+      TH1 *ref1 = dynamic_cast<TH1 *>(refobj);
       TProfile *refp = dynamic_cast<TProfile *>(refobj);
       if (refp)
       {
@@ -1763,26 +1795,21 @@ private:
         refp->GetListOfFunctions()->Delete();
         refp->Draw("same hist");
       }
-      else if (ref1f || ref1d)
+      else if (ref1)
       {
         // Perform KS statistical test only on the first available
         // reference, excluding the (possible) default one
         // injected during the harvesting step.
         int color = colors[n%colorIndex];
         double norm = 1.;
-        TH1 * h = nullptr;
-        if ((h = dynamic_cast<TH1 *>(ob)))
+        if (h)
           norm = h->GetSumOfWeights();
-
-        TH1 *ref = (ref1f
-                    ? static_cast<TH1 *>(ref1f)
-                    : static_cast<TH1 *>(ref1d));
 
         if (n==1 && (! isnan(i.ktest))
             && h && norm
-            && ref && ref->GetSumOfWeights())
+            && ref1 && ref1->GetSumOfWeights())
         {
-          double prob = h->KolmogorovTest(ref);
+          double prob = h->KolmogorovTest(ref1);
           color = prob < i.ktest ? kRed-4 : kGreen-3;
           char buffer[14];
           snprintf(buffer, 14, "%6.5f", prob);
@@ -1791,9 +1818,9 @@ private:
           t.DrawTextNDC(0.45, 0.9, buffer);
         }
 
-        ref->SetLineColor(color); ref->SetMarkerColor(color);
-        ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
-        ref->GetListOfFunctions()->Delete();
+        ref1->SetLineColor(color); ref1->SetMarkerColor(color);
+        ref1->SetMarkerStyle(kFullDotLarge); ref1->SetMarkerSize(0.85);
+        ref1->GetListOfFunctions()->Delete();
         if (i.showerrbars)
           samePlotOptions += " e1 x0";
 
@@ -1805,21 +1832,21 @@ private:
         // doing any normalization.
         if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT) &&
             i.refnorm != "False") {
-          if (ref->GetSumOfWeights())
-            nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
+          if (ref1->GetSumOfWeights())
+            nukem.push_back(ref1->DrawNormalized(samePlotOptions.c_str(), norm));
         } else {
-          ref->Draw(samePlotOptions.c_str());
+          ref1->Draw(samePlotOptions.c_str());
         }
 
         if (i.showstats) {
           // Apply user-defined ranges also to reference histograms, so
           // that the shown statistics is consistent with the one of the
           // main plot.
-          applyUserRange(ref, i);
-          drawReferenceStatBox(i, n, ref, color, objs[n].name, nukem);
+          applyUserRange(ref1, i);
+          drawReferenceStatBox(i, n, ref1, color, objs[n].name, nukem);
         }
       }
-    }
+    } // End of loop over all reference sample
   }
 
   // ----------------------------------------------------------------------
