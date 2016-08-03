@@ -65,7 +65,7 @@ VisDQMFile::close(void)
   if (mode_ == OPEN_WRITE)
   {
     Header header = { MAGIC, VINFO,
-		      { 0, indexData_.size(),
+		      { 0, (uint32_t)indexData_.size(),
 			OPT_COMPRESSION_ZLIB
 			| OPT_INDEX_LEVEL_BTREE } };
     put(header.index, indexData_);
