@@ -1733,15 +1733,15 @@ private:
     // range in case of overlaid histograms is rather tricky. As a
     // final solution, the values supplied by the user (if any) are
     // applied *last*, so that they will prevail over the automatic
-    // algorithm.
+    // algorithm. Plots that have been labelled as efficiency plots
+    // do not even enter this rescaling algorithm
 
     // Maybe draw overlay from reference and other objects.
-    if (h)
+    if (h && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
     {
       max_value_in_Y = h->GetMaximum();
-      logme() << "Starting value for max: " << max_value_in_Y << std::endl;
       float norm = h->GetSumOfWeights();
-      if (i.refnorm != "False")
+      if (i.refnorm != "False" && norm > 0)
       {
         for (size_t n = 0; n < numobjs; ++n)
         {
@@ -1753,11 +1753,13 @@ private:
           TH1F *ref1 = dynamic_cast<TH1F *>(refobj);
           if (ref1) {
             float den = ref1->GetSumOfWeights();
-            max_value_in_Y = max_value_in_Y > ref1->GetMaximum()*norm/den
-                ? max_value_in_Y : ref1->GetMaximum()*norm/den;
+            if (den > 0)
+              max_value_in_Y = max_value_in_Y > ref1->GetMaximum()*norm/den
+                  ? max_value_in_Y : ref1->GetMaximum()*norm/den;
           }
         }
-        h->SetMaximum(max_value_in_Y*1.05);
+        if (max_value_in_Y > 0)
+          h->SetMaximum(max_value_in_Y*1.05);
       }
       applyUserRange(h, i);
       // Increase lineWidth in case there are other objects to

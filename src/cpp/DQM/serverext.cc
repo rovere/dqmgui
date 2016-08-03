@@ -1975,8 +1975,6 @@ public:
       assert(destimg.busy);
       assert(destimg.inuse);
       assert(destimg.pngbytes.empty());
-      logme() << imgdata.size()
-              << " vs " << size_t(srcspec.width) * size_t(srcspec.height) * 3 << std::endl;
       assert(imgdata.size() == size_t(srcspec.width) * size_t(srcspec.height) * 3);
       pthread_mutex_unlock(&lock_);
       try
