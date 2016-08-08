@@ -1737,11 +1737,11 @@ private:
     // do not even enter this rescaling algorithm
 
     // Maybe draw overlay from reference and other objects.
-    if (h && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
+    if (h)
     {
       max_value_in_Y = h->GetMaximum();
       float norm = h->GetSumOfWeights();
-      if (i.refnorm != "False" && norm > 0)
+      if (i.refnorm != "False" && norm > 0 && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
       {
         for (size_t n = 0; n < numobjs; ++n)
         {
