@@ -430,6 +430,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
 
   @expose
   @tools.params()
+  @tools.gzip()
   def samples(self, *args, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))

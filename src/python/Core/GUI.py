@@ -662,6 +662,7 @@ class Server:
   # -----------------------------------------------------------------
   @expose
   @tools.params()
+  @tools.gzip()
   def session(self, *args, **kwargs):
     """Main session address.  All AJAX calls to the session land here.
     The URL is of the form "[/ROOT]/session/ID[/METHOD].  We check
