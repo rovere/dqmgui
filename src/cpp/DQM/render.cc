@@ -26,6 +26,8 @@
 #include "TCanvas.h"
 #include "TText.h"
 #include "TH1D.h"
+#include "TH2.h"
+#include "TH3.h"
 #include "TProfile.h"
 #include "TColor.h"
 #include "TAxis.h"
@@ -1790,12 +1792,19 @@ private:
 
       TH1 *ref1 = dynamic_cast<TH1 *>(refobj);
       TProfile *refp = dynamic_cast<TProfile *>(refobj);
+      TH2 *ref2d = dynamic_cast<TH2 *>(refobj);
+      TH3 *ref3d = dynamic_cast<TH3 *>(refobj);
       if (refp)
       {
         refp->SetLineColor(colors[n%colorIndex]);
         refp->SetLineWidth(2);
         refp->GetListOfFunctions()->Delete();
         refp->Draw("same hist");
+      }
+      // No point in even trying to overlay 2D or 3D histograms in the
+      // same canvas. Bail out w/o complaints.
+      else if (ref2d || ref3d) {
+        return;
       }
       else if (ref1)
       {
