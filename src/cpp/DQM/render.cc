@@ -1760,8 +1760,9 @@ private:
                   ? max_value_in_Y : ref1->GetMaximum()*norm/den;
           }
         }
-        if (max_value_in_Y > 0)
+        if (max_value_in_Y > 0 && numobjs > 1) {
           h->SetMaximum(max_value_in_Y*1.05);
+        }
       }
       applyUserRange(h, i);
       // Increase lineWidth in case there are other objects to
