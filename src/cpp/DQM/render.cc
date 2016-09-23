@@ -1717,6 +1717,8 @@ private:
     std::string samePlotOptions("same p");
     TObject *ob = objs[0].object;
     TH1 * h = dynamic_cast<TH1 *>(ob);
+    bool isMultiDimensional = dynamic_cast<TH2*>(ob) ? 1 : 0;
+    isMultiDimensional |= dynamic_cast<TH3 *>(ob) ? 1 : 0;
     float max_value_in_Y = std::numeric_limits<float>::lowest();
 
     // Handle text.
@@ -1743,7 +1745,10 @@ private:
     {
       max_value_in_Y = h->GetMaximum();
       float norm = h->GetSumOfWeights();
-      if (i.refnorm != "False" && norm > 0 && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
+      if (i.refnorm != "False"
+          && norm > 0
+          && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)
+          && !isMultiDimensional)
       {
         for (size_t n = 0; n < numobjs; ++n)
         {
