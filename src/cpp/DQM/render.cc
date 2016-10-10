@@ -1836,7 +1836,6 @@ private:
         }
 
         ref1->SetLineColor(color); ref1->SetMarkerColor(color);
-        ref1->SetMarkerStyle(kFullDotLarge); ref1->SetMarkerSize(0.85);
         ref1->GetListOfFunctions()->Delete();
         if (i.showerrbars)
           samePlotOptions += " e1 x0";
