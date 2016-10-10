@@ -465,7 +465,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
 # --------------------------------------------------------------------
 # Management interface for talking to the ROOT rendering process.
 class DQMRenderLink(Accelerator.DQMRenderLink):
-  def __init__(self, server, plugin, nproc = 5, debug = False):
+  def __init__(self, server, plugin, nproc = 8, debug = False):
     Accelerator.DQMRenderLink.__init__ \
       (self, server.sessiondir.rsplit('/', 1)[0],
        server.logdir, plugin, nproc, debug)
