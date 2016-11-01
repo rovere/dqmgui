@@ -16,6 +16,8 @@ static void replacePseudoNumericValues(string& json)
   boost::replace_all(json, "':inf}", "':'inf'}");
   boost::replace_all(json, "':-inf,", "':'-inf',");
   boost::replace_all(json, "':-inf}", "':'-inf'}");
+  boost::replace_all(json, ",inf", ",'inf'");
+  boost::replace_all(json, ",-inf", ",'-inf'");
 }
 
 static string arrayToJson(const string arrayString, const char* const name = NULL)
@@ -42,15 +44,15 @@ static string integralToJson(Double_t integral[][3] )
                       "[%4,%5,%6],"
                       "[%1,%2,%3]"
                       "]")
-      .arg(integral[0][0], 0, 'f')
-      .arg(integral[0][1], 0, 'f')
-      .arg(integral[0][2], 0, 'f')
-      .arg(integral[1][0], 0, 'f')
-      .arg(integral[1][1], 0, 'f')
-      .arg(integral[1][2], 0, 'f')
-      .arg(integral[2][0], 0, 'f')
-      .arg(integral[2][1], 0, 'f')
-      .arg(integral[2][2], 0, 'f');
+      .arg(integral[0][0], 0, 'g')
+      .arg(integral[0][1], 0, 'g')
+      .arg(integral[0][2], 0, 'g')
+      .arg(integral[1][0], 0, 'g')
+      .arg(integral[1][1], 0, 'g')
+      .arg(integral[1][2], 0, 'g')
+      .arg(integral[2][0], 0, 'g')
+      .arg(integral[2][1], 0, 'g')
+      .arg(integral[2][2], 0, 'g');
 }
 
 /* The following methods return a json containing all bins data and due
@@ -120,7 +122,7 @@ static string binsToArray(const TH2* const h)
   {
     sum[1][0] += h->GetBinContent(i, 0);  // sum(1..Xlast) uy
     sum[1][2] += h->GetBinContent(i, Ylast + 1);  // sum(1..Xlast) oy
-    widthX += StringFormat("%3,").arg(h->GetXaxis()->GetBinWidth(i));
+    widthX += StringFormat("%1,").arg(h->GetXaxis()->GetBinWidth(i));
     if(isWidthXDef && (h->GetXaxis()->GetBinWidth(i) != defWidthX))
       isWidthXDef = false;
   }
@@ -130,14 +132,14 @@ static string binsToArray(const TH2* const h)
     string subcontent = "";
     sum[0][1] += h->GetBinContent(0, j);        // sum(1..Ylast) ux
     sum[2][1] += h->GetBinContent(Xlast + 1, j); // sum(1..Ylast) ox
-    widthY += StringFormat("%3,").arg(h->GetYaxis()->GetBinWidth(j));
+    widthY += StringFormat("%1,").arg(h->GetYaxis()->GetBinWidth(j));
     if(isWidthYDef && (h->GetYaxis()->GetBinWidth(j) != defWidthY))
       isWidthYDef = false;
     for (int i = h->GetXaxis()->GetFirst(); i != Xlast + 1; ++i)
     {
       const Double_t binValue = h->GetBinContent(i, j);
       sum[1][1]  += binValue;  //integral
-      subcontent += StringFormat("%3,").arg(binValue);
+      subcontent += StringFormat("%1,").arg(binValue);
     }
     content += arrayToJson(subcontent) + ",";
   }
@@ -385,7 +387,7 @@ static string statsToJson(const T* const hist)
                          ",'underflow':%5"
                          ",'overflow':%6")
       .arg(hist->GetName())
-      .arg(hist->GetEntries(),0,'f')
+      .arg(hist->GetEntries(), 0, 'f')
       .arg(statWithErrorToJson(hist, "mean"))
       .arg(statWithErrorToJson(hist, "rms"))
       .arg(hist->GetBinContent(0))
