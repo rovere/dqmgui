@@ -1566,9 +1566,8 @@ private:
             num->SetStats(0);
             if (!num->GetSumw2N())
               num->Sumw2();
-            num->Divide(den); num->SetMarkerStyle(kFullCircle);
-            num->SetMarkerSize(0.75);
-            num->SetMarkerColor(colors[n%colorIndex]);
+            num->Divide(den);
+            num->SetLineColor(colors[n%colorIndex]);
             num->SetTitle("");
 
             num->GetXaxis()->SetLabelFont(42);
