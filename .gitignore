@@ -18,3 +18,13 @@ __pycache__/
 
 # Vim swap files
 *.swp
+
+*.log
+*.txt
+.cache
+*.c
+*.cc
+*.o
+*.h
+*.x
+*.so
