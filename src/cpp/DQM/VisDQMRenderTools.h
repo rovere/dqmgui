@@ -4,6 +4,7 @@
 #include "classlib/utils/StringFormat.h"
 #include "boost/algorithm/string.hpp"
 #include "TProfile2D.h"
+#include "TBufferJSON.h"
 
 using lat::StringFormat;
 using std::string;
