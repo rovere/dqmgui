@@ -375,6 +375,11 @@ static string statWithErrorToJson(const TH2* const hist, const char* const name)
       .arg(name);
 }
 
+static string rootObjectToArray(const TObject* const h)
+{
+  return TBufferJSON::ConvertToJSON(h).Data();
+}
+
 template<typename T>
 static string statsToJson(const T* const hist)
 {
