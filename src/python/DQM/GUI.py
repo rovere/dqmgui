@@ -1181,6 +1181,14 @@ class DQMWorkspace:
     self.gui._saveSession(session)
     return self._state(session)
 
+  def sessionSetJSrootmode(self, session, *args, **kwargs):
+    jsrootmode = kwargs.get('mode', None)
+    if isinstance(jsrootmode, str) or jsrootmode in ("yes", "no"):
+      session['dqm.zoom.jsrootmode'] = (jsrootmode == "yes")
+
+    self.gui._saveSession(session)
+    return self._state(session)
+
   # Change JSON window parameters.
   def sessionSetJsonZoom(self, session, *args, **kwargs):
     x = kwargs.get('x', None)

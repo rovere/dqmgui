@@ -477,6 +477,9 @@ GUI.Plugin.DQMCanvas = new function()
   var _jsonMode         = null;
   var _jsonModeChanged  = false;
 
+  var _jsRootButton     = null;
+  var _jsRootMode       = null;
+
   this.switchJsonMode = function() {
         _jsonMode = _jsonDataButton.pressed;
         _jsonModeChanged = true;
@@ -484,6 +487,14 @@ GUI.Plugin.DQMCanvas = new function()
           _gui.makeCall(_url() + "/setJsonmode?mode=yes")
         else
           _gui.makeCall(_url() + "/setJsonmode?mode=no")
+  }
+
+  this.switchJsRootMode = function() {
+    _jsRootMode = __jsRootButton.pressed;
+    if(_jsRootButton.pressed)
+      _gui.makeCall(_url() + "/setJSrootmode?mode=yes")
+    else
+      _gui.makeCall(_url() + "/setJSrootmode?mode=no")
   }
 
   this.onresize = function()
@@ -761,6 +772,13 @@ GUI.Plugin.DQMCanvas = new function()
                                        enableToggle : true,
                                        pressed : _jsonMode || false });
 
+    _jsRootButton = new Ext.Button({ text : 'JSROOT mode',
+                                       toggleHandler : _self.switchJsRootMode,
+                                       scope : _self,
+                                       id : 'canvas-jsRoot',
+                                       enableToggle : true,
+                                       pressed : _jsRootMode || false });
+
     tb.add({ text          : 'Size:' ,
              xtype         : 'tbtext' },
            combo, '-' ,
@@ -822,6 +840,7 @@ GUI.Plugin.DQMCanvas = new function()
                       html: 'ROOT File'},
              hidden: true
            },
+           _jsRootButton,
            _jsonDataButton,
            linkmeAction
           );
