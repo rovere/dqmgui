@@ -11,7 +11,7 @@ var _SIZES            =
   { index: 3, title: "Large", label: "L",  className: "size-large",  width: 532, height: 400 },
   { index: 4, title: "Fill",  label: "XL", className: "size-xlarge", width: -1,  height: -1 } ];
 var _SIZESARRAY       = _map(_SIZES, function(x) { return [x.title, x.label]; });
-var _SIZEMAP	      = {};
+var _SIZEMAP          = {};
 _map(_SIZES, function(x) { _SIZEMAP[x.label] = x; });
 
 // Resize an image to fit the canvas.
@@ -52,7 +52,7 @@ function setsizeclass(item, title, size, ref)
     item.className += " " + size.className + suffix;
   else
     item.className = item.className.replace(/size-[a-z]+( double)?/,
-		                            size.className + suffix);
+                                            size.className + suffix);
 
   var titlew = size.width * (suffix ? 2 : 1) + "px";
   if (size.width > 0 && title.style.width != titlew)
@@ -62,36 +62,36 @@ function setsizeclass(item, title, size, ref)
 }
 
 function layoutimg(img, container, focus, onclick, ref, size, ob,
-		   rowdiv, nrows, row, ncols, col, n, xargs)
+                   rowdiv, nrows, row, ncols, col, n, xargs)
 {
   var sizeparam = setsize(container, img, size, row, nrows, col, ncols);
   var nameref = (ob.nukename
-	         ? encodePathComponent(ob.location)
-	         : encodePathComponent(ob.location) + "/"
-		   + encodePathComponent(ob.name));
+                 ? encodePathComponent(ob.location)
+                 : encodePathComponent(ob.location) + "/"
+                   + encodePathComponent(ob.name));
   var imgref = (! ob.name ? FULLROOTPATH + "/static/blank.gif?"
-		: FULLROOTPATH + "/plotfairy/" + nameref + "?");
+                : FULLROOTPATH + "/plotfairy/" + nameref + "?");
   var jsonref = FULLROOTPATH + "/jsonfairy/" + nameref + "?formatted=true";
   var param = "session=" + SESSION_ID
-	      + ";v=" + ob.version
-	      + (ob.xaxis.type != "def" ? ";xtype=" + ob.xaxis.type : "")
-	      + (ob.xaxis.min != null ? ";xmin=" + ob.xaxis.min : "")
-	      + (ob.xaxis.max != null ? ";xmax=" + ob.xaxis.max : "")
-	      + (ob.yaxis.type != "def" ? ";ytype=" + ob.yaxis.type : "")
-	      + (ob.yaxis.min != null ? ";ymin=" + ob.yaxis.min : "")
-	      + (ob.yaxis.max != null ? ";ymax=" + ob.yaxis.max : "")
-	      + (ob.zaxis.type != "def" ? ";ztype=" + ob.zaxis.type : "")
-	      + (ob.zaxis.min != null ? ";zmin=" + ob.zaxis.min : "")
-	      + (ob.zaxis.max != null ? ";zmax=" + ob.zaxis.max : "")
-	      + (ob.drawopts ? ";drawopts=" + ob.drawopts : "")
-	      + (ob.withref != "def" ? ";withref=" + ob.withref : "")
-	      + (ref != "object" ? ";ref=" + ref : "")
-	      + xargs;
+              + ";v=" + ob.version
+              + (ob.xaxis.type != "def" ? ";xtype=" + ob.xaxis.type : "")
+              + (ob.xaxis.min != null ? ";xmin=" + ob.xaxis.min : "")
+              + (ob.xaxis.max != null ? ";xmax=" + ob.xaxis.max : "")
+              + (ob.yaxis.type != "def" ? ";ytype=" + ob.yaxis.type : "")
+              + (ob.yaxis.min != null ? ";ymin=" + ob.yaxis.min : "")
+              + (ob.yaxis.max != null ? ";ymax=" + ob.yaxis.max : "")
+              + (ob.zaxis.type != "def" ? ";ztype=" + ob.zaxis.type : "")
+              + (ob.zaxis.min != null ? ";zmin=" + ob.zaxis.min : "")
+              + (ob.zaxis.max != null ? ";zmax=" + ob.zaxis.max : "")
+              + (ob.drawopts ? ";drawopts=" + ob.drawopts : "")
+              + (ob.withref != "def" ? ";withref=" + ob.withref : "")
+              + (ref != "object" ? ";ref=" + ref : "")
+              + xargs;
   var url = imgref + param + sizeparam;
   img.setAttribute('alarm', ob.alarm); // attach the alarm property directly to the HTML img tag
   var border = ((ob.alarm && (nrows > 1 || ncols > 1))
                 ? (focus && ob.name == focus ? _IMG_BORDER_ALARM_SELECTED :_IMG_BORDER_ALARM)
-		: (focus && ob.name == focus ? _IMG_BORDER_SELECTED : _IMG_BORDER_NONE));
+                : (focus && ob.name == focus ? _IMG_BORDER_SELECTED : _IMG_BORDER_NONE));
 
   if (! ob.name && img.src != url)
   {
@@ -156,15 +156,15 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
   {
     var style = "item folder" + xstyle + (obj.dir.nalarm ? " alarm" : "");
     var ref = "<a href='#' onclick='return GUI.Plugin.DQMCanvas.rebase(this)' dqmto='"
-	      + obj.name + "'><img src='" + ROOTPATH + "/static/folder.png'"
-	      + " width='16' height='16' /> " + obj.name.replace(/.*\//, "")
-	      + "</a>";
+              + obj.name + "'><img src='" + ROOTPATH + "/static/folder.png'"
+              + " width='16' height='16' /> " + obj.name.replace(/.*\//, "")
+              + "</a>";
     _settitle(item, style, obj.name);
     _setvaltitle(title, "", ref,
-		 obj.dir.nleaves + " object" + (obj.dir.nleaves > 1 ? "s" : "")
-		 + ", " + obj.dir.nlive + " live, "
-		 + (obj.dir.nalarm > 1 ? obj.dir.nalarm + " alarms"
-		    : (obj.dir.nalarm ? "1 alarm" : "no alarms")));
+                 obj.dir.nleaves + " object" + (obj.dir.nleaves > 1 ? "s" : "")
+                 + ", " + obj.dir.nlive + " live, "
+                 + (obj.dir.nalarm > 1 ? obj.dir.nalarm + " alarms"
+                    : (obj.dir.nalarm ? "1 alarm" : "no alarms")));
 
     while (item.childNodes.length > 1)
       item.removeChild(item.lastChild);
@@ -185,14 +185,14 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
     }
 
   var prevfolder = (item.previousSibling
-		    && item.previousSibling
-		    .className.indexOf("folder") >= 0);
+                    && item.previousSibling
+                    .className.indexOf("folder") >= 0);
 
   var style = ("item"
-	       + xstyle
-	       + (alarm ? " alarm" : "")
-	       + (dead ? " dead" : "")
-	       + (prevfolder ? " break" : ""));
+               + xstyle
+               + (alarm ? " alarm" : "")
+               + (dead ? " dead" : "")
+               + (prevfolder ? " break" : ""));
   _settitle(item, style, obj.name);
   _setval(title, "", obj.name.replace(/.*\//, ""));
 
@@ -203,14 +203,14 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
   // the URL unnecessarily.
   var nrows = obj.items.length;
   var dostrip = (strip.type != "object"
-	         && strip.n
-		 && parseInt(strip.n) > 0);
+                 && strip.n
+                 && parseInt(strip.n) > 0);
 
   for (var row = 0; row < nrows; ++row)
   {
     var rowdiv = (row < item.childNodes.length - 1
-		  ? item.childNodes[row+1]
-		  : document.createElement("div"));
+                  ? item.childNodes[row+1]
+                  : document.createElement("div"));
     var rowparent = rowdiv.parentNode;
     var ncols = obj.items[row].length;
     var maxcols = ncols;
@@ -226,8 +226,8 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       var showref = "object";
       var ob = obj.items[row][col];
       var img = (col < rowdiv.childNodes.length
-	         ? rowdiv.childNodes[col]
-	         : document.createElement("img"));
+                 ? rowdiv.childNodes[col]
+                 : document.createElement("img"));
       if (! img.parentNode)
         rowdiv.appendChild(img);
 
@@ -238,50 +238,50 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       var overlay = false;
       var xargs = "";
       if ((ref.position == "overlay"
-	 || ref.position == "ratiooverlay"
-	 || ref.position == "stacked")
-	  && (ref.show == "all"
-	      || (ref.show == "customise" && ob.withref == "yes")))
+         || ref.position == "ratiooverlay"
+         || ref.position == "stacked")
+          && (ref.show == "all"
+              || (ref.show == "customise" && ob.withref == "yes")))
       {
         for (var refidx = 0, refcnt = 0; refidx < ref.param.length; ++refidx)
         {
           var refdef = ref.param[refidx];
-	  if (refdef.dataset && ! refdef.dataset.match(/^(\/[-A-Za-z0-9_]+){3}$/))
-	    refdef.dataset = "";
-	  if (refdef.type == "none"
-	      || (refdef.type == "other"
-		  && ! refdef.run
-		  && ! refdef.dataset))
-	    continue;
+          if (refdef.dataset && ! refdef.dataset.match(/^(\/[-A-Za-z0-9_]+){3}$/))
+            refdef.dataset = "";
+          if (refdef.type == "none"
+              || (refdef.type == "other"
+                  && ! refdef.run
+                  && ! refdef.dataset))
+            continue;
 
-	  if (refdef.type == "refobj")
-	     overlay = true;
-	  else
-	  {
-	    var parts = ob.location.split("/");
-	    var dataset = "/" + parts.splice(2, 3).join("/");
-	    if (parts[0] == "live" || parts[0] == "unknown")
-	      parts[0] = "archive";
-	    if (refdef.run)
-	      parts[1] = refdef.run;
-	    if (refdef.dataset)
-	      dataset = refdef.dataset;
+          if (refdef.type == "refobj")
+             overlay = true;
+          else
+          {
+            var parts = ob.location.split("/");
+            var dataset = "/" + parts.splice(2, 3).join("/");
+            if (parts[0] == "live" || parts[0] == "unknown")
+              parts[0] = "archive";
+            if (refdef.run)
+              parts[1] = refdef.run;
+            if (refdef.dataset)
+              dataset = refdef.dataset;
 
-	    xargs += ";obj=" + encodeURIComponent
-	      (parts.join("/") + dataset + "/" + ob.name);
-	    if (refdef.ktest)
-	      xargs += ';ktest='+refdef.ktest;
+            xargs += ";obj=" + encodeURIComponent
+              (parts.join("/") + dataset + "/" + ob.name);
+            if (refdef.ktest)
+              xargs += ';ktest='+refdef.ktest;
           }
-	}
+        }
       }
 
       var showref = (overlay ? "overlay" : "object");
       if (! dostrip && xargs)
       {
-	ob = _clone(ob);
-	xargs = ";obj=" + encodeURIComponent(ob.location+"/"+ob.name) + xargs;
-	ob.nukename = 1;
-	ob.location = "overlay";
+        ob = _clone(ob);
+        xargs = ";obj=" + encodeURIComponent(ob.location+"/"+ob.name) + xargs;
+        ob.nukename = 1;
+        ob.location = "overlay";
       }
       else if (ob.overlays.length > 0)
       {
@@ -298,17 +298,17 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       else if (dostrip)
       {
         ob = _clone(ob);
-	xargs = ";trend=" + encodeURIComponent(strip.type)
-		+ ";n=" + encodeURIComponent(strip.n)
-		+ ";omit=" + encodeURIComponent(strip.omit)
-		+ ";axis=" + encodeURIComponent(strip.axis)
-		+ ";current=" + encodeURIComponent(ob.location);
-	ob.location = "stripchart/" + ob.name;
-	ob.xaxis = ob.yaxis = ob.zaxis = {type: "def", min: null, max: null};
-	ob.drawopts = "";
-	ob.withref = "def";
-	ob.nukename = 1;
-	showref = "object";
+        xargs = ";trend=" + encodeURIComponent(strip.type)
+                + ";n=" + encodeURIComponent(strip.n)
+                + ";omit=" + encodeURIComponent(strip.omit)
+                + ";axis=" + encodeURIComponent(strip.axis)
+                + ";current=" + encodeURIComponent(ob.location);
+        ob.location = "stripchart/" + ob.name;
+        ob.xaxis = ob.yaxis = ob.zaxis = {type: "def", min: null, max: null};
+        ob.drawopts = "";
+        ob.withref = "def";
+        ob.nukename = 1;
+        showref = "object";
       }
 
       // Only attach to the plot non-default options
@@ -326,7 +326,7 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
         showref = "ratiooverlay";
 
       layoutimg(img, container, focus, onclick, showref, size, ob,
-		rowdiv, nrows, row, ncols, col, n, xargs);
+                rowdiv, nrows, row, ncols, col, n, xargs);
     }
 
     if (! dostrip && ref.position == "on-side" && ref.show != "none")
@@ -334,65 +334,65 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
       for (var refidx = 0, refcnt = 0; refidx < ref.param.length; ++refidx)
       {
         var refdef = ref.param[refidx];
-	if (refdef.dataset && ! refdef.dataset.match(/^(\/[-A-Za-z0-9_]+){3}$/))
-	  refdef.dataset = "";
-	if (refdef.type == "none"
-	    || (refdef.type == "other"
-		&& ! refdef.run
-		&& ! refdef.dataset))
-	  continue;
+        if (refdef.dataset && ! refdef.dataset.match(/^(\/[-A-Za-z0-9_]+){3}$/))
+          refdef.dataset = "";
+        if (refdef.type == "none"
+            || (refdef.type == "other"
+                && ! refdef.run
+                && ! refdef.dataset))
+          continue;
 
-	refcnt++;
+        refcnt++;
         maxcols += ncols;
         for (var col = 0; col < ncols; ++col)
         {
-	  var showref;
+          var showref;
           var realcol = ncols * refcnt + col;
           var ob = _clone(obj.items[row][col]);
           var img = (realcol < rowdiv.childNodes.length
-	             ? rowdiv.childNodes[realcol]
-	             : document.createElement("img"));
+                     ? rowdiv.childNodes[realcol]
+                     : document.createElement("img"));
           if (! img.parentNode)
             rowdiv.appendChild(img);
 
-	  ob.alarm = 0;
-	  if (ref.show == "customise" && ob.withref != "yes")
+          ob.alarm = 0;
+          if (ref.show == "customise" && ob.withref != "yes")
           {
-	    // customise, side-by-side, without reference = blank
-	    showref = "object";
-	    ob.name = null;
-	  }
-	  else
+            // customise, side-by-side, without reference = blank
+            showref = "object";
+            ob.name = null;
+          }
+          else
           {
-	    // All or customise with reference = select object to show.
-	    // Somewhat tricky and hackish as we need to munge location
-	    // path based on what sort of a reference was chosen for
-	    // display. We only support switching to same object in
-	    // another (archived) run/dataset of the same kind. For more
-	    // flexibility the core code would have to turn reference
-	    // selection to full blown sample selection.
+            // All or customise with reference = select object to show.
+            // Somewhat tricky and hackish as we need to munge location
+            // path based on what sort of a reference was chosen for
+            // display. We only support switching to same object in
+            // another (archived) run/dataset of the same kind. For more
+            // flexibility the core code would have to turn reference
+            // selection to full blown sample selection.
 
-	    if (refdef.type == "refobj")
-	    {
-	      showref = "reference";
-	      ob.title = "Ref #" + (refidx+1) + " Standard; " + ob.name;
-	    }
-	    else
-	    {
-	      var parts = ob.overlays.length > 0 ? ob.real_location.split("/")
+            if (refdef.type == "refobj")
+            {
+              showref = "reference";
+              ob.title = "Ref #" + (refidx+1) + " Standard; " + ob.name;
+            }
+            else
+            {
+              var parts = ob.overlays.length > 0 ? ob.real_location.split("/")
                   : ob.location.split("/");
-	      var dataset = parts.splice(2, 3).join("/");
-	      if (parts[0] == "live")
-		parts[0] = "archive";
-	      if (refdef.run)
-		parts[1] = refdef.run;
-	      if (refdef.dataset)
-		dataset = refdef.dataset;
+              var dataset = parts.splice(2, 3).join("/");
+              if (parts[0] == "live")
+                parts[0] = "archive";
+              if (refdef.run)
+                parts[1] = refdef.run;
+              if (refdef.dataset)
+                dataset = refdef.dataset;
 
-	      ob.location = parts.join("/") + "/" + dataset;
-	      ob.title = sprintf("Ref #%d, run %s, dataset %s; %s",
-				refidx+1, parts[1], dataset, ob.name);
-	      showref = "object";
+              ob.location = parts.join("/") + "/" + dataset;
+              ob.title = sprintf("Ref #%d, run %s, dataset %s; %s",
+                                refidx+1, parts[1], dataset, ob.name);
+              showref = "object";
               if (ob.overlays.length > 0)
               {
                 showref = "samesample";
@@ -404,11 +404,11 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
                 }
                 ob.location = "overlay";
               }
-	    }
+            }
           }
           layoutimg(img, container, focus, null /* omit onclick for ref */,
-		    showref, size, ob, rowdiv, nrows, row, ncols, col,
-		    "ref_" + refcnt + "_" + n, xargs);
+                    showref, size, ob, rowdiv, nrows, row, ncols, col,
+                    "ref_" + refcnt + "_" + n, xargs);
         }
       }
     }
@@ -428,25 +428,25 @@ GUI.Plugin.DQMCanvas = new function()
 {
   Ext.QuickTips.init();
 
-  var _HELP_IDLE_MSG	= "(Click on a histogram for details)";
-  var _SLIDER_UNIT	= 20;
-  var _size		= "M";
+  var _HELP_IDLE_MSG    = "(Click on a histogram for details)";
+  var _SLIDER_UNIT      = 20;
+  var _size             = "M";
 
-  var _gui		= null;
-  var _self		= this;
-  var _canvas		= $('canvas');
-  var _optsarea		= $('canvas-opts');
+  var _gui              = null;
+  var _self             = this;
+  var _canvas           = $('canvas');
+  var _optsarea         = $('canvas-opts');
 
-  var _helpgroup	= $('canvas-help-group');
-  var _helparea		= $('canvas-help');
-  var _helppanel	= null;
-  var _helplocal	= false;
+  var _helpgroup        = $('canvas-help-group');
+  var _helparea         = $('canvas-help');
+  var _helppanel        = null;
+  var _helplocal        = false;
 
   var _customgroup      = $('canvas-custom-group');
   var _customarea       = $('canvas-custom');
   var _custompanel      = null;
-  var _customlocal	= false;
-  var _focus		= null;
+  var _customlocal      = false;
+  var _focus            = null;
   var _focusURL         = '';
   var _jsonURL          = '';
 
@@ -456,33 +456,33 @@ GUI.Plugin.DQMCanvas = new function()
   var _zoomlocal        = false;
   var _rootPath         = null;
 
-  var _imgXType		= null;
-  var _imgXMin		= null;
-  var _imgXMax		= null;
-  var _imgYType		= null;
-  var _imgYMin		= null;
-  var _imgYMax		= null;
-  var _imgZType		= null;
-  var _imgZMin		= null;
-  var _imgZMax		= null;
-  var _imgDrawOpts	= null;
-  var _imgWithRef	= null;
+  var _imgXType         = null;
+  var _imgXMin          = null;
+  var _imgXMax          = null;
+  var _imgYType         = null;
+  var _imgYMin          = null;
+  var _imgYMax          = null;
+  var _imgZType         = null;
+  var _imgZMin          = null;
+  var _imgZMax          = null;
+  var _imgDrawOpts      = null;
+  var _imgWithRef       = null;
 
-  var _shown		= null;
+  var _shown            = null;
   var _showzoom         = null;
-  var _layoutroot	= null;
-  var _click		= { event: null, timeout: null, timeClick: 0, timeDoubleClick: 0 };
+  var _layoutroot       = null;
+  var _click            = { event: null, timeout: null, timeClick: 0, timeDoubleClick: 0 };
 
   var _jsonDataButton   = null;
   var _jsonMode         = null;
   var _jsonModeChanged  = false;
 
   this.switchJsonMode = function() {
-	_jsonMode = _jsonDataButton.pressed;
-	_jsonModeChanged = true;
-	if(_jsonDataButton.pressed)
+        _jsonMode = _jsonDataButton.pressed;
+        _jsonModeChanged = true;
+        if(_jsonDataButton.pressed)
           _gui.makeCall(_url() + "/setJsonmode?mode=yes")
-	else
+        else
           _gui.makeCall(_url() + "/setJsonmode?mode=no")
   }
 
@@ -498,18 +498,18 @@ GUI.Plugin.DQMCanvas = new function()
         var nrows = obj.childNodes.length-1;
         for (var row = 0; row < nrows; ++row)
         {
-	  var ncols = obj.childNodes[row+1].childNodes.length;
-	  for (var col = 0; col < ncols; ++col)
-	  {
-	    var img = obj.childNodes[row+1].childNodes[col];
-	    var suffix = setsize(_canvas, img, size, row, nrows, col, ncols);
-	    var url = img.src.replace(/;w=.*/, suffix);
-	    if (img.src != url)
-	    {
-	      img.dqmsrc = url;
-	      GUI.ImgLoader.load("div"+i+"."+row+"."+col, img, url);
-	    }
-	  }
+          var ncols = obj.childNodes[row+1].childNodes.length;
+          for (var col = 0; col < ncols; ++col)
+          {
+            var img = obj.childNodes[row+1].childNodes[col];
+            var suffix = setsize(_canvas, img, size, row, nrows, col, ncols);
+            var url = img.src.replace(/;w=.*/, suffix);
+            if (img.src != url)
+            {
+              img.dqmsrc = url;
+              GUI.ImgLoader.load("div"+i+"."+row+"."+col, img, url);
+            }
+          }
         }
       }
   };
@@ -525,13 +525,13 @@ GUI.Plugin.DQMCanvas = new function()
     {
       help = help.replace(/<\s*a\s+/, '<a target="helpWindow "');
       _helparea.innerHTML
-	= "<div><span style='color:#555;margin:0 0 5px'>"
-	+ titleabbrev + ": </span>" + help + "</div>";
+        = "<div><span style='color:#555;margin:0 0 5px'>"
+        + titleabbrev + ": </span>" + help + "</div>";
     }
     else if (hit.title)
       _helparea.innerHTML
-	= "<div><span style='color:#888'>(No description available for "
-	+ titleabbrev + ".)</span></div>";
+        = "<div><span style='color:#888'>(No description available for "
+        + titleabbrev + ".)</span></div>";
     else
       _helparea.innerHTML = _HELP_IDLE_MSG;
 
@@ -553,38 +553,38 @@ GUI.Plugin.DQMCanvas = new function()
       var zmax  = url.indexOf("zmax=") >= 0     ? url.replace(/.*zmax=([^;]+).*/, "$1")     : "";
 
       if (ref == "def" || ref == "")
-	ref = 0;
+        ref = 0;
       else if (ref == "yes")
-	ref = 1;
+        ref = 1;
       else if (ref == "no")
-	ref = 2;
+        ref = 2;
 
       if (_imgDrawOpts.value != opts)
-	_imgDrawOpts.value = opts;
+        _imgDrawOpts.value = opts;
 
       if (_imgWithRef.selectedIndex != ref)
-	_imgWithRef.selectedIndex = ref;
+        _imgWithRef.selectedIndex = ref;
 
       if (_imgXType.selectedIndex != _AXES[xtype])
-	_imgXType.selectedIndex = _AXES[xtype];
+        _imgXType.selectedIndex = _AXES[xtype];
       if (_imgXMin.value != xmin)
-	_imgXMin.value = xmin;
+        _imgXMin.value = xmin;
       if (_imgXMax.value != xmax)
-	_imgXMax.value = xmax;
+        _imgXMax.value = xmax;
 
       if (_imgYType.selectedIndex != _AXES[ytype])
-	_imgYType.selectedIndex = _AXES[ytype];
+        _imgYType.selectedIndex = _AXES[ytype];
       if (_imgYMin.value != ymin)
-	_imgYMin.value = ymin;
+        _imgYMin.value = ymin;
       if (_imgYMax.value != ymax)
-	_imgYMax.value = ymax;
+        _imgYMax.value = ymax;
 
       if (_imgZType.selectedIndex != _AXES[ztype])
-	_imgZType.selectedIndex = _AXES[ztype];
+        _imgZType.selectedIndex = _AXES[ztype];
       if (_imgZMin.value != zmin)
-	_imgZMin.value = zmin;
+        _imgZMin.value = zmin;
       if (_imgZMax.value != zmax)
-	_imgZMax.value = zmax;
+        _imgZMax.value = zmax;
 
       _imgDrawOpts.disabled = false;
       _imgWithRef.disabled = false;
@@ -599,16 +599,16 @@ GUI.Plugin.DQMCanvas = new function()
       _imgZMax.disabled = false;
 
       _map(_customarea.getElementsByTagName("LABEL"), function(node) {
-	if (node.className.indexOf("disabled") >= 0)
-	  node.className = node.className.replace(/ *disabled/g, "");
+        if (node.className.indexOf("disabled") >= 0)
+          node.className = node.className.replace(/ *disabled/g, "");
       });
 
       _map(_canvas.childNodes, function(node) {
         var thishit = (node == hit.parentNode.parentNode);
-	if (thishit && node.className.indexOf("picked") < 0)
-	  node.className += " picked";
-	else if (! thishit && node.className.indexOf("picked") >= 0)
-	  node.className = node.className.replace(/ *picked/g, "");
+        if (thishit && node.className.indexOf("picked") < 0)
+          node.className += " picked";
+        else if (! thishit && node.className.indexOf("picked") >= 0)
+          node.className = node.className.replace(/ *picked/g, "");
       });
 
       _map(_canvas.getElementsByTagName('img'), function(node) {
@@ -641,13 +641,13 @@ GUI.Plugin.DQMCanvas = new function()
       _imgZMax.disabled = true;
 
       _map(_customarea.getElementsByTagName("LABEL"), function(node) {
-	if (node.className.indexOf("disabled") < 0)
-	  node.className += " disabled";
+        if (node.className.indexOf("disabled") < 0)
+          node.className += " disabled";
       });
 
       _map(_canvas.childNodes, function(node) {
-	if (node.className.indexOf("picked") >= 0)
-	  node.className = node.className.replace(/ *picked/g, "");
+        if (node.className.indexOf("picked") >= 0)
+          node.className = node.className.replace(/ *picked/g, "");
       });
 
       _custompanel.setHeader("Customise");
@@ -668,7 +668,7 @@ GUI.Plugin.DQMCanvas = new function()
     // Update LinkMe window, in case there is one
     if (_linkMe)
       if (_linkMe.isVisible())
-	this.setLinkMe();
+        this.setLinkMe();
 
     return hit;
   };
@@ -717,30 +717,30 @@ GUI.Plugin.DQMCanvas = new function()
     _optsarea.style.display = '';
 
     var linkmeAction = new Ext.Action({ text: 'Link-Me',
-					handler: _self.setLinkMe,
-					iconCls: 'linkme',
-					scope:    _self,
-					id: 'canvas-linkMe' });
+                                        handler: _self.setLinkMe,
+                                        iconCls: 'linkme',
+                                        scope:    _self,
+                                        id: 'canvas-linkMe' });
 
     var rootFileLink = _gui.Plugin.DQMHeaderRow.getROOTFileURL();
     var tb = new Ext.Toolbar({ id : 'canvas-submenu' });
     var store = new Ext.data.ArrayStore({ fields: ['label', 'abbr'],
-					  data : _SIZESARRAY });
+                                          data : _SIZESARRAY });
     var combo = new Ext.form.ComboBox({ id: 'canvas-size',
-					width: 80,
-					store: store,
-					displayField:'label',
-					valueField:'abbr',
-					typeAhead: true,
-					mode: 'local',
-					forceSelection: true,
-					triggerAction: 'all' });
+                                        width: 80,
+                                        store: store,
+                                        displayField:'label',
+                                        valueField:'abbr',
+                                        typeAhead: true,
+                                        mode: 'local',
+                                        forceSelection: true,
+                                        triggerAction: 'all' });
     combo.on('change', function(obj, value, oldvalue) {
       if (_size != value)
       {
-	_size = value;
-	_self.resize();
-	_gui.makeCall(_url() + "/setSize?sz=" + value);
+        _size = value;
+        _self.resize();
+        _gui.makeCall(_url() + "/setSize?sz=" + value);
       }
     });
 
@@ -748,9 +748,9 @@ GUI.Plugin.DQMCanvas = new function()
       var value = obj.getValue();
       if (_size != value)
       {
-	_size = value;
-	_self.resize();
-	_gui.makeCall(_url() + "/setSize?sz=" + value);
+        _size = value;
+        _self.resize();
+        _gui.makeCall(_url() + "/setSize?sz=" + value);
       }
     });
 
@@ -762,82 +762,82 @@ GUI.Plugin.DQMCanvas = new function()
                                        pressed : _jsonMode || false });
 
     tb.add({ text          : 'Size:' ,
-	     xtype         : 'tbtext' },
-	   combo, '-' ,
-	   { text          : 'Play',
-	     enableToggle  : true,
-	     toggleHandler : function() { _gui.makeCall(_url() + "/play"); return false; },
-	     pressed       : false
-	   }, '-',
-	   { text          : 'Reset Workspace',
-	     enableToggle  : false,
-	     handler       : function() {
-	       _customlocal = _helplocal = _zoomlocal = false;
-	       _gui.makeCall(_url() + "/resetWorkspace");
-	       return false;
-	     }
-	   },'-',
-	   { text          : 'Describe',
-	     id            : 'canvas-describe',
-	     enableToggle  : true,
-	     pressed       : false,
-	     toggleHandler : function() {
-	       if (_helppanel)
-		 _helppanel.cfg.setProperty('visible', !_helppanel.cfg.getProperty('visible'));
-	       else
-		 _helppanel.show();
-	       return false; }
-	   }, '-',
-	   { text          : 'Customise',
-	     id            : 'canvas-customize',
-	     enableToggle  : true,
-	     pressed       : false,
-	     toggleHandler : function() {
-	       if (_custompanel)
-		 _custompanel.cfg.setProperty('visible', !_custompanel.cfg.getProperty('visible'));
-	       else
-		 _custompanel.show();
-	       return false; }
-	   } , '-',
-	   { id            : 'canvas-layouts',
-	     scope         : this,
-	     text          : 'Layouts',
-	     enableToggle  : false
-	   }, '-',
-	   { id            : 'canvas-dqmroot',
-	     text          : '(Top)',
-	     xtype         : 'tbtext'
-	   }, '->',
-	   {
-	     /* The URL for the ROOT file is based on some heuristic
-	        guesses: as such it is not guaranteed to work in 100%
-	        of cases. That's why we serve this component as
-	        hidden by default. We will in case enable it if the
-	        result of an ad-hoc AJAX query against the server
-	        returns a valid status code. */
-	     xtype: 'box',
-	     id: 'canvas-downloadROOTfile',
-	     autoEl: {tag: 'a',
-		      href: rootFileLink,
-		      html: 'ROOT File'},
-	     hidden: true
-	   },
-	   _jsonDataButton,
-	   linkmeAction
-	  );
+             xtype         : 'tbtext' },
+           combo, '-' ,
+           { text          : 'Play',
+             enableToggle  : true,
+             toggleHandler : function() { _gui.makeCall(_url() + "/play"); return false; },
+             pressed       : false
+           }, '-',
+           { text          : 'Reset Workspace',
+             enableToggle  : false,
+             handler       : function() {
+               _customlocal = _helplocal = _zoomlocal = false;
+               _gui.makeCall(_url() + "/resetWorkspace");
+               return false;
+             }
+           },'-',
+           { text          : 'Describe',
+             id            : 'canvas-describe',
+             enableToggle  : true,
+             pressed       : false,
+             toggleHandler : function() {
+               if (_helppanel)
+                 _helppanel.cfg.setProperty('visible', !_helppanel.cfg.getProperty('visible'));
+               else
+                 _helppanel.show();
+               return false; }
+           }, '-',
+           { text          : 'Customise',
+             id            : 'canvas-customize',
+             enableToggle  : true,
+             pressed       : false,
+             toggleHandler : function() {
+               if (_custompanel)
+                 _custompanel.cfg.setProperty('visible', !_custompanel.cfg.getProperty('visible'));
+               else
+                 _custompanel.show();
+               return false; }
+           } , '-',
+           { id            : 'canvas-layouts',
+             scope         : this,
+             text          : 'Layouts',
+             enableToggle  : false
+           }, '-',
+           { id            : 'canvas-dqmroot',
+             text          : '(Top)',
+             xtype         : 'tbtext'
+           }, '->',
+           {
+             /* The URL for the ROOT file is based on some heuristic
+                guesses: as such it is not guaranteed to work in 100%
+                of cases. That's why we serve this component as
+                hidden by default. We will in case enable it if the
+                result of an ad-hoc AJAX query against the server
+                returns a valid status code. */
+             xtype: 'box',
+             id: 'canvas-downloadROOTfile',
+             autoEl: {tag: 'a',
+                      href: rootFileLink,
+                      html: 'ROOT File'},
+             hidden: true
+           },
+           _jsonDataButton,
+           linkmeAction
+          );
 
     tb.render('canvas-opts');
     tb.doLayout();
     if (rootFileLink)
       _urlExists(rootFileLink,
-		 function(status){
-		   if (status == 200)
-		     Ext.getCmp('canvas-downloadROOTfile').show();
-		 });
+                 function(status){
+                   if (status == 200)
+                     Ext.getCmp('canvas-downloadROOTfile').show();
+                 });
 
     Ext.getCmp('canvas-layouts').on('click', function(btn, event) {
       if (_layoutroot != "")
-	  _gui.makeCall(_url() + "/setRoot?n=" + encodeURIComponent(_layoutroot));
+          _gui.makeCall(_url() + "/setRoot?n=" + encodeURIComponent(_layoutroot));
       return false; }, this);
 
     _customarea.innerHTML =
@@ -929,7 +929,7 @@ GUI.Plugin.DQMCanvas = new function()
     _helppanel.moveEvent.subscribe(function(type, args) {
       _helplocal = true;
       _gui.asyncCall(_url() + "/panel?n=help;show=yes;x="
-		     + args[0][0] + ";y=" + args[0][1]);
+                     + args[0][0] + ";y=" + args[0][1]);
     });
     _helppanel.hideEvent.subscribe(function(type, args) {
       _helplocal = true;
@@ -966,7 +966,7 @@ GUI.Plugin.DQMCanvas = new function()
     _custompanel.moveEvent.subscribe(function(type, args) {
       _customlocal = true;
       _gui.asyncCall(_url() + "/panel?n=custom;show=yes;x="
-		     + args[0][0] + ";y=" + args[0][1]);
+                     + args[0][0] + ";y=" + args[0][1]);
     });
     _custompanel.hideEvent.subscribe(function(type, args) {
       _customlocal = true;
@@ -1020,15 +1020,15 @@ GUI.Plugin.DQMCanvas = new function()
     }
     if (_linkMe)
       if (_linkMe.isVisible())
-	_linkMe.hide();
+        _linkMe.hide();
   };
 
   this.alterImage = function(param, value)
   {
     _gui.makeCall(_url() + "/alterImage?"
-		  + "o=" + encodeURIComponent(_focus)
-		  + ";opt=" + encodeURIComponent(param)
-		  + ";value=" + encodeURIComponent(value));
+                  + "o=" + encodeURIComponent(_focus)
+                  + ";opt=" + encodeURIComponent(param)
+                  + ";value=" + encodeURIComponent(value));
     return false;
   };
 
@@ -1048,30 +1048,30 @@ GUI.Plugin.DQMCanvas = new function()
       var title = obj.childNodes[0];
       var titlew = size.width + "px";
       if (size.width > 0 && title.style.width != titlew)
-	title.style.width = titlew;
+        title.style.width = titlew;
       else if (size < 0 && title.style.width != '')
-	title.style.width = '';
+        title.style.width = '';
 
       var nrows = obj.childNodes.length-1;
       for (var row = 0; row < nrows; ++row)
       {
-	var ncols = obj.childNodes[row+1].childNodes.length;
-	for (var col = 0; col < ncols; ++col)
-	{
-	  var img = obj.childNodes[row+1].childNodes[col];
-	  var suffix = setsize(_canvas, img, size, row, nrows, col, ncols);
-	  var url = img.src.replace(/;w=.*/, suffix);
-	  if (img.src != url)
-	  {
-	    img.dqmsrc = url;
-	    GUI.ImgLoader.load("div"+i+"."+row+"."+col, img, url);
-	  }
-	}
+        var ncols = obj.childNodes[row+1].childNodes.length;
+        for (var col = 0; col < ncols; ++col)
+        {
+          var img = obj.childNodes[row+1].childNodes[col];
+          var suffix = setsize(_canvas, img, size, row, nrows, col, ncols);
+          var url = img.src.replace(/;w=.*/, suffix);
+          if (img.src != url)
+          {
+            img.dqmsrc = url;
+            GUI.ImgLoader.load("div"+i+"."+row+"."+col, img, url);
+          }
+        }
       }
 
       var newClass = obj.className.replace(/size-[a-z]+/, size.className);
       if (obj.className != newClass)
-	obj.className = newClass;
+        obj.className = newClass;
     }
   };
 
@@ -1093,7 +1093,7 @@ GUI.Plugin.DQMCanvas = new function()
     if (_linkMe)
     {
       if (_linkMe.isVisible())
-	this.setLinkMe();
+        this.setLinkMe();
     }
 
     // Update canvas position taking into account header dynamic size.
@@ -1106,11 +1106,11 @@ GUI.Plugin.DQMCanvas = new function()
     var item = null;
 
     for (var n = 0, item = _canvas.firstChild; n < _shown.length;
-	 ++n, item = item.nextSibling)
+         ++n, item = item.nextSibling)
       item = layout("div", _canvas, item, _shown[n], _size,
-		    data.reference, data.strip, data.focus,
+                    data.reference, data.strip, data.focus,
                     data.showstats, data.showerrbars,
-		    this.focus, "", "div" + n);
+                    this.focus, "", "div" + n);
 
     // Remove whatever is left of old contents.
     while (item)
@@ -1130,18 +1130,18 @@ GUI.Plugin.DQMCanvas = new function()
       var from = 0;
       while (from < root.length)
       {
-	var to = root.indexOf("/", from);
-	if (to == -1) to = root.length;
+        var to = root.indexOf("/", from);
+        if (to == -1) to = root.length;
 
-	rootlink += " / ";
-	if (to < root.length)
-	  rootlink += "<a href='#' onclick='" + rebase + "' dqmto='"
-		      + root.substr(0, to) + "'>"
-		      + root.substr(from, to-from) + "</a>";
-	else
-	  rootlink += root.substr(from, to-from);
+        rootlink += " / ";
+        if (to < root.length)
+          rootlink += "<a href='#' onclick='" + rebase + "' dqmto='"
+                      + root.substr(0, to) + "'>"
+                      + root.substr(from, to-from) + "</a>";
+        else
+          rootlink += root.substr(from, to-from);
 
-	from = to+1;
+        from = to+1;
       }
     }
 
@@ -1182,13 +1182,13 @@ GUI.Plugin.DQMCanvas = new function()
       var y = data.y;
 
       if (x >= 0 && panel.cfg.getProperty("x") != x)
-	panel.cfg.setProperty("x", x);
+        panel.cfg.setProperty("x", x);
 
       if (y >= 0 && panel.cfg.getProperty("y") != y)
-	panel.cfg.setProperty("y", y);
+        panel.cfg.setProperty("y", y);
 
       if (panel.cfg.getProperty("visible") != show)
-	panel.cfg.setProperty("visible", show);
+        panel.cfg.setProperty("visible", show);
     }
   };
 
@@ -1350,28 +1350,28 @@ GUI.Plugin.DQMCanvas = new function()
     _zoomWin = null;
     _zoomWin = new Ext.Window(
       { modal       : false,
-	id          : 'zoomWin',
-  	title       : _focus,
-	height      : h,
-	width       : w,
-	resizable   : true,
-	shadow      : false,
-	closeAction : 'hide',
-	html        : "<img width='" + w + "' height='" + h + "' src='" + FULLROOTPATH + "/static/blank.gif' />",
-	style       : { position: 'fixed' },
-	tools       : [{ id: 'maximize',
-			 qtip: 'maximize',
-			 scope: _self,
-			 handler: function(event, toolEl, panel, tc) {
-			     var sizes = _windowSize();
-			     var offsets = _getScrollXY();
-			     // the following method(setSize()) automatically fires
-			     // the resize method so there is no need to implement
-			     // any logic on the image here, since the 'resize'
-			     // method is already taking care of it.
-			     panel.setSize(sizes.width-10,sizes.height-30);
-			     panel.setPagePosition(offsets[0],offsets[1]);
-			 }}]});
+        id          : 'zoomWin',
+        title       : _focus,
+        height      : h,
+        width       : w,
+        resizable   : true,
+        shadow      : false,
+        closeAction : 'hide',
+        html        : "<img width='" + w + "' height='" + h + "' src='" + FULLROOTPATH + "/static/blank.gif' />",
+        style       : { position: 'fixed' },
+        tools       : [{ id: 'maximize',
+                         qtip: 'maximize',
+                         scope: _self,
+                         handler: function(event, toolEl, panel, tc) {
+                             var sizes = _windowSize();
+                             var offsets = _getScrollXY();
+                             // the following method(setSize()) automatically fires
+                             // the resize method so there is no need to implement
+                             // any logic on the image here, since the 'resize'
+                             // method is already taking care of it.
+                             panel.setSize(sizes.width-10,sizes.height-30);
+                             panel.setPagePosition(offsets[0],offsets[1]);
+                         }}]});
     _zoomWin.show(this);
     _zoomWin.setVisible(false);
     _zoomWin.on('bodyresize', _self.zoomResize, _self);
@@ -1416,7 +1416,7 @@ GUI.Plugin.DQMCanvas = new function()
   {
     return { size: _size, root: _rootPath,
              focus: _focus ? _focus : '',
-	     zoom: _showzoom.show ? 'yes' : 'no' };
+             zoom: _showzoom.show ? 'yes' : 'no' };
   };
 
   return this;
