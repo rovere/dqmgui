@@ -646,9 +646,11 @@ class VisDQMImageServer : public DQMImplNet<VisDQMObject>
 public:
   static const uint32_t DQM_MSG_GET_IMAGE_DATA	= 4;
   static const uint32_t DQM_MSG_DUMP_PROFILE	= 5;
-  static const uint32_t DQM_MSG_GET_JSON_DATA	= 6;
+  static const uint32_t DQM_MSG_GET_JSON_DATA   = 6;
+  static const uint32_t DQM_MSG_GET_JSROOT_DATA	= 7;
   static const uint32_t DQM_REPLY_IMAGE_DATA	= 105;
   static const uint32_t DQM_REPLY_JSON_DATA 	= 106;
+  static const uint32_t DQM_REPLY_JSROOT_DATA   = 107;
 
   typedef std::vector<DQMRenderPlugin *> RenderPlugins;
   typedef std::map<std::string, lat::Time> BlackList;
@@ -773,7 +775,7 @@ protected:
 	}
 	return true;
       }
-      else if (type == DQM_MSG_GET_IMAGE_DATA || type == DQM_MSG_GET_JSON_DATA)
+      else if (type == DQM_MSG_GET_IMAGE_DATA || type == DQM_MSG_GET_JSON_DATA || type == DQM_MSG_GET_JSROOT_DATA)
       {
         Time start = Time::current();
 	if (debug_)
@@ -861,7 +863,7 @@ protected:
           if(! readRequest(info, odata, objs, numobjs))
             return false;
 
-        if (type == DQM_MSG_GET_JSON_DATA)
+        if (type == DQM_MSG_GET_JSON_DATA || type == DQM_MSG_GET_JSROOT_DATA)
           if(! readJsonRequest(odata, objs, numobjs))
             return false;
 
@@ -875,6 +877,9 @@ protected:
         {
           getJson(&objs[0], numobjs, imgdata);
           words[1] = DQM_REPLY_JSON_DATA;
+        }else if (type == DQM_MSG_GET_JSROOT_DATA){
+          getJsRoot(&objs[0], numobjs, imgdata);
+          words[1] = DQM_REPLY_JSROOT_DATA;
         }
 	words[0] += imgdata.size();
 	msg->data.reserve(msg->data.size() + words[0]);
@@ -1197,6 +1202,16 @@ private:
       return true;
     }
 
+  void getJsRoot(VisDQMObject *objs, size_t /*numobjs*/, DataBlob &jsondata)
+  {
+    TObject *ob = objs[0].object;
+    std::string json ="";
+    json += rootObjectToArray(ob);
+    DataBlob tmp(json.begin(), json.end());
+    jsondata = tmp;
+    return;
+  }
+
   void getJson(VisDQMObject *objs, size_t /*numobjs*/, DataBlob &jsondata)
   {
     TObject *ob = objs[0].object;
@@ -1299,7 +1314,6 @@ private:
     {
       json = "{'hist': 'unsupported type'}";
     }
-
     replacePseudoNumericValues(json);
     boost::replace_all(json, "'","\"");
 

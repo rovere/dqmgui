@@ -1372,8 +1372,11 @@ class VisDQMRenderLink
 {
   static const uint32_t DQM_MSG_GET_IMAGE_DATA  	= 4;
   static const uint32_t DQM_MSG_GET_JSON_DATA		= 6;
+  static const uint32_t DQM_MSG_GET_JSROOT_DATA         = 7;
   static const uint32_t DQM_MSG_REPLY_IMAGE_DATA 	= 105;
   static const uint32_t DQM_REPLY_JSON_DATA 		= 106;
+  static const uint32_t DQM_REPLY_JSROOT_DATA           = 107;
+
 
   static const int MIN_WIDTH = 532;
   static const int MIN_HEIGHT = 400;
@@ -1602,7 +1605,7 @@ public:
   prepareJson(std::string &jsonData,
               std::string &type,
               const std::string &path,
-              const std::map<std::string, std::string> &,
+              const std::map<std::string, std::string> &opts,
               const std::string *streamers,
               DQMNet::Object *obj,
               size_t numobj,
@@ -1612,7 +1615,11 @@ public:
     Image protoimg;
     initimg(protoimg, path, reqspec, streamers, obj, numobj);
     Lock gate(&lock_);
-    return ! quiet_ && makeJson(jsonData, type, protoimg, reqspec);
+    bool jsroot = false;
+    if( opts.find("jsroot") != opts.end()){
+        jsroot = true;
+    }
+    return ! quiet_ && makeJson(jsonData, type, protoimg, reqspec, jsroot);
   }
 
  private:
@@ -1801,7 +1808,7 @@ public:
     }
 
   void
-  requestimg(Image &img, std::string &imgbytes, const bool json=false)
+  requestimg(Image &img, std::string &imgbytes, const bool json=false, const bool jsroot=false)
     {
       assert(imgbytes.empty());
 
@@ -1905,11 +1912,19 @@ public:
 
       try
       {
+        uint32_t type;
+        if(json){
+          type = DQM_MSG_GET_JSON_DATA;
+        }else if( jsroot ){
+          type = DQM_MSG_GET_JSROOT_DATA;
+        }else{
+          type = DQM_MSG_GET_IMAGE_DATA;
+        }
 	uint32_t words[11] =
 	  {
 	    (uint32_t)(sizeof(words) + img.pathname.size() + img.imagespec.size()
 	    + img.databytes.size() + img.qdata.size()),
-	    (json ? DQM_MSG_GET_JSON_DATA : DQM_MSG_GET_IMAGE_DATA),
+	    type,
 	    img.flags,
 	    img.tag,
 	    (uint32_t)((img.version >> 0 ) & 0xffffffff),
@@ -1933,7 +1948,7 @@ public:
 
 	if (sock.xread(&words[0], 2*sizeof(uint32_t)) == 2*sizeof(uint32_t)
 	    && words[0] >= 2*sizeof(uint32_t)
-            && (words[1] == DQM_MSG_REPLY_IMAGE_DATA || words[1] == DQM_REPLY_JSON_DATA ))
+            && (words[1] == DQM_MSG_REPLY_IMAGE_DATA || words[1] == DQM_REPLY_JSON_DATA || words[1] == DQM_REPLY_JSROOT_DATA))
 	{
 	  message.resize(words[0] - 2*sizeof(uint32_t), '\0');
 	  if (sock.xread(&message[0], message.size()) == message.size())
@@ -1959,7 +1974,7 @@ public:
 	{
 	  srv.checkme = false;
 	  srv.lastimg.clear();
-	  if (!json)
+	  if (!json && !jsroot)
             compress(img, imgbytes);
 	}
 	srv.pending.pop_front();
@@ -2158,7 +2173,8 @@ public:
   bool makeJson(std::string &jsonData,
                 std::string &imgtype,
                 Image &protoreq,
-                const std::string &spec)
+                const std::string &spec,
+                const bool jsroot)
   {
     jsonData.clear();
     imgtype.clear();
@@ -2172,7 +2188,11 @@ public:
     assert(img.pngbytes.empty());
     img.busy = true;
     img.inuse++;
-    requestimg(img, jsonData, true);
+    if(jsroot){
+        requestimg(img, jsonData, false, true);
+    }else{
+        requestimg(img, jsonData, true);
+    }
 
     assert(img.inuse > 0);
     assert(img.busy);

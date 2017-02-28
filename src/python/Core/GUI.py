@@ -306,7 +306,6 @@ class Server:
       fileinfo[2] = open(fileinfo[0]).read()
     self.lock.release()
     return fileinfo[2]
-
   def _templatePage(self, name, variables):
     """Generate HTML page from cheetah template and variables."""
     template = self._maybeRefreshFile(self.templates, name)
@@ -562,6 +561,26 @@ class Server:
       return self.start(workspace = self._workspace(args[0]).name)
     else:
       return self.start(workspace = self.workspaces[0].name)
+# -----------------------------------------------------------------
+  @expose
+  @tools.params()
+  def jsrootfairy(self, *args, **kwargs):
+    try:
+      if len(args) >= 1:
+          for s in self.sources:
+            if getattr(s, 'jsonhook', None) == args[0]:
+              kwargs['jsroot'] = 'true'
+              data = s.getJson(*args[1:], **kwargs)
+              return data
+    except Exception, e:
+      o = StringIO()
+      traceback.print_exc(file=o)
+      log("WARNING: unable to produce a json: "
+          + (str(e) + "\n" + o.getvalue()).replace("\n", " ~~ "),
+          severity=logging.WARNING)
+
+    self._noResponseCaching()
+    return str(e);
 
 # -----------------------------------------------------------------
   @expose
