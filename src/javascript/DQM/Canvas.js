@@ -485,16 +485,19 @@ GUI.Plugin.DQMCanvas = new function()
         _jsonModeChanged = true;
         if(_jsonDataButton.pressed)
           _gui.makeCall(_url() + "/setJsonmode?mode=yes")
-        else
+        else{
           _gui.makeCall(_url() + "/setJsonmode?mode=no")
+        }
   }
 
   this.switchJsRootMode = function() {
-    _jsRootMode = __jsRootButton.pressed;
+    _jsRootMode = _jsRootButton.pressed;
     if(_jsRootButton.pressed)
       _gui.makeCall(_url() + "/setJSrootmode?mode=yes")
-    else
+    else{
       _gui.makeCall(_url() + "/setJSrootmode?mode=no")
+      _zoomWin.update("<img width='" + w + "' height='" + h + "' src='" + FULLROOTPATH + "/static/blank.gif' />")
+    }
   }
 
   this.onresize = function()
@@ -1246,7 +1249,11 @@ GUI.Plugin.DQMCanvas = new function()
     if ( (_jsonMode || _jsonMode == null)
          && (Ext.get("jsonFrame") && Ext.get("jsonFrame").dom.src != _jsonURL) )
       _self.updateJsonWin();
-    _self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
+    //_self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
+    if(_jsRootButton.pressed)
+      _zoomWin.update('<h2>Hello</h2>')
+    else
+      _self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
     if (title != _zoomWin.title)
       _zoomWin.setTitle(title);
   };
