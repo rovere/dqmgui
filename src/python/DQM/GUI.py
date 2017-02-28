@@ -12,6 +12,11 @@ from struct import pack, unpack
 from cStringIO import StringIO
 import os, re, time, socket, shutil, tempfile, cgi, cjson, hmac, hashlib
 
+# Prometheus experimental setup
+from prometheus_client import start_http_server, Histogram
+DQMGUI_PLOT_TIME = Histogram('dqmgui_plot_time_seconds', 'Time spent processing a plot', ['source'])
+start_http_server(8000)
+
 DEF_DQM_PORT = 9090
 
 # Validate DQM file paths.
@@ -432,35 +437,37 @@ class DQMToJSON(Accelerator.DQMToJSON):
   @tools.params()
   @tools.gzip()
   def samples(self, *args, **options):
-    sources = dict((s.plothook, s) for s in self.server.sources
-		   if getattr(s, 'plothook', None))
-    (stamp, result) = self._samples(sources.values(), options)
-    response.headers["Content-Type"] = "text/plain"
-    response.headers["Last-Modified"] = http.HTTPDate(stamp)
-    return result
+    with DQMGUI_PLOT_TIME.labels(source='json_samples').time():
+      sources = dict((s.plothook, s) for s in self.server.sources
+                     if getattr(s, 'plothook', None))
+      (stamp, result) = self._samples(sources.values(), options)
+      response.headers["Content-Type"] = "text/plain"
+      response.headers["Last-Modified"] = http.HTTPDate(stamp)
+      return result
 
   @expose
   @tools.params()
   def default(self, srcname, runnr, dsP, dsW, dsT, *path, **options):
-    sources = dict((s.plothook, s) for s in self.server.sources
-		   if getattr(s, 'plothook', None))
-    layoutSrc = None
-    for s in self.server.sources:
-      if isinstance(s, DQMLayoutSource):
-        layoutSrc = s
-    if srcname in sources:
-      (stamp, result) = self._list(layoutSrc,
-                                   sources[srcname],
-                                   int(runnr),
-                                   "/".join(("", dsP, dsW, dsT)),
-                                   "/".join(path), options)
-      response.headers["Content-Type"] = "text/plain"
-      response.headers["Last-Modified"] = http.HTTPDate(stamp)
-      return result
-    else:
-      response.headers["Content-Type"] = "text/plain"
-      response.headers["Last-Modified"] = http.HTTPDate(server.stamp)
-      return "{}"
+    with DQMGUI_PLOT_TIME.labels(source='json_browse').time():
+      sources = dict((s.plothook, s) for s in self.server.sources
+                     if getattr(s, 'plothook', None))
+      layoutSrc = None
+      for s in self.server.sources:
+        if isinstance(s, DQMLayoutSource):
+          layoutSrc = s
+      if srcname in sources:
+        (stamp, result) = self._list(layoutSrc,
+                                     sources[srcname],
+                                     int(runnr),
+                                     "/".join(("", dsP, dsW, dsT)),
+                                     "/".join(path), options)
+        response.headers["Content-Type"] = "text/plain"
+        response.headers["Last-Modified"] = http.HTTPDate(stamp)
+        return result
+      else:
+        response.headers["Content-Type"] = "text/plain"
+        response.headers["Last-Modified"] = http.HTTPDate(server.stamp)
+        return "{}"
 
 # --------------------------------------------------------------------
 # Management interface for talking to the ROOT rendering process.
@@ -481,7 +488,8 @@ class DQMUnknownSource(Accelerator.DQMUnknownSource):
 
   # Generate a "missing in action" image for an unknown object.
   def plot(self, *path, **options):
-    return self._plot("/".join(path[4:]), options)
+    with DQMGUI_PLOT_TIME.labels(source='unknown').time():
+      return self._plot("/".join(path[4:]), options)
 
 # --------------------------------------------------------------------
 # Source for plotting overlaid DQM objects.  Requests the object from
@@ -495,18 +503,19 @@ class DQMOverlaySource(Accelerator.DQMOverlaySource):
   # and generates final list of (source, runnr, dataset, path)
   # tuples to pass to C++ layer to process.
   def plot(self, *junk, **options):
-    sources = dict((s.plothook, s) for s in self.server.sources
-		   if getattr(s, 'plothook', None))
+    with DQMGUI_PLOT_TIME.labels(source='overlay').time():
+      sources = dict((s.plothook, s) for s in self.server.sources
+                     if getattr(s, 'plothook', None))
 
-    objs = options.get("obj", [])
-    if isinstance(objs, str): objs = [objs]
-    final = []
-    for o in objs:
-      (srcname, runnr, dsP, dsW, dsT, path) = o.split("/", 5)
-      if srcname in sources and srcname != "unknown":
-        final.append((sources[srcname], int(runnr),
-                      "/%s/%s/%s" % (dsP, dsW, dsT), path))
-    return self._plot(final, options)
+      objs = options.get("obj", [])
+      if isinstance(objs, str): objs = [objs]
+      final = []
+      for o in objs:
+        (srcname, runnr, dsP, dsW, dsT, path) = o.split("/", 5)
+        if srcname in sources and srcname != "unknown":
+          final.append((sources[srcname], int(runnr),
+                        "/%s/%s/%s" % (dsP, dsW, dsT), path))
+      return self._plot(final, options)
 
 # --------------------------------------------------------------------
 # Source for plotting strip charts of DQM objects.
@@ -533,7 +542,8 @@ class DQMStripChartSource(Accelerator.DQMStripChartSource):
       if srcname in sources and srcname != "unknown":
         info = (sources[srcname], int(runnr), "/" + dataset)
 
-    return self._plot(sources.values(), info, "/".join(path), options)
+    with DQMGUI_PLOT_TIME.labels(source='strip').time():
+      return self._plot(sources.values(), info, "/".join(path), options)
 
 # --------------------------------------------------------------------
 # Source for plotting byLumi Certification Results of DQM.
@@ -558,7 +568,8 @@ class DQMCertificationSource(Accelerator.DQMCertificationSource):
       if srcname in sources and srcname != "unknown":
         info = (sources[srcname], int(runnr), "/" + dataset)
 
-    return self._plot(info, ".".join(path), "/".join(path[:-1]), path[-1], options)
+    with DQMGUI_PLOT_TIME.labels(source='certification').time():
+      return self._plot(info, ".".join(path), "/".join(path[:-1]), path[-1], options)
 
 # --------------------------------------------------------------------
 # DQM data source which provides layout content from python
@@ -632,7 +643,8 @@ class DQMLiveSource(Accelerator.DQMLiveSource):
 
   # Generate an object image given an object path and options.
   def plot(self, runnr, dsP, dsW, dsT, *path, **options):
-    return self._plot("/".join(path), options)
+    with DQMGUI_PLOT_TIME.labels(source='live').time():
+      return self._plot("/".join(path), options)
 
 # --------------------------------------------------------------------
 # DQM data source providing content from archived DQM data files.
@@ -655,15 +667,17 @@ class DQMArchiveSource(Accelerator.DQMArchiveSource):
   # 'rootobj'), the run number, dataset path, object name and render
   # options.  See ROOTImage for details about image generation.
   def plot(self, runnr, dsP, dsW, dsT, *path, **options):
-    return self._plot(int(runnr), "/".join(('', dsP, dsW, dsT)),
-		      "/".join(path), options)
+    with DQMGUI_PLOT_TIME.labels(source='archive').time():
+      return self._plot(int(runnr), "/".join(('', dsP, dsW, dsT)),
+                        "/".join(path), options)
 
   # Generate a json describtion given an object type ('scalar' or
   # 'rootobj'), the run number, dataset path, object name and render
   # options.
   def getJson(self, runnr, dsP, dsW, dsT, *path, **options):
-    return self._getJson(int(runnr), "/".join(('', dsP, dsW, dsT)),
-                         "/".join(path), options)
+    with DQMGUI_PLOT_TIME.labels(source='json_archive').time():
+      return self._getJson(int(runnr), "/".join(('', dsP, dsW, dsT)),
+                           "/".join(path), options)
 
 # --------------------------------------------------------------------
 # .sessiondef
