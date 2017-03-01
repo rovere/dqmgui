@@ -1249,9 +1249,13 @@ GUI.Plugin.DQMCanvas = new function()
     if ( (_jsonMode || _jsonMode == null)
          && (Ext.get("jsonFrame") && Ext.get("jsonFrame").dom.src != _jsonURL) )
       _self.updateJsonWin();
-    //_self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
-    if(_jsRootButton.pressed)
-      _zoomWin.update('<h2>Hello</h2>')
+    if(_jsRootButton.pressed){
+      _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
+      var jsRootURL = _jsonURL.replace('formatted', 'jsroot')
+      JSROOT.NewHttpRequest(jsRootURL, 'object', function(obj) {
+         JSROOT.draw("drawing", obj);
+      }).send();
+    }
     else
       _self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
     if (title != _zoomWin.title)

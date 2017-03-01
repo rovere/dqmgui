@@ -63,6 +63,14 @@ pre.wide
 /**********************************************************************/
 /* Structure elements: header, content, sidebars etc.  */
 
+#root_ctx_menu{
+  z-index: 99999;
+}
+
+#jsroot_enlarge_div{
+  z-index: 99900;
+}
+
 #imgloader {
   visibility:		hidden;
   position:		fixed;
