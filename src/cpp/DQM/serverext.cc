@@ -4751,7 +4751,7 @@ protected:
   static std::string
   sessionZoomConfig(const py::dict &session)
     {
-      bool show, jsonmode;
+      bool show, jsonmode, jsrootmode;
       int  x, jx;
       int  y, jy;
       int  w, jw;
@@ -4767,11 +4767,12 @@ protected:
       jy = py::extract<int>(session.get("dqm.zoom.jy", -1));
       jw = py::extract<int>(session.get("dqm.zoom.jw", -1));
       jh = py::extract<int>(session.get("dqm.zoom.jh", -1));
+      jsrootmode = py::extract<bool>(session.get("dqm.zoom.jsrootmode", false));
 
       return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5,\
-                           'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10}")
+                           'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10,'jsrootmode':%11}")
           .arg(show).arg(x).arg(y).arg(w).arg(h)
-          .arg(jsonmode).arg(jx).arg(jy).arg(jw).arg(jh);
+          .arg(jsonmode).arg(jx).arg(jy).arg(jw).arg(jh).arg(jsrootmode);
     }
 
   // Produce Certification zoom configuration format.

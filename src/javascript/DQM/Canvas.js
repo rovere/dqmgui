@@ -1112,6 +1112,10 @@ GUI.Plugin.DQMCanvas = new function()
     if (_jsonDataButton.pressed != data.zoom.jsonmode)
       _jsonDataButton.toggle(data.zoom.jsonmode, true);
 
+    _jsRootMode = data.zoom.jsrootmode || false;
+    if (_jsRootButton.pressed !=  _jsRootMode)
+      _jsRootButton.toggle(_jsRootMode, true);
+
     if (_linkMe)
     {
       if (_linkMe.isVisible())
@@ -1119,7 +1123,9 @@ GUI.Plugin.DQMCanvas = new function()
     }
 
     // Update canvas position taking into account header dynamic size.
-    $('canvas-group').style.top = $('header').offsetHeight + 'px';
+    //$('canvas-group').style.top = $('header').offsetHeight + 'px';
+    var offset = document.getElementById('header').offsetHeight
+    document.getElementById('canvas-group').setAttribute("style","top:"+ offset +"px");
 
     // Run a loop to handle new contents.  We modify the contents
     // of "_canvas" in place in order to avoid unpleasant flicker
