@@ -1244,6 +1244,55 @@ GUI.Plugin.DQMCanvas = new function()
       Ext.get("jsonFrame").dom.src = src;
   };
 
+  this.updateJsRootOverlays = function()
+  {
+    let params = []
+    let regEx = /obj=[^;]*/;
+    let decode = decodeURIComponent(_focusURL)
+    let match = null;
+    let colors = [602, 632, 416, 616, 1]
+
+    while (match = regEx.exec(decode))
+    {
+      params.push(match[0].slice(4));
+      decode = decode.slice(match.index + match[0].length + 1)
+    }
+
+    function urlToJSON(url)
+    {
+      return new Promise((resolve, reject) => {
+        JSROOT.NewHttpRequest(url, 'object', obj => {
+          obj ? resolve(obj) : resolve('no object found')
+        }).send();
+      })
+    }
+
+    let promises = params.map(param => {
+      return urlToJSON(FULLROOTPATH + "/jsrootfairy/" + param)
+    });
+
+    Promise.all(promises).then(objects => {
+      objects.forEach((ob, index) => {
+        ob.fLineColor = colors[index]
+        if (index > 0 )
+          ob.fName = 'Ref ' + index;
+        JSROOT.draw("drawing", ob);
+      })
+    })
+  }
+
+  this.updateJsRoot = function()
+  {
+    _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
+    let jsRootURL = _jsonURL.replace('formatted', 'jsroot').replace('jsonfairy', 'jsrootfairy')
+    if (_focusURL.includes('overlay?'))
+      _self.updateJsRootOverlays()
+    else
+      JSROOT.NewHttpRequest(jsRootURL, 'object', obj => {
+         JSROOT.redraw("drawing", obj);
+      }).send();
+  }
+
   this.updateZoomPlot = function()
   {
     var title     = _focus ? _focus : '';
@@ -1255,13 +1304,8 @@ GUI.Plugin.DQMCanvas = new function()
     if ( (_jsonMode || _jsonMode == null)
          && (Ext.get("jsonFrame") && Ext.get("jsonFrame").dom.src != _jsonURL) )
       _self.updateJsonWin();
-    if(_jsRootButton.pressed){
-      _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
-      var jsRootURL = _jsonURL.replace('formatted', 'jsroot')
-      JSROOT.NewHttpRequest(jsRootURL, 'object', function(obj) {
-         JSROOT.draw("drawing", obj);
-      }).send();
-    }
+    if (_jsRootMode)
+      _self.updateJsRoot()
     else
       _self.updateZoomImage(_zoomWin.body.dom.firstChild, winWidth, winHeight, current);
     if (title != _zoomWin.title)
