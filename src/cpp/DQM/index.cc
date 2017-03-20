@@ -2504,11 +2504,13 @@ fixStreamerInfo(const Filename &indexdir, size_t streamerid)
     for (size_t i = 1, e = streamers.size(); i != e; ++i) {
       const std::string &original = streamers.key(i);
       if (i == streamerid) {
+        ASSERT(extended_streamers.search(partial_streamerinfoFromRoot) != StringAtomTree::npos);
         extended_streamers.insert(partial_streamerinfoFromRoot);
         DEBUG(2, partial_streamerinfoFromRoot.size()
               << " bytes of new streamerInfo will replace " << original.size()
               << " bytes of previous streamer info at position " << i << "\n");
       } else {
+        ASSERT(extended_streamers.search(original) != StringAtomTree::npos);
         extended_streamers.insert(original);
       }
     }
