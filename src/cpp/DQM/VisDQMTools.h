@@ -18,10 +18,6 @@
 # include <cstdio>
 
 
-void analyseClass(TClass *, std::set<std::string> &);
-void loopOnDataMembers(TClass *, std::set<std::string> &);
-void loopOnBases(TClass *, std::set<std::string> &);
-
 /// Options on how we want fatal signals to be handled.
 static const int FATAL_OPTS = (lat::Signal::FATAL_DEFAULT
 			       & ~(lat::Signal::FATAL_ON_INT
@@ -138,6 +134,11 @@ std::ostream &operator<<(std::ostream &out, IndexKey c)
   return out;
 }
 
+#if !VISDQM_NO_ROOT
+void analyseClass(TClass *, std::set<std::string> &);
+void loopOnDataMembers(TClass *, std::set<std::string> &);
+void loopOnBases(TClass *, std::set<std::string> &);
+
 void loopOnDataMembers(TClass *tcl,
                        std::set<std::string> &unique_classes)
 {
@@ -175,9 +176,6 @@ void analyseClass(TClass *cl,
   loopOnDataMembers(cl, unique_classes);
 }
 
-
-
-#if !VISDQM_NO_ROOT
 //----------------------------------------------------------------------
 /** Extract the next serialised ROOT object from @a buf.  Returns null
     if there are no more objects in the buffer, or a null pointer was
