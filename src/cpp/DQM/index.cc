@@ -1507,7 +1507,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
   // Grab streamer info before we've opened any ROOT files.
   std::string streamerinfoFromRoot;
   std::string streamerinfoFromStream;
-  buildExtendedStreamerInfo(streamerinfoFromRoot);
+  buildCompleteStreamerInfo(streamerinfoFromRoot);
   DEBUG(2, streamerinfoFromRoot.size() << " bytes of streamer info captured\n");
 
   // Prepare but do not yet open the index.  Remember the time when we
@@ -2467,7 +2467,7 @@ fixStreamerInfo(const Filename &indexdir, size_t streamerid)
 {
   // Grab streamer info before we've opened any ROOT files.
   std::string partial_streamerinfoFromRoot;
-  buildExtendedStreamerInfo(partial_streamerinfoFromRoot);
+  buildCompleteStreamerInfo(partial_streamerinfoFromRoot);
   DEBUG(2, partial_streamerinfoFromRoot.size()
         << " bytes of additional streamer info captured\n");
 

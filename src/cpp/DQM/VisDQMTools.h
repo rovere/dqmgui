@@ -9,10 +9,18 @@
 #  include "TBufferFile.h"
 #  include "TStreamerInfo.h"
 #  include "TClass.h"
+#  include "TDataMember.h"
 #  include "TROOT.h"
 # endif
 # include <iostream>
+# include <set>
+# include <string>
 # include <cstdio>
+
+
+void analyseClass(TClass *, std::set<std::string> &);
+void loopOnDataMembers(TClass *, std::set<std::string> &);
+void loopOnBases(TClass *, std::set<std::string> &);
 
 /// Options on how we want fatal signals to be handled.
 static const int FATAL_OPTS = (lat::Signal::FATAL_DEFAULT
@@ -130,6 +138,45 @@ std::ostream &operator<<(std::ostream &out, IndexKey c)
   return out;
 }
 
+void loopOnDataMembers(TClass *tcl,
+                       std::set<std::string> &unique_classes)
+{
+  TList *dms = tcl->GetListOfDataMembers();
+  TIter next(dms);
+  while (TObject *obj = next()) {
+    TClass *cl = TClass::GetClass(((TDataMember *)obj)->GetFullTypeName());
+    if (cl && cl->HasDictionary()) {
+      unique_classes.insert(cl->GetName());
+      analyseClass(cl, unique_classes);
+    }
+  }
+}
+
+
+void loopOnBases(TClass *tcl,
+                 std::set<std::string> &unique_classes)
+{
+  TList *bases = tcl->GetListOfBases();
+  TIter next(bases);
+  while (TObject *obj = next()) {
+    TClass *cl = TClass::GetClass(obj->GetName());
+    if (cl && cl->HasDictionary()) {
+      unique_classes.insert(cl->GetName());
+      analyseClass(cl, unique_classes);
+    }
+  }
+}
+
+
+void analyseClass(TClass *cl,
+                  std::set<std::string> &unique_classes)
+{
+  loopOnBases(cl, unique_classes);
+  loopOnDataMembers(cl, unique_classes);
+}
+
+
+
 #if !VISDQM_NO_ROOT
 //----------------------------------------------------------------------
 /** Extract the next serialised ROOT object from @a buf.  Returns null
@@ -197,52 +244,35 @@ loadStreamerInfo(const std::string &data)
     presently running program, not the version of the ROOT objects
     read in: ROOT will convert whatever we read into the version we
     run now.  This function should be called before any ROOT files
-    have been opened as file opens may modify the streamer info. */
-inline void
-buildStreamerInfo(std::string &data)
-{
-  static const char *classes[] =
-    {
-      "TH1F", "TH1S",
-      "TH2F", "TH2S",
-      "TH3F", "TH3S",
-      "TProfile", "TProfile2D",
-      0
-    };
-
-  TBufferFile buf(TBufferFile::kWrite);
-  for (const char **name = classes; *name; ++name)
-    buf.WriteObject(TClass::GetClass(*name)->GetStreamerInfo());
-
-  data.resize(buf.Length());
-  memcpy(&data[0], buf.Buffer(), buf.Length());
-}
-
-/** Build a streamer info data blob corresponding to the current ROOT
-    version into @a data.  This represents the ROOT version of the
-    presently running program, not the version of the ROOT objects
-    read in: ROOT will convert whatever we read into the version we
-    run now.  This function should be called before any ROOT files
     have been opened as file opens may modify the streamer info. This
     function properly saves all the classes needed to decode the ROOT
     objects handled by the DQM GUI, including all base classes of the
     objects themselves and of all their streamed members. */
 inline void
-buildExtendedStreamerInfo(std::string &data)
+buildCompleteStreamerInfo(std::string &data)
 {
+  std::set<std::string> unique_classes;
   static const char *classes[] =
     {
       "TH1F", "TH1S", "TH1D", "TH1I",
       "TH2F", "TH2S", "TH2D", "TH2I",
       "TH3F", "TH3S", "TH3D", "TH3I",
-      "TProfile", "TProfile2D",
-      "TF1", "TAxis",
-      0
+      "TProfile", "TProfile2D", 0
     };
 
+  int i = 0;
+  while (classes[i])
+  {
+    TClass *tcl = TClass::GetClass(classes[i]);
+    if (!tcl)
+      continue;
+    unique_classes.insert(classes[i]);
+    analyseClass(tcl, unique_classes);
+    ++i;
+  }
   TBufferFile buf(TBufferFile::kWrite);
-  for (const char **name = classes; *name; ++name)
-    TClass::GetClass(*name)->GetStreamerInfo();
+  for (auto & cl : unique_classes)
+    TClass::GetClass(cl.data())->GetStreamerInfo();
 
   TIter next(gROOT->GetListOfStreamerInfo());
   TStreamerInfo * si;
@@ -252,6 +282,8 @@ buildExtendedStreamerInfo(std::string &data)
   data.resize(buf.Length());
   memcpy(&data[0], buf.Buffer(), buf.Length());
 }
+
+
 #endif // VISDQM_NO_ROOT
 
 #endif // DQM_VISDQMTOOLS_H
