@@ -60,7 +60,7 @@ MODE = 'Offline'
 
 # Detect mode of operation
 hostName = getfqdn()
-if hostName.split(".")[1] == "cms":
+if hostName.endswith(".cms"):
   MODE = 'Online'
 
 # --------------------------------------------------------------------
