@@ -2,7 +2,7 @@ GUI.Plugin.CompPhEDExLinkBase = new function()
 {
   var _self = this;
   var _gui = null;
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
 
   this._optPeriodTime = null;
   this._optPeriodSpan = null;
@@ -99,20 +99,20 @@ GUI.Plugin.CompPhEDExLinkBase = new function()
     if (_canvas.innerHTML != content)
       _canvas.innerHTML = content;
 
-    this._optPeriodTime  = $('period-time');
-    this._optPeriodSpan  = $('period-span');
-    this._optPeriodUpto  = $('period-upto');
-    this._optQuantity    = $('qty');
-    this._optGrouping    = $('grouping');
-    this._optSrcGrouping = $('src-grouping');
-    this._optLinks       = $('links');
-    this._optFilterFrom  = $('from-filter');
-    this._optFilterTo    = $('to-filter');
-    this._optDBProd      = $('db-prod');
-    this._optDBDebug     = $('db-debug');
-    this._optDBDev       = $('db-dev');
-    this._optDBTestbed   = $('db-testbed');
-    this._optDBTestbed2  = $('db-testbed2');
+    this._optPeriodTime  = _$('period-time');
+    this._optPeriodSpan  = _$('period-span');
+    this._optPeriodUpto  = _$('period-upto');
+    this._optQuantity    = _$('qty');
+    this._optGrouping    = _$('grouping');
+    this._optSrcGrouping = _$('src-grouping');
+    this._optLinks       = _$('links');
+    this._optFilterFrom  = _$('from-filter');
+    this._optFilterTo    = _$('to-filter');
+    this._optDBProd      = _$('db-prod');
+    this._optDBDebug     = _$('db-debug');
+    this._optDBDev       = _$('db-dev');
+    this._optDBTestbed   = _$('db-testbed');
+    this._optDBTestbed2  = _$('db-testbed2');
 
     this._optPeriodTime.onchange  = function() { _self.setPeriod(); return false; }
     this._optPeriodSpan.onchange  = function() { _self.setPeriod(); return false; }
@@ -286,11 +286,11 @@ GUI.Plugin.CompPhEDExLinkImage = new function()
 
     this.base.attach(gui, content, preopts, postopts);
 
-    _imgPlot       = $('plot');
-    _imgLegend     = $('legend');
+    _imgPlot       = _$('plot');
+    _imgLegend     = _$('legend');
     _imgPlot.src   = ROOTPATH + "/static/blank.gif";
     _imgLegend.src = ROOTPATH + "/static/blank.gif";
-    _optPlotSize   = $('plot-size');
+    _optPlotSize   = _$('plot-size');
     _optPlotSize.onchange = function() { _self.base.setOption('size', this.value); return false; }
   }
 
@@ -422,15 +422,15 @@ GUI.Plugin.CompPhEDExBlockLatency = new function()
 
     this.base.attach(gui, content, preopts, postopts);
 
-    _imgPlot        = $('plot');
+    _imgPlot        = _$('plot');
     _imgPlot.src    = ROOTPATH + "/static/blank.gif";
-    _optPlotSize    = $('plot-size');
-    _optPlotDetail  = $('plot-detail');
-    _optRangeUnit   = $('range-unit');
-    _optRangeLinLog = $('range-linlog');
-    _optRangeBins   = $('range-bins');
-    _optRangeYMin   = $('range-ymin');
-    _optRangeYMax   = $('range-ymax');
+    _optPlotSize    = _$('plot-size');
+    _optPlotDetail  = _$('plot-detail');
+    _optRangeUnit   = _$('range-unit');
+    _optRangeLinLog = _$('range-linlog');
+    _optRangeBins   = _$('range-bins');
+    _optRangeYMin   = _$('range-ymin');
+    _optRangeYMax   = _$('range-ymax');
 
     _optPlotSize.onchange    = function() { _self.base.setOption('size', this.value); return false; }
     _optPlotDetail.onchange  = function() { _self.base.setOption('detail', this.value); return false; }
@@ -440,9 +440,9 @@ GUI.Plugin.CompPhEDExBlockLatency = new function()
     _optRangeYMin.onchange   = function() { _self.base.setOption('range-ymin', this.value); return false; }
     _optRangeYMax.onchange   = function() { _self.base.setOption('range-ymax', this.value); return false; }
 
-    $('opt-qty').style.display = 'none';
-    $('opt-src-grouping').style.display = 'none';
-    $('opt-from-filter').style.display = 'none';
+    _$('opt-qty').style.display = 'none';
+    _$('opt-src-grouping').style.display = 'none';
+    _$('opt-from-filter').style.display = 'none';
     this.base._optQuantity.selectedIndex = 0;
     this.base._optSrcGrouping.selectedIndex = 0;
     this.base._optFilterFrom.value = '';
@@ -532,12 +532,12 @@ GUI.Plugin.CompPhEDExRegionCrossRate = new function()
       + "</tr>";
 
     this.base.attach(gui, content, "", postopts);
-    $('link-options').parentNode.style.padding = '1.4em 0 0 0';
-    $('link-options').style.marginLeft = '1em';
+    _$('link-options').parentNode.style.padding = '1.4em 0 0 0';
+    _$('link-options').style.marginLeft = '1em';
 
-    _header = $('phedex-table-header');
-    _body = $('phedex-table-body');
-    _data = $('phedex-data');
+    _header = _$('phedex-table-header');
+    _body = _$('phedex-table-body');
+    _data = _$('phedex-data');
   }
 
   this.detach = function()

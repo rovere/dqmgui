@@ -1,6 +1,6 @@
 GUI.Plugin.CompTier0Summary = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   this.attach = function(gui) {}
   this.detach = function()
   {
@@ -111,7 +111,7 @@ GUI.Plugin.CompTier0Summary = new function()
 
 GUI.Plugin.Tier0Storage = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   this.attach = function(gui) {}
   this.detach = function()
   {

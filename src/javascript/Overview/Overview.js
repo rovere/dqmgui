@@ -17,14 +17,14 @@ GUI.Plugin.OverviewHeader = new function() {
   var _data = null;
 
   /** The DOM element for the main header. */
-  var _header = $('header');
+  var _header = _$('header');
 
   /** The DOM element for the message area. */
-  var _messages = $('messages');
+  var _messages = _$('messages');
 
   /** The DOM element for the sub-header below the main header, where
       we show three interaction menus: none, workspaces or views. */
-  var _subheader = $('subheader');
+  var _subheader = _$('subheader');
 
   /** The DOM element for the current workspace in the main menu.
       Points to the 'span' element to be filled in with the name. */

@@ -1,6 +1,6 @@
 GUI.Plugin.CompCore = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   this.attach = function(gui) {}
   this.detach = function()
   {

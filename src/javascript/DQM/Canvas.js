@@ -434,16 +434,16 @@ GUI.Plugin.DQMCanvas = new function()
 
   var _gui              = null;
   var _self             = this;
-  var _canvas           = $('canvas');
-  var _optsarea         = $('canvas-opts');
+  var _canvas           = _$('canvas');
+  var _optsarea         = _$('canvas-opts');
 
-  var _helpgroup        = $('canvas-help-group');
-  var _helparea         = $('canvas-help');
+  var _helpgroup        = _$('canvas-help-group');
+  var _helparea         = _$('canvas-help');
   var _helppanel        = null;
   var _helplocal        = false;
 
-  var _customgroup      = $('canvas-custom-group');
-  var _customarea       = $('canvas-custom');
+  var _customgroup      = _$('canvas-custom-group');
+  var _customarea       = _$('canvas-custom');
   var _custompanel      = null;
   var _customlocal      = false;
   var _focus            = null;
@@ -897,17 +897,17 @@ GUI.Plugin.DQMCanvas = new function()
       + "<option value='def'>Default</option><option value='yes'>Yes</option><option value='no'>No</option>"
       + "</select></div>";
 
-    _imgXType    = $('m-obj-x-type');
-    _imgXMin     = $('m-obj-x-min');
-    _imgXMax     = $('m-obj-x-max');
-    _imgYType    = $('m-obj-y-type');
-    _imgYMin     = $('m-obj-y-min');
-    _imgYMax     = $('m-obj-y-max');
-    _imgZType    = $('m-obj-z-type');
-    _imgZMin     = $('m-obj-z-min');
-    _imgZMax     = $('m-obj-z-max');
-    _imgDrawOpts = $('m-obj-draw-opts');
-    _imgWithRef  = $('m-obj-with-ref');
+    _imgXType    = _$('m-obj-x-type');
+    _imgXMin     = _$('m-obj-x-min');
+    _imgXMax     = _$('m-obj-x-max');
+    _imgYType    = _$('m-obj-y-type');
+    _imgYMin     = _$('m-obj-y-min');
+    _imgYMax     = _$('m-obj-y-max');
+    _imgZType    = _$('m-obj-z-type');
+    _imgZMin     = _$('m-obj-z-min');
+    _imgZMax     = _$('m-obj-z-max');
+    _imgDrawOpts = _$('m-obj-draw-opts');
+    _imgWithRef  = _$('m-obj-with-ref');
 
     _imgXType.onchange    = function() { _self.alterImage("xtype",    this.value); return false; };
     _imgXMin.onchange     = function() { _self.alterImage("xmin",     this.value); return false; };
@@ -929,7 +929,7 @@ GUI.Plugin.DQMCanvas = new function()
     _helppanel = new YAHOO.widget.Panel(_helpgroup, {
       visible: true, draggable: true, close: false, zindex: 2,
       x: parseInt(0.75 * ww) - 25,
-      y: YAHOO.util.Dom.getXY($('cmslogo'))[1],
+      y: YAHOO.util.Dom.getXY(_$('cmslogo'))[1],
       width: parseInt(0.25 * ww) + "px",
       constraintoviewport: true, autofillheight: "body" });
     var resize = new YAHOO.util.Resize(_helpgroup, {
@@ -1010,11 +1010,11 @@ GUI.Plugin.DQMCanvas = new function()
 
   this.detach = function()
   {
-    $('canvas-group').replaceChild(_helpgroup, _helpgroup.parentNode);
+    _$('canvas-group').replaceChild(_helpgroup, _helpgroup.parentNode);
     while (_helpgroup.childNodes.length > 3)
       _helpgroup.removeChild(_helpgroup.lastChild);
 
-    $('canvas-group').replaceChild(_customgroup, _customgroup.parentNode);
+    _$('canvas-group').replaceChild(_customgroup, _customgroup.parentNode);
     while (_customgroup.childNodes.length > 3)
       _customgroup.removeChild(_customgroup.lastChild);
 
@@ -1123,7 +1123,7 @@ GUI.Plugin.DQMCanvas = new function()
     }
 
     // Update canvas position taking into account header dynamic size.
-    //$('canvas-group').style.top = $('header').offsetHeight + 'px';
+    //_$('canvas-group').style.top = _$('header').offsetHeight + 'px';
     var offset = document.getElementById('header').offsetHeight
     document.getElementById('canvas-group').setAttribute("style","top:"+ offset +"px");
 

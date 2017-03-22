@@ -4,7 +4,7 @@ var _IMG_BORDER_NEW   = "1px solid #4a4";
 
 GUI.Plugin.FileLightSite = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   var _gui = null;
   var _self = this;
 
@@ -66,14 +66,14 @@ GUI.Plugin.FileLightSite = new function()
 
     if (_canvas.style.display != '') _canvas.style.display = '';
 
-    this.img = $("filelight-image");
-    this.select_site = $("filelight-site-select");
-    this.select_size = $("filelight-site-size");
-    this.in_filter = $("filelight-site-filter");
-    this.span_scheme = $("filelight-site-scheme");
-    this.check_incomplete = $("filelight-site-incomplete");
-    this.check_subscribed = $("filelight-site-subscribed");
-    this.check_custodial = $("filelight-site-custodial");
+    this.img = _$("filelight-image");
+    this.select_site = _$("filelight-site-select");
+    this.select_size = _$("filelight-site-size");
+    this.in_filter = _$("filelight-site-filter");
+    this.span_scheme = _$("filelight-site-scheme");
+    this.check_incomplete = _$("filelight-site-incomplete");
+    this.check_subscribed = _$("filelight-site-subscribed");
+    this.check_custodial = _$("filelight-site-custodial");
 
   }
 
@@ -235,7 +235,7 @@ GUI.Plugin.FileLightSite = new function()
 
 GUI.Plugin.FileLightGroup = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   var _gui = null;
   var _self = this;
 
@@ -273,8 +273,8 @@ GUI.Plugin.FileLightGroup = new function()
 
     if (_canvas.style.display != '') _canvas.style.display = '';
 
-    this.img = $("filelight-image");
-    this.select_group = $("filelight-group-select");
+    this.img = _$("filelight-image");
+    this.select_group = _$("filelight-group-select");
 
   }
 

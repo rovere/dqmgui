@@ -31,12 +31,12 @@ GUI.Plugin.DQMHeaderRow = new function() {
   var _data = null;
 
   /** The DOM element for the main header. */
-  var _header = $('header');
+  var _header = _$('header');
 
   /** The DOM element for the sub-header below the main header, where
       we show three interaction menus: data, services or
       workspaces. */
-  var _subheader = $('subheader');
+  var _subheader = _$('subheader');
 
   /** The DOM element for the service main menu.  Points to the 'span'
       element to be filled in with the current service name. */
@@ -81,10 +81,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
   var _menuWorkspace = null;
 
   /** The DOM element for the search input field in the data menu. */
-  var _search = $('subhead-search');
+  var _search = _$('subhead-search');
 
   /** The DOM element for the search result in the data menu. */
-  var _searchResult = $('subhead-searchres');
+  var _searchResult = _$('subhead-searchres');
 
   /** A time-out timer for auto-search.  Started when a key press or
       paste is received on the search field.  Once the timer expires
@@ -102,24 +102,24 @@ GUI.Plugin.DQMHeaderRow = new function() {
   var _refDelay		= null;
 
   /** The DOM element for strip chart type select field. */
-  var _striptype        = $('subhead-strip-type');
+  var _striptype        = _$('subhead-strip-type');
 
   /** The DOM element for strip chart run count input field. */
-  var _stripn           = $('subhead-strip-n');
+  var _stripn           = _$('subhead-strip-n');
 
   /** The DOM element for strip chart axis field. */
-  var _stripaxis        = $('subhead-strip-axis');
+  var _stripaxis        = _$('subhead-strip-axis');
 
   /** The DOM element for strip chart omit field. */
-  var _stripomit        = $('subhead-strip-omit');
+  var _stripomit        = _$('subhead-strip-omit');
 
   /** Mappings from string value to option index. */
   var _STRIPTYPE	= _optionmap(_striptype);
   var _STRIPAXIS	= _optionmap(_stripaxis);
   var _STRIPOMIT	= _optionmap(_stripomit);
-  var _REFERENCEPOS     = _optionmap($('subhead-ref-position'));
-  var _REFERENCESHOW    = _optionmap($('subhead-ref-show'));
-  var _REFERENCENORM    = _optionmap($('subhead-ref-normalize'));
+  var _REFERENCEPOS     = _optionmap(_$('subhead-ref-position'));
+  var _REFERENCESHOW    = _optionmap(_$('subhead-ref-show'));
+  var _REFERENCENORM    = _optionmap(_$('subhead-ref-normalize'));
 
   /** A time-out timer for strip chart changes.  Started when a key
       press or paste is received on strip chart run field, or the
@@ -128,10 +128,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
   var _stripDelay	= null;
 
   /** The DOM element for the header tools (view settings) panel. */
-  var _toolsgroup	= $('header-tools-group');
+  var _toolsgroup	= _$('header-tools-group');
 
   /** The DOM element for the actual body of the tools panel. */
-  var _toolsarea	= $('header-tools');
+  var _toolsarea	= _$('header-tools');
 
   /** The YUI panel widget for tools panel. */
   var _toolspanel	= null;
@@ -245,12 +245,12 @@ GUI.Plugin.DQMHeaderRow = new function() {
     };
 
     // Set up actions for statistical box
-    $('subhead-stats').onchange = function(e) {
+    _$('subhead-stats').onchange = function(e) {
       _self.updateStats()
     }
 
     // Set up actions for error bars
-    $('subhead-errbars').onchange = function(e) {
+    _$('subhead-errbars').onchange = function(e) {
       _self.updateErrbars()
     }
 
@@ -263,9 +263,9 @@ GUI.Plugin.DQMHeaderRow = new function() {
          _stripDelay = setTimeout(function() { _self.updateStripChart(obj); }, 150); };
 
     // Set up actions for reference changes.
-    $('subhead-ref-show').onchange
-      = $('subhead-ref-position').onchange
-      = $('subhead-ref-normalize').onchange
+    _$('subhead-ref-show').onchange
+      = _$('subhead-ref-position').onchange
+      = _$('subhead-ref-normalize').onchange
       = function(e) { _self.updateRefView(); };
 
     var refupdate = function(e) {
@@ -276,14 +276,14 @@ GUI.Plugin.DQMHeaderRow = new function() {
 
     for (var i = 0; i < 4; ++i)
     {
-      var reftype = $('subhead-ref-' + i + '-type');
-      var refrun  = $('subhead-ref-' + i + '-run');
-      var refds   = $('subhead-ref-' + i + '-ds');
+      var reftype = _$('subhead-ref-' + i + '-type');
+      var refrun  = _$('subhead-ref-' + i + '-run');
+      var refds   = _$('subhead-ref-' + i + '-ds');
       reftype.onchange = refupdate;
       refrun.onkeyup = reftype.paste = refupdate;
       refds.onkeyup = refds.paste = refupdate;
     }
-    var refkt   = $('subhead-ref-0-ktest');
+    var refkt   = _$('subhead-ref-0-ktest');
     refkt.onkeyup = refupdate;
 
     // Set up the view settings floating panel.
@@ -325,7 +325,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     });
 
     // Clicking on the CMS logo toggles panel view.
-    $('cmslogo').onclick = function() { return _self.togglePanel(); };
+    _$('cmslogo').onclick = function() { return _self.togglePanel(); };
   };
 
   /** Detach this plug-in from the GUI display.  Clears the header and
@@ -446,7 +446,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
   this.updateStats = function()
   {
     _gui.makeCall(_url() +_("/setStats?showstats=${showstats};",
-			     {showstats: $('subhead-stats').value}));
+			     {showstats: _$('subhead-stats').value}));
     return false;
   };
 
@@ -456,7 +456,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
   this.updateErrbars = function()
   {
     _gui.makeCall(_url() +_("/setErrbars?showerrbars=${showerrbars};",
-			     {showerrbars: $('subhead-errbars').value}));
+			     {showerrbars: _$('subhead-errbars').value}));
     return false;
   };
 
@@ -482,9 +482,9 @@ GUI.Plugin.DQMHeaderRow = new function() {
   this.updateRefView = function()
   {
     _gui.makeCall(_url() +_("/setReference?show=${show};position=${pos};norm=${norm}",
-			     {show: $('subhead-ref-show').value,
-			      pos: $('subhead-ref-position').value,
-                              norm: $('subhead-ref-normalize').value}));
+			     {show: _$('subhead-ref-show').value,
+			      pos: _$('subhead-ref-position').value,
+                              norm: _$('subhead-ref-normalize').value}));
     return false;
   };
 
@@ -495,10 +495,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
     var opt = "?", sep = "";
     for (var i = 0; i < 4; ++i, sep = ";")
     {
-      var reftype  = $('subhead-ref-' + i + '-type');
-      var refrun   = $('subhead-ref-' + i + '-run');
-      var refds    = $('subhead-ref-' + i + '-ds');
-      var refktest = $('subhead-ref-' + i + '-ktest');
+      var reftype  = _$('subhead-ref-' + i + '-type');
+      var refrun   = _$('subhead-ref-' + i + '-run');
+      var refds    = _$('subhead-ref-' + i + '-ds');
+      var refktest = _$('subhead-ref-' + i + '-ktest');
 
       var ktest = "";
       if (refktest)
@@ -552,8 +552,8 @@ GUI.Plugin.DQMHeaderRow = new function() {
     _lumiNr.innerHTML = data.lumi;
     _eventNr.innerHTML = data.event;
     if (data.view.sample.type == 'live') {
-      $('run_previous').style.display = 'none';
-      $('run_next').style.display = "none";
+      _$('run_previous').style.display = 'none';
+      _$('run_next').style.display = "none";
     }
 
     _runStart.innerHTML = "<span title='UTC time'>" + data.runstart + "</span>";
@@ -715,7 +715,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
     // Always update the data menu in tools panel.
 
     // Update the all/alarm/non-alarm filter.
-    var filter = $('subhead-filter');
+    var filter = _$('subhead-filter');
     if (_data.view.filter == "all")
       filter.selectedIndex = 0;
     else if (_data.view.filter == "alarms")
@@ -724,8 +724,8 @@ GUI.Plugin.DQMHeaderRow = new function() {
       filter.selectedIndex = 2;
 
     // Update statistical box and error bars.
-    $('subhead-stats').selectedIndex = _data.view.showstats;
-    $('subhead-errbars').selectedIndex = _data.view.showerrbars;
+    _$('subhead-stats').selectedIndex = _data.view.showstats;
+    _$('subhead-errbars').selectedIndex = _data.view.showerrbars;
 
     // Update the strip charting settings.
     if (_striptype.selectedIndex != _STRIPTYPE[_data.view.strip.type])
@@ -738,9 +738,9 @@ GUI.Plugin.DQMHeaderRow = new function() {
       _stripn.value = _data.view.strip.n;
 
     // Update the overlay/on-side/customise reference switch.
-    var refpos = $('subhead-ref-position');
-    var refshow = $('subhead-ref-show');
-    var refnorm = $('subhead-ref-normalize');
+    var refpos = _$('subhead-ref-position');
+    var refshow = _$('subhead-ref-show');
+    var refnorm = _$('subhead-ref-normalize');
     if (refpos.selectedIndex != _REFERENCEPOS[_data.view.reference.position])
       refpos.selectedIndex = _REFERENCEPOS[_data.view.reference.position];
     if (refshow.selectedIndex != _REFERENCESHOW[_data.view.reference.show])
@@ -752,10 +752,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
     {
       var index    = 0;
       var refparam = _data.view.reference.param[i];
-      var reftype  = $('subhead-ref-' + i + '-type');
-      var refrun   = $('subhead-ref-' + i + '-run');
-      var refds    = $('subhead-ref-' + i + '-ds');
-      var refktest = $('subhead-ref-' + i + '-ktest');
+      var reftype  = _$('subhead-ref-' + i + '-type');
+      var refrun   = _$('subhead-ref-' + i + '-run');
+      var refds    = _$('subhead-ref-' + i + '-ds');
+      var refktest = _$('subhead-ref-' + i + '-ktest');
 
       if (refparam.type == 'refobj')     index = 0;
       else if (refparam.type == 'other') index = 1;

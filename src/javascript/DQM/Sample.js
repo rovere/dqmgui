@@ -30,17 +30,17 @@ GUI.Plugin.DQMSample = new function() {
   var _gui = null;
 
   /** The DOM element for the canvas area where we display contents. */
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
 
   /** The DOM element for the main header. */
-  var _header = $('header');
+  var _header = _$('header');
 
   /** The DOM element for the sub-header below the main header, where
       we show the current dataset and run number. */
-  var _subheader = $('subheader');
+  var _subheader = _$('subheader');
 
   /** The DQM toolbar with all elements that pertain to search action. */
-  var _optsarea         = $('canvas-opts');
+  var _optsarea         = _$('canvas-opts');
 
   /** The DOM element for the main search field. */
   var _search = null;
@@ -96,7 +96,7 @@ GUI.Plugin.DQMSample = new function() {
            { xtype           :'textfield',
              enableKeyEvents : true,
              id              : 'sample-search',
-             maskRe          : /^[a-zA-Z-0-9.*\+\^\$()\[\]{}_\/\\ ]*$/,
+             maskRe          : /^[a-zA-Z-0-9.*\+\^\_$()\[\]{}_\/\\ ]*$/,
              style           : {width: '100%'},
              ctCls           : 'search-field'
            }, '-',
@@ -155,7 +155,7 @@ GUI.Plugin.DQMSample = new function() {
              id         : 'searchBtn',
              handler    : function()
              {
-               if (! $('dynamic-search').checked)
+               if (! _$('dynamic-search').checked)
                  _self.search();
              }
            }, '-',
@@ -173,7 +173,7 @@ GUI.Plugin.DQMSample = new function() {
     var anyBtns = ['vary-any', 'vary-dataset', 'vary-run', 'order-run', 'order-dataset'];
     for (var i = 0; i < anyBtns.length; ++i)
     {
-      var radio = $(anyBtns[i]);
+      var radio = _$(anyBtns[i]);
       if (radio)
       {
         radio.onchange = function()
@@ -182,19 +182,19 @@ GUI.Plugin.DQMSample = new function() {
         };
       }
     }
-    $('dynamic-search').onchange = function()
+    _$('dynamic-search').onchange = function()
     {
-      return GUI.Plugin.DQMSample.modify('dynsearch=' + ($('dynamic-search').checked ? 'yes' : 'no'));
+      return GUI.Plugin.DQMSample.modify('dynsearch=' + (_$('dynamic-search').checked ? 'yes' : 'no'));
     };
 
 
     // Attach action to the search text field
-    Ext.getCmp('sample-search').on('keyup', function(){if ($('dynamic-search').checked) return GUI.Plugin.DQMSample.startSearch();});
+    Ext.getCmp('sample-search').on('keyup', function(){if (_$('dynamic-search').checked) return GUI.Plugin.DQMSample.startSearch();});
 
     _canvas.innerHTML = "<div align='center' style='margin:1em 1em'>"
       + "<div id='datasets' align='left'></div></div>";
-    _search = $('sample-search');
-    _datasets = $('datasets');
+    _search = _$('sample-search');
+    _datasets = _$('datasets');
   };
 
   /** Detach this plug-in from the GUI display.  Clears the header,
@@ -329,7 +329,7 @@ GUI.Plugin.DQMSample = new function() {
     /** Update canvas position taking into account header dynamic
         size. Do that only after we have inserted additional text to the
         head menu, since this changes the size of the header itself.  */
-    $('canvas-group').style.top = $('header').offsetHeight + 'px';
+    _$('canvas-group').style.top = _$('header').offsetHeight + 'px';
 
     // Update the search value field *iff* the value is different and
     // the user didn't edit the value since the server call.
@@ -337,8 +337,8 @@ GUI.Plugin.DQMSample = new function() {
       _search.value = _searchString = data.search;
 
     // Update highlight on search criteria.
-    $('vary-'+data.vary).checked = true;
-    $('order-'+data.order).checked = true;
+    _$('vary-'+data.vary).checked = true;
+    _$('order-'+data.order).checked = true;
 
     Ext.getCmp('dynamic-search').suspendEvents();
     Ext.getCmp('dynamic-search').setValue((data.dynsearch == 'yes') ? true : false);
