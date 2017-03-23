@@ -13,7 +13,6 @@ var _SIZES            =
 var _SIZESARRAY       = _map(_SIZES, function(x) { return [x.title, x.label]; });
 var _SIZEMAP          = {};
 _map(_SIZES, function(x) { _SIZEMAP[x.label] = x; });
-
 // Resize an image to fit the canvas.
 function setsize(canvas, img, size, row, rows, col, cols)
 {
@@ -1250,7 +1249,8 @@ GUI.Plugin.DQMCanvas = new function()
     let regEx = /obj=[^;]*/;
     let decode = decodeURIComponent(_focusURL)
     let match = null;
-    let colors = [602, 632, 416, 616, 1]
+    //let colors = [602, 632, 416, 616, 1]
+    let colors = [1, 860, 807, 633, 618, 413]
 
     while (match = regEx.exec(decode))
     {
@@ -1274,8 +1274,10 @@ GUI.Plugin.DQMCanvas = new function()
     Promise.all(promises).then(objects => {
       objects.forEach((ob, index) => {
         ob.fLineColor = colors[index]
-        if (index > 0 )
-          ob.fName = 'Ref ' + index;
+        if (index > 0 ){          
+          ob.fName = 'Ref ' + index;  
+          JSROOT.draw("drawing", ob, 'hist');
+        }else
         JSROOT.draw("drawing", ob);
       })
     })
@@ -1289,7 +1291,8 @@ GUI.Plugin.DQMCanvas = new function()
       _self.updateJsRootOverlays()
     else
       JSROOT.NewHttpRequest(jsRootURL, 'object', obj => {
-         JSROOT.redraw("drawing", obj);
+         obj.fLineColor = 1;
+         JSROOT.draw("drawing", obj);
       }).send();
   }
 
@@ -1383,6 +1386,10 @@ GUI.Plugin.DQMCanvas = new function()
 
   this.zoomResize = function(panel, w, h)
   {
+    if(_jsRootMode){
+      _gui.asyncCall(_url() + "/setZoom?w=" + w + ';h=' +h);
+      return true;
+    }else{
     _zoomlocal = true;
     var current = _zoomWin.body.dom.innerHTML;
     var newval = current
@@ -1396,6 +1403,7 @@ GUI.Plugin.DQMCanvas = new function()
       _gui.asyncCall(_url() + "/setZoom?w=" + w + ';h=' +h);
     }
     return true;
+    }
   };
 
   this.zoomMove = function(el, x, y)
