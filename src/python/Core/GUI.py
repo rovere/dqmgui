@@ -231,6 +231,7 @@ class Server:
     self._yui   = os.getenv("YUI_ROOT") + "/build"
     self._extjs = os.getenv("EXTJS_ROOT")
     self._d3    = os.getenv("D3_ROOT")
+    self._jsroot = os.getenv("ROOTJS_ROOT")
     self._addCSSFragment("%s/css/Core/style.css" % self.contentpath)
     self._addJSFragment("%s/yahoo/yahoo.js" % self._yui)
     self._addJSFragment("%s/event/event.js" % self._yui)
@@ -514,6 +515,15 @@ class Server:
     if not (self._extjs and re.match(r"^[-a-z_/]+\.(png|gif|js|css)$", path)):
       return self._invalidURL()
     return serve_file(self._extjs + '/' + path)
+
+  @expose
+  @tools.params()
+  def jsroot(self, *args, **kwargs):
+    """Access JSROOT static content."""
+    path = "/".join(args)
+    if not (self._jsroot):# and re.match(r"^[-a-z_/]+\.(png|gif|js|css)$", path)):
+      return self._invalidURL()
+    return serve_file(self._jsroot + '/' + path)
 
   @expose
   @tools.params()
