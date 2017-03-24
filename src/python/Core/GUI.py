@@ -585,7 +585,7 @@ class Server:
     except Exception, e:
       o = StringIO()
       traceback.print_exc(file=o)
-      log("WARNING: unable to produce a json: "
+      log("WARNING: unable to produce JSROOT json: "
           + (str(e) + "\n" + o.getvalue()).replace("\n", " ~~ "),
           severity=logging.WARNING)
 

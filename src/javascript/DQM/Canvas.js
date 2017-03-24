@@ -1108,8 +1108,8 @@ GUI.Plugin.DQMCanvas = new function()
     _jsonURL = '';
 
     _jsonMode = data.zoom.jsonmode || false;
-    if (_jsonDataButton.pressed != data.zoom.jsonmode)
-      _jsonDataButton.toggle(data.zoom.jsonmode, true);
+    if (_jsonDataButton.pressed != _jsonMode)
+      _jsonDataButton.toggle(_jsonMode, true);
 
     _jsRootMode = data.zoom.jsrootmode || false;
     if (_jsRootButton.pressed !=  _jsRootMode)
@@ -1122,9 +1122,7 @@ GUI.Plugin.DQMCanvas = new function()
     }
 
     // Update canvas position taking into account header dynamic size.
-    //_$('canvas-group').style.top = _$('header').offsetHeight + 'px';
-    var offset = document.getElementById('header').offsetHeight
-    document.getElementById('canvas-group').setAttribute("style","top:"+ offset +"px");
+    _$('canvas-group').style.top = _$('header').offsetHeight + 'px';
 
     // Run a loop to handle new contents.  We modify the contents
     // of "_canvas" in place in order to avoid unpleasant flicker
@@ -1249,7 +1247,6 @@ GUI.Plugin.DQMCanvas = new function()
     let regEx = /obj=[^;]*/;
     let decode = decodeURIComponent(_focusURL)
     let match = null;
-    //let colors = [602, 632, 416, 616, 1]
     let colors = [1, 860, 807, 633, 618, 413]
 
     while (match = regEx.exec(decode))
