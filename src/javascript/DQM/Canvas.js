@@ -1386,23 +1386,26 @@ GUI.Plugin.DQMCanvas = new function()
 
   this.zoomResize = function(panel, w, h)
   {
-    if(_jsRootMode){
+    if(_jsRootMode)
+    {
       _gui.asyncCall(_url() + "/setZoom?w=" + w + ';h=' +h);
       return true;
-    }else{
-    _zoomlocal = true;
-    var current = _zoomWin.body.dom.innerHTML;
-    var newval = current
-                 .replace(/width="\d+"/, 'width="' + w + '"')
-                 .replace(/height="\d+"/, 'height="' + h + '"')
-                 .replace(/w=\d+/, 'w=' + w)
-                 .replace(/h=\d+/, 'h=' + h);
-    if (newval != current)
-    {
-      panel.update(newval);
-      _gui.asyncCall(_url() + "/setZoom?w=" + w + ';h=' +h);
     }
-    return true;
+    else
+    {
+      _zoomlocal = true;
+      var current = _zoomWin.body.dom.innerHTML;
+      var newval = current
+                   .replace(/width="\d+"/, 'width="' + w + '"')
+                   .replace(/height="\d+"/, 'height="' + h + '"')
+                   .replace(/w=\d+/, 'w=' + w)
+                   .replace(/h=\d+/, 'h=' + h);
+      if (newval != current)
+      {
+        panel.update(newval);
+        _gui.asyncCall(_url() + "/setZoom?w=" + w + ';h=' +h);
+      }
+      return true;
     }
   };
 
