@@ -877,7 +877,9 @@ protected:
         {
           getJson(&objs[0], numobjs, imgdata);
           words[1] = DQM_REPLY_JSON_DATA;
-        }else if (type == DQM_MSG_GET_JSROOT_DATA){
+        }
+        else if (type == DQM_MSG_GET_JSROOT_DATA)
+        {
           getJsRoot(&objs[0], numobjs, imgdata);
           words[1] = DQM_REPLY_JSROOT_DATA;
         }

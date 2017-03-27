@@ -521,7 +521,7 @@ class Server:
   def jsroot(self, *args, **kwargs):
     """Access JSROOT static content."""
     path = "/".join(args)
-    if not (self._jsroot):# and re.match(r"^[-a-z_/]+\.(png|gif|js|css)$", path)):
+    if not (self._jsroot):
       return self._invalidURL()
     return serve_file(self._jsroot + '/' + path)
 

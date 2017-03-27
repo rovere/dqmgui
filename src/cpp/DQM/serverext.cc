@@ -1913,13 +1913,13 @@ public:
       try
       {
         uint32_t type;
-        if(json){
+        if (json)
           type = DQM_MSG_GET_JSON_DATA;
-        }else if( jsroot ){
+        else if (jsroot)
           type = DQM_MSG_GET_JSROOT_DATA;
-        }else{
+        else
           type = DQM_MSG_GET_IMAGE_DATA;
-        }
+
 	uint32_t words[11] =
 	  {
 	    (uint32_t)(sizeof(words) + img.pathname.size() + img.imagespec.size()
@@ -2188,11 +2188,7 @@ public:
     assert(img.pngbytes.empty());
     img.busy = true;
     img.inuse++;
-    if(jsroot){
-        requestimg(img, jsonData, false, true);
-    }else{
-        requestimg(img, jsonData, true);
-    }
+    requestimg(img, jsonData, !jsroot, jsroot);
 
     assert(img.inuse > 0);
     assert(img.busy);
