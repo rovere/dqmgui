@@ -96,7 +96,7 @@ GUI.Plugin.DQMSample = new function() {
            { xtype           :'textfield',
              enableKeyEvents : true,
              id              : 'sample-search',
-             maskRe          : /^[a-zA-Z-0-9.*\+\^\_$()\[\]{}_\/\\ ]*$/,
+             maskRe          : /^[a-zA-Z-0-9.*\+\^\$()\[\]{}_\/\\ ]*$/,
              style           : {width: '100%'},
              ctCls           : 'search-field'
            }, '-',
