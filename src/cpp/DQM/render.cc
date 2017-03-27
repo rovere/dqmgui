@@ -1206,7 +1206,7 @@ private:
   {
     TObject *ob = objs[0].object;
     std::string json ="";
-    json += rootObjectToArray(ob);
+    json += rootObjectToJson(ob);
     DataBlob tmp(json.begin(), json.end());
     jsondata = tmp;
     return;

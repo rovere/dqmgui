@@ -376,7 +376,7 @@ static string statWithErrorToJson(const TH2* const hist, const char* const name)
       .arg(name);
 }
 
-static string rootObjectToArray(const TObject* const h)
+static string rootObjectToJson(const TObject* const h)
 {
   return TBufferJSON::ConvertToJSON(h).Data();
 }
