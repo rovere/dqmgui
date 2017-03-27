@@ -1910,21 +1910,21 @@ public:
 
       pthread_mutex_unlock(&lock_);
 
+      uint32_t msg_type;
       try
       {
-        uint32_t type;
         if (json)
-          type = DQM_MSG_GET_JSON_DATA;
+          msg_type = DQM_MSG_GET_JSON_DATA;
         else if (jsroot)
-          type = DQM_MSG_GET_JSROOT_DATA;
+          msg_type = DQM_MSG_GET_JSROOT_DATA;
         else
-          type = DQM_MSG_GET_IMAGE_DATA;
+          msg_type = DQM_MSG_GET_IMAGE_DATA;
 
 	uint32_t words[11] =
 	  {
 	    (uint32_t)(sizeof(words) + img.pathname.size() + img.imagespec.size()
 	    + img.databytes.size() + img.qdata.size()),
-	    type,
+	    msg_type,
 	    img.flags,
 	    img.tag,
 	    (uint32_t)((img.version >> 0 ) & 0xffffffff),
@@ -1974,7 +1974,7 @@ public:
 	{
 	  srv.checkme = false;
 	  srv.lastimg.clear();
-	  if (!json && !jsroot)
+	  if (msg_type == DQM_MSG_GET_IMAGE_DATA)
             compress(img, imgbytes);
 	}
 	srv.pending.pop_front();
