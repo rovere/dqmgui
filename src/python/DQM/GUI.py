@@ -1175,7 +1175,7 @@ class DQMWorkspace:
 
   def sessionSetJsonmode(self, session, *args, **kwargs):
     jsonmode = kwargs.get('mode', None)
-    if isinstance(jsonmode, str) or jsonmode in ("yes", "no"):
+    if jsonmode in ("yes", "no"):
       session['dqm.zoom.jsonmode'] = (jsonmode == "yes")
 
     self.gui._saveSession(session)
@@ -1183,7 +1183,7 @@ class DQMWorkspace:
 
   def sessionSetJSrootmode(self, session, *args, **kwargs):
     jsrootmode = kwargs.get('mode', None)
-    if isinstance(jsrootmode, str) or jsrootmode in ("yes", "no"):
+    if jsrootmode in ("yes", "no"):
       session['dqm.zoom.jsrootmode'] = (jsrootmode == "yes")
 
     self.gui._saveSession(session)
