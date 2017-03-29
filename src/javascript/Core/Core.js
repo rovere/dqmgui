@@ -17,12 +17,12 @@ var GUI = new function()
   // Other state variables.
   var _gui = this;
   var _lasterr = null;
-  var _body = $("canvas-group");
-  var _errbody = $("errcontent");
-  var _messages = $('messages');
-  var _progressimg = $("cmslogo");
-  var _lefttop = $('sidebar');
-  var _timeid = $('time');
+  var _body = _$("canvas-group");
+  var _errbody = _$("errcontent");
+  var _messages = _$('messages');
+  var _progressimg = _$("cmslogo");
+  var _lefttop = _$('sidebar');
+  var _timeid = _$('time');
   var _latencyBase = new Date().getTime();
   var _latency = 1000;
   var _lastCallDuration = 0;
@@ -46,9 +46,9 @@ var GUI = new function()
      program its dynamic behavior here, instead of replicating the exact
      same piece of code in each and every plugin on the onresize
      functon. */
-    var c = $('canvas-group');
+    var c = _$('canvas-group');
     if (c)
-      c.style.top = $('header').offsetHeight + 'px';
+      c.style.top = _$('header').offsetHeight + 'px';
 
     for (var i = 0, e = _plugins.length; i < e; ++i)
       if (_plugins[i].obj.onresize)
@@ -80,7 +80,7 @@ var GUI = new function()
     var _pending             = {};
     var _blank               = ROOTPATH + "/static/blank.gif";
     var _missing             = ROOTPATH + "/static/missing.png";
-    var _imgdiv		     = $("imgloader");
+    var _imgdiv		     = _$("imgloader");
 
     this._flash = function()
     {
@@ -203,7 +203,7 @@ var GUI = new function()
 
   this.init = function()
   {
-    $('body').style.display = '';
+    _$('body').style.display = '';
     _progressimg.className = "loading";
     _messages.innerHTML = "Loading content...";
     this.scheduleUpdate(0);

@@ -231,6 +231,7 @@ class Server:
     self._yui   = os.getenv("YUI_ROOT") + "/build"
     self._extjs = os.getenv("EXTJS_ROOT")
     self._d3    = os.getenv("D3_ROOT")
+    self._jsroot = os.getenv("ROOTJS_ROOT")
     self._addCSSFragment("%s/css/Core/style.css" % self.contentpath)
     self._addJSFragment("%s/yahoo/yahoo.js" % self._yui)
     self._addJSFragment("%s/event/event.js" % self._yui)
@@ -306,7 +307,6 @@ class Server:
       fileinfo[2] = open(fileinfo[0]).read()
     self.lock.release()
     return fileinfo[2]
-
   def _templatePage(self, name, variables):
     """Generate HTML page from cheetah template and variables."""
     template = self._maybeRefreshFile(self.templates, name)
@@ -518,6 +518,15 @@ class Server:
 
   @expose
   @tools.params()
+  def jsroot(self, *args, **kwargs):
+    """Access JSROOT static content."""
+    path = "/".join(args)
+    if not (self._jsroot):
+      return self._invalidURL()
+    return serve_file(self._jsroot + '/' + path)
+
+  @expose
+  @tools.params()
   def d3(self, *args, **kwargs):
     """Access D3 static content."""
     path = "/".join(args)
@@ -562,6 +571,26 @@ class Server:
       return self.start(workspace = self._workspace(args[0]).name)
     else:
       return self.start(workspace = self.workspaces[0].name)
+# -----------------------------------------------------------------
+  @expose
+  @tools.params()
+  def jsrootfairy(self, *args, **kwargs):
+    try:
+      if len(args) >= 1:
+          for s in self.sources:
+            if getattr(s, 'jsonhook', None) == args[0]:
+              kwargs['jsroot'] = 'true'
+              data = s.getJson(*args[1:], **kwargs)
+              return data
+    except Exception, e:
+      o = StringIO()
+      traceback.print_exc(file=o)
+      log("WARNING: unable to produce JSROOT json: "
+          + (str(e) + "\n" + o.getvalue()).replace("\n", " ~~ "),
+          severity=logging.WARNING)
+
+    self._noResponseCaching()
+    return str(e);
 
 # -----------------------------------------------------------------
   @expose

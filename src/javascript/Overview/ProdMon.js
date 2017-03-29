@@ -3,7 +3,7 @@ var _IMG_BORDER_NEW   = "1px solid #4a4";
 
 GUI.Plugin.ProdMonSummary = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   var _gui = null;
   var _self = this;
 
@@ -118,7 +118,7 @@ GUI.Plugin.ProdMonSummary = new function()
 
 GUI.Plugin.ProdMonPlot = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   var _gui = null;
   var _self = this;
 
@@ -168,15 +168,15 @@ GUI.Plugin.ProdMonPlot = new function()
     if (_canvas.style.display != '')
       _canvas.style.display = '';
 
-    this._div_plotmove = $("prodmon-plotmove");
-    this._div_plotselect = $("prodmon-plotselect");
-    this._div_open = $("prodmon-open");
-    this._div_plot = $("prodmon-plot");
-    this._div_time = $("prodmon-time");
-    this._div_group = $("prodmon-group");
-    this._div_filter = $("prodmon-filter");
-    this._div_image = $("prodmon-image");
-    this._div_download = $("prodmon-download");
+    this._div_plotmove = _$("prodmon-plotmove");
+    this._div_plotselect = _$("prodmon-plotselect");
+    this._div_open = _$("prodmon-open");
+    this._div_plot = _$("prodmon-plot");
+    this._div_time = _$("prodmon-time");
+    this._div_group = _$("prodmon-group");
+    this._div_filter = _$("prodmon-filter");
+    this._div_image = _$("prodmon-image");
+    this._div_download = _$("prodmon-download");
 
     this._div_plotmove.innerHTML = ""
       + "<img class='button' href='#' onclick='return GUI.Plugin.ProdMonPlot.movePlotRel(-1)' alt='Previous' src='"+ROOTPATH+"/static/left.gif'>"
@@ -324,7 +324,7 @@ GUI.Plugin.ProdMonPlot = new function()
 
   }
   this.toggleVisible=function(id) {
-    elem = $(id);
+    elem = _$(id);
     if (elem.style.display=='block') {
       elem.style.display='none';
     } else {
@@ -346,12 +346,12 @@ GUI.Plugin.ProdMonPlot = new function()
     _gui.makeCall(_url()+"/add?copy="+encodeURIComponent(copy)+";index="+encodeURIComponent(_self.current));
   }
   this.download = function(what,format) {
-    window.location.href = $('prodmon-plot-image').src.replace(/plot\+legend/,what) + ";type=" + format.toLowerCase();
+    window.location.href = _$('prodmon-plot-image').src.replace(/plot\+legend/,what) + ";type=" + format.toLowerCase();
     return false;
   }
   this.addFilter = function() {
     //alert("addfilter");
-    var elem = $("prodmon-filters");
+    var elem = _$("prodmon-filters");
     var index = _self.filtercount;
     _self.filtercount += 1;
     var newhtml = ""
@@ -388,7 +388,7 @@ GUI.Plugin.ProdMonPlot = new function()
     _self.rebuildFilters(_self.filterList(),index);
   }
   this.updateWhat=function(what) {
-    var elem = $('prodmon-what-what');
+    var elem = _$('prodmon-what-what');
     if ((what=='evts_read') || (what=='evts_written') || (what=='time') || (what=='jobs')) {
       elem.disabled=false;
       var val = what+elem.value;
@@ -416,8 +416,8 @@ GUI.Plugin.ProdMonPlot = new function()
     _gui.makeCall(_url()+"/graph?use_period=true;period="+encodeURIComponent(time));
   }
   this.updateTime2=function() {
-    var start = $('prodmon-time-start').value;
-    var end = $('prodmon-time-end').value;
+    var start = _$('prodmon-time-start').value;
+    var end = _$('prodmon-time-end').value;
     var pattern = /^(\d{4})-(\d{1,2})-(\d{1,2}) (\d{2}):(\d{2}):(\d{2})$/;
     var startmatch = start.match(pattern);
     if (startmatch==null) {
@@ -432,14 +432,14 @@ GUI.Plugin.ProdMonPlot = new function()
     _gui.makeCall(_url()+"/graph?use_period=false;starttime="+encodeURIComponent(start)+";endtime="+encodeURIComponent(end));
   }
   this.resetTime=function() {
-    $('prodmon-time-start').value = _self.formatTime(-172800000);
-    $('prodmon-time-end').value = _self.formatTime(0);
+    _$('prodmon-time-start').value = _self.formatTime(-172800000);
+    _$('prodmon-time-end').value = _self.formatTime(0);
   }
   this.updateGroup=function(group) {
     _gui.makeCall(_url()+"/graph?group="+encodeURIComponent(group));
   }
   this.updateRegex=function() {
-    var elem = $('prodmon-regex');
+    var elem = _$('prodmon-regex');
     var regex = elem.value;
     if (regex=='') regex='null';
     _gui.makeCall(_url()+"/graph?regex="+encodeURIComponent(regex));
@@ -483,13 +483,13 @@ GUI.Plugin.ProdMonPlot = new function()
     }
   }
   this.updateImage3=function() {
-    var w = $('prodmon-image-width').value;
-    var h = $('prodmon-image-height').value;
-    var dpi = $('prodmon-image-dpi').value;
+    var w = _$('prodmon-image-width').value;
+    var h = _$('prodmon-image-height').value;
+    var dpi = _$('prodmon-image-dpi').value;
     _gui.makeCall(_url()+"/graph?image_width="+encodeURIComponent(w)+";image_height="+encodeURIComponent(h)+";image_dpi="+encodeURIComponent(dpi));
   }
   this.filterAutocomplete=function(index,text) {
-    var context = $("prodmon-filter"+index+"-select").value;
+    var context = _$("prodmon-filter"+index+"-select").value;
     var url = ROOTPATH + "/plotfairy/prodmon/autocomplete/"+encodeURIComponent(context)+"/"+encodeURIComponent(text);
     var c = YAHOO.util.Connect.asyncRequest('GET',url,{success:GUI.Plugin.ProdMonPlot.receiveText,argument:"filter"+index});
   }
@@ -639,40 +639,40 @@ GUI.Plugin.ProdMonPlot = new function()
     var title = data['title'];
 
     if ((what.substr(0,4)=='evts') || (what.substr(0,4)=='jobs' && !(what == 'jobs_success_rates' || what=='jobs_failure_types')) || (what.substr(0,4)=='time' && !(what == 'time_by_span'))) {
-      this.setSelection($('prodmon-what'),what.substr(0,4));
-      $('prodmon-what-what').disabled=false;
-      this.setSelection($('prodmon-what-what'),what.substr(4));
+      this.setSelection(_$('prodmon-what'),what.substr(0,4));
+      _$('prodmon-what-what').disabled=false;
+      this.setSelection(_$('prodmon-what-what'),what.substr(4));
     } else {
-      this.setSelection($('prodmon-what'),what);
-      $('prodmon-what-what').disabled=true;
+      this.setSelection(_$('prodmon-what'),what);
+      _$('prodmon-what-what').disabled=true;
     }
-    this.setSelection($('prodmon-sortby'),sortby);
-    this.setSelection($('prodmon-job_type'),job_type);
-    this.setSelection($('prodmon-graph'),graph);
+    this.setSelection(_$('prodmon-sortby'),sortby);
+    this.setSelection(_$('prodmon-job_type'),job_type);
+    this.setSelection(_$('prodmon-graph'),graph);
     this.setGroupChoices(sortby);
-    this.setSelection($('prodmon-group-select'),group);
+    this.setSelection(_$('prodmon-group-select'),group);
     this.rebuildFilters(filters,-1);
     if (use_period) {
-      this.setSelection($('prodmon-period'),period);
+      this.setSelection(_$('prodmon-period'),period);
     } else {
-      $('prodmon-time-start').value = starttime;
-      $('prodmon-time-end').value = endtime;
+      _$('prodmon-time-start').value = starttime;
+      _$('prodmon-time-end').value = endtime;
     }
-    $('prodmon-regex').value = regex;
-    this.setSelection($('prodmon-resolution'),image_width);
-    $('prodmon-image-width').value=image_width;
-    $('prodmon-image-height').value=image_height;
-    $('prodmon-image-dpi').value=image_dpi;
+    _$('prodmon-regex').value = regex;
+    this.setSelection(_$('prodmon-resolution'),image_width);
+    _$('prodmon-image-width').value=image_width;
+    _$('prodmon-image-height').value=image_height;
+    _$('prodmon-image-dpi').value=image_dpi;
 
-    $('prodmon-plot-image').width=image_width;
+    _$('prodmon-plot-image').width=image_width;
     this.current = current;
 
     this.buildOpen(open);
-    $('prodmon-plot-image').width = image_width;
-    //$('prodmon-plot-image').height = image_height;
+    _$('prodmon-plot-image').width = image_width;
+    //_$('prodmon-plot-image').height = image_height;
     var thedate = new Date();
     optstr += ";seq=" + thedate.valueOf();
-    GUI.ImgLoader.load('prodmon-freeplot-plot', $('prodmon-plot-image'), ROOTPATH+baseurl+'plot+legend?'+optstr, _IMG_BORDER_NONE, _IMG_BORDER_NEW);
+    GUI.ImgLoader.load('prodmon-freeplot-plot', _$('prodmon-plot-image'), ROOTPATH+baseurl+'plot+legend?'+optstr, _IMG_BORDER_NONE, _IMG_BORDER_NEW);
 
   }
 

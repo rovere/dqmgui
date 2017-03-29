@@ -4,6 +4,7 @@
 #include "classlib/utils/StringFormat.h"
 #include "boost/algorithm/string.hpp"
 #include "TProfile2D.h"
+#include "TBufferJSON.h"
 
 using lat::StringFormat;
 using std::string;
@@ -373,6 +374,11 @@ static string statWithErrorToJson(const TH2* const hist, const char* const name)
         .arg(hist->GetSkewness(Y_ERROR));
   return StringFormat("'%1':'has not been recognised'")
       .arg(name);
+}
+
+static string rootObjectToJson(const TObject* const h)
+{
+  return TBufferJSON::ConvertToJSON(h).Data();
 }
 
 template<typename T>

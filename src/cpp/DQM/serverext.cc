@@ -1372,8 +1372,11 @@ class VisDQMRenderLink
 {
   static const uint32_t DQM_MSG_GET_IMAGE_DATA  	= 4;
   static const uint32_t DQM_MSG_GET_JSON_DATA		= 6;
+  static const uint32_t DQM_MSG_GET_JSROOT_DATA         = 7;
   static const uint32_t DQM_MSG_REPLY_IMAGE_DATA 	= 105;
   static const uint32_t DQM_REPLY_JSON_DATA 		= 106;
+  static const uint32_t DQM_REPLY_JSROOT_DATA           = 107;
+
 
   static const int MIN_WIDTH = 532;
   static const int MIN_HEIGHT = 400;
@@ -1602,7 +1605,7 @@ public:
   prepareJson(std::string &jsonData,
               std::string &type,
               const std::string &path,
-              const std::map<std::string, std::string> &,
+              const std::map<std::string, std::string> &opts,
               const std::string *streamers,
               DQMNet::Object *obj,
               size_t numobj,
@@ -1612,7 +1615,11 @@ public:
     Image protoimg;
     initimg(protoimg, path, reqspec, streamers, obj, numobj);
     Lock gate(&lock_);
-    return ! quiet_ && makeJson(jsonData, type, protoimg, reqspec);
+    bool jsroot = false;
+    if( opts.find("jsroot") != opts.end()){
+        jsroot = true;
+    }
+    return ! quiet_ && makeJson(jsonData, type, protoimg, reqspec, jsroot);
   }
 
  private:
@@ -1801,7 +1808,7 @@ public:
     }
 
   void
-  requestimg(Image &img, std::string &imgbytes, const bool json=false)
+  requestimg(Image &img, std::string &imgbytes, const bool json=false, const bool jsroot=false)
     {
       assert(imgbytes.empty());
 
@@ -1903,13 +1910,21 @@ public:
 
       pthread_mutex_unlock(&lock_);
 
+      uint32_t msg_type;
       try
       {
+        if (json)
+          msg_type = DQM_MSG_GET_JSON_DATA;
+        else if (jsroot)
+          msg_type = DQM_MSG_GET_JSROOT_DATA;
+        else
+          msg_type = DQM_MSG_GET_IMAGE_DATA;
+
 	uint32_t words[11] =
 	  {
 	    (uint32_t)(sizeof(words) + img.pathname.size() + img.imagespec.size()
 	    + img.databytes.size() + img.qdata.size()),
-	    (json ? DQM_MSG_GET_JSON_DATA : DQM_MSG_GET_IMAGE_DATA),
+	    msg_type,
 	    img.flags,
 	    img.tag,
 	    (uint32_t)((img.version >> 0 ) & 0xffffffff),
@@ -1933,7 +1948,7 @@ public:
 
 	if (sock.xread(&words[0], 2*sizeof(uint32_t)) == 2*sizeof(uint32_t)
 	    && words[0] >= 2*sizeof(uint32_t)
-            && (words[1] == DQM_MSG_REPLY_IMAGE_DATA || words[1] == DQM_REPLY_JSON_DATA ))
+            && (words[1] == DQM_MSG_REPLY_IMAGE_DATA || words[1] == DQM_REPLY_JSON_DATA || words[1] == DQM_REPLY_JSROOT_DATA))
 	{
 	  message.resize(words[0] - 2*sizeof(uint32_t), '\0');
 	  if (sock.xread(&message[0], message.size()) == message.size())
@@ -1959,7 +1974,7 @@ public:
 	{
 	  srv.checkme = false;
 	  srv.lastimg.clear();
-	  if (!json)
+	  if (msg_type == DQM_MSG_GET_IMAGE_DATA)
             compress(img, imgbytes);
 	}
 	srv.pending.pop_front();
@@ -2158,7 +2173,8 @@ public:
   bool makeJson(std::string &jsonData,
                 std::string &imgtype,
                 Image &protoreq,
-                const std::string &spec)
+                const std::string &spec,
+                const bool jsroot)
   {
     jsonData.clear();
     imgtype.clear();
@@ -2172,7 +2188,7 @@ public:
     assert(img.pngbytes.empty());
     img.busy = true;
     img.inuse++;
-    requestimg(img, jsonData, true);
+    requestimg(img, jsonData, !jsroot, jsroot);
 
     assert(img.inuse > 0);
     assert(img.busy);
@@ -4731,7 +4747,7 @@ protected:
   static std::string
   sessionZoomConfig(const py::dict &session)
     {
-      bool show, jsonmode;
+      bool show, jsonmode, jsrootmode;
       int  x, jx;
       int  y, jy;
       int  w, jw;
@@ -4747,11 +4763,12 @@ protected:
       jy = py::extract<int>(session.get("dqm.zoom.jy", -1));
       jw = py::extract<int>(session.get("dqm.zoom.jw", -1));
       jh = py::extract<int>(session.get("dqm.zoom.jh", -1));
+      jsrootmode = py::extract<bool>(session.get("dqm.zoom.jsrootmode", false));
 
       return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5,\
-                           'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10}")
+                           'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10,'jsrootmode':%11}")
           .arg(show).arg(x).arg(y).arg(w).arg(h)
-          .arg(jsonmode).arg(jx).arg(jy).arg(jw).arg(jh);
+          .arg(jsonmode).arg(jx).arg(jy).arg(jw).arg(jh).arg(jsrootmode);
     }
 
   // Produce Certification zoom configuration format.

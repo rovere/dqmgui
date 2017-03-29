@@ -13,7 +13,7 @@ GUI.Plugin.DQMSummary = new function()
   var _gui           = null;
 
   /** The DOM element for the canvas area where we display contents. */
-  var _canvas        = $('canvas');
+  var _canvas        = _$('canvas');
 
   /** Style for all cells in a table row: 3px horizontal padding. */
   var _tdstyle_all   = " style='padding:0 3px";
@@ -256,7 +256,7 @@ GUI.Plugin.DQMSummary = new function()
       the change; does not wait or expect a reply. */
   this.qmap = function(label, nrow)
   {
-    var qtable = $('summary-table');
+    var qtable = _$('summary-table');
     var i, e = qtable.rows.length;
 
     // Hide all details and revert to 'normal' title for all rows

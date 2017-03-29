@@ -18,7 +18,7 @@ GUI.Plugin.DQMQuality = new function()
   var _items    = null;
 
   /** The DOM element for the canvas area where we display contents. */
-  var _canvas	= $('canvas');
+  var _canvas	= _$('canvas');
 
   /** Mouse click disambiguation object, used with #_dblclick(). */
   var _click	= { event: null, timeout: null, timeClick: 0, timeDoubleClick: 0 };
@@ -79,7 +79,7 @@ GUI.Plugin.DQMQuality = new function()
 
     // If we didn't find a workspace, notify the user.
     if (! found)
-      $('messages').innerHTML =
+      _$('messages').innerHTML =
         "<span style='font-size:95%'>Sorry, no workspace defined for '"
 	+ _sanitise(_items[n].label) + "'!</span>";
 

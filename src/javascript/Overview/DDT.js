@@ -1,6 +1,6 @@
 GUI.Plugin.CompDDTSummary = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   this.attach = function(gui) {}
   this.detach = function()
   {
@@ -22,7 +22,7 @@ GUI.Plugin.CompDDTSummary = new function()
 
 GUI.Plugin.CompDDTSite = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   this.attach = function(gui) {}
   this.detach = function()
   {

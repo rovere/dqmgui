@@ -1,6 +1,6 @@
 GUI.Plugin.LHCCooldown = new function()
 {
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
 
   this.attach = function(gui)
   {
@@ -35,7 +35,7 @@ GUI.Plugin.LHCCooldown = new function()
 GUI.Plugin.TPGQuery = new function()
 {
   var _self = this;
-  var _canvas = $('canvas');
+  var _canvas = _$('canvas');
   var _gui = null;
   this._resultDiv = null;
   this._optLine = null;
@@ -84,10 +84,10 @@ GUI.Plugin.TPGQuery = new function()
     if (_canvas.style.display != '')
       _canvas.style.display = '';
 
-    this._resultDiv    = $('result-div');
-    this._optLine      = $('opt-line');
-    this._optDirection = $('opt-direction');
-    this._optStop      = $('opt-stop');
+    this._resultDiv    = _$('result-div');
+    this._optLine      = _$('opt-line');
+    this._optDirection = _$('opt-direction');
+    this._optStop      = _$('opt-stop');
 
     this._optLine.onchange = function() {
       _self.sendInput('line', this.value);

@@ -61,6 +61,21 @@ pre.wide
 }
 
 /**********************************************************************/
+/* JSROOT integration elements  */
+
+#root_ctx_menu{
+  z-index: 99999;
+}
+
+#jsroot_enlarge_div{
+  z-index: 99900;
+}
+
+.jsroot, .root_cancas{
+  visibility: inherit;
+}
+
+/**********************************************************************/
 /* Structure elements: header, content, sidebars etc.  */
 
 #imgloader {

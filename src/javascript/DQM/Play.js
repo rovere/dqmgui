@@ -4,9 +4,9 @@ GUI.Plugin.DQMPlay = new function()
 
   var _gui		= null;
   var _self		= this;
-  var _canvas		= $('canvas');
-  var _optsarea		= $('canvas-opts');
-  var _playarea         = $('canvas-play');
+  var _canvas		= _$('canvas');
+  var _optsarea		= _$('canvas-opts');
+  var _playarea         = _$('canvas-play');
   var _playInterval	= null;
   var _optPlayInterval  = null;
 
@@ -41,7 +41,7 @@ GUI.Plugin.DQMPlay = new function()
   this.attach = function(gui)
   {
     window.onresize = function() {
-      $('canvas-group').style.top = $('header').offsetHeight + 'px';
+      _$('canvas-group').style.top = _$('header').offsetHeight + 'px';
     };
 
     _gui = gui;

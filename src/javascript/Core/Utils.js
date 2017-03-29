@@ -322,8 +322,8 @@ function _sanitise(str)
     to a request to report a bug with the error details. */
 function _pageErrorHandler(msg, url, line)
 {
-  $("cmslogo").className = "internal-error";
-  $("messages").innerHTML =
+  _$("cmslogo").className = "internal-error";
+  _$("messages").innerHTML =
     "<span class='alert'>Please <a href='https://savannah.cern.ch/bugs/"
     + "?group=iguana'>report</a> the following programming error in the"
     + " GUI in " + url.replace(/.*\//, ".../") + ":" + line + ": "
@@ -336,7 +336,7 @@ function _pageErrorHandler(msg, url, line)
     name.  The arguments are either a single string, or an array of
     strings.  For the former returns a document element by that name,
     for the latter returns an array of elements, one for each name. */
-function $()
+function _$()
 {
   var elements = new Array();
   for (var i = 0; i < arguments.length; i++)
