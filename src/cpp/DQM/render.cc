@@ -1206,8 +1206,7 @@ private:
 
   void getJsRoot(VisDQMObject *objs, size_t /*numobjs*/, DataBlob &jsondata)
   {
-    TObject *ob = std::move(objs[0].object);
-    std::string json = rootObjectToJson(ob);
+    std::string json(std::move(rootObjectToJson(objs[0].object)));
     DataBlob tmp(json.begin(), json.end());
     jsondata = tmp;
     return;
