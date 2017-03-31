@@ -478,6 +478,7 @@ GUI.Plugin.DQMCanvas = new function()
 
   var _jsRootButton     = null;
   var _jsRootMode       = null;
+  var _jsRootUpdate     = null;
 
   this.switchJsonMode = function() {
         _jsonMode = _jsonDataButton.pressed;
@@ -1282,6 +1283,9 @@ GUI.Plugin.DQMCanvas = new function()
 
   this.updateJsRoot = function()
   {
+    if(_jsRootUpdate == _focusURL && document.getElementById("drawing") )
+      return;
+    _jsRootUpdate = _focusURL;
     _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
     let jsRootURL = _jsonURL.replace('formatted', 'jsroot').replace('jsonfairy', 'jsrootfairy')
     if (_focusURL.includes('overlay?'))
@@ -1289,7 +1293,7 @@ GUI.Plugin.DQMCanvas = new function()
     else
       JSROOT.NewHttpRequest(jsRootURL, 'object', obj => {
          obj.fLineColor = 1;
-         JSROOT.draw("drawing", obj);
+         JSROOT.redraw("drawing", obj);
       }).send();
   }
 
