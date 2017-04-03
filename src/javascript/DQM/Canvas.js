@@ -479,6 +479,7 @@ GUI.Plugin.DQMCanvas = new function()
   var _jsRootButton     = null;
   var _jsRootMode       = null;
   var _jsRootUpdate     = null;
+  var _jsRootUserAction = null;
 
   this.switchJsonMode = function() {
         _jsonMode = _jsonDataButton.pressed;
@@ -672,6 +673,8 @@ GUI.Plugin.DQMCanvas = new function()
 
     _focus = hit.title || null;
 
+    if(e.type)
+      _jsRootUserAction = true;
     /* Update the content of the zoomWindow: this is mandatory to be always
        in sync with respect to whatever changes the end user made using
        the custom panel. This piece of code is called regardless of how
@@ -1283,9 +1286,11 @@ GUI.Plugin.DQMCanvas = new function()
 
   this.updateJsRoot = function()
   {
-    if(_jsRootUpdate == _focusURL && document.getElementById("drawing") )
+    let focusRoot = _focusURL.replace(/;w=\d+/, '').replace(/;h=\d+/, '').replace(/;v=\d+/, '')
+    if(!_jsRootUserAction && _jsRootUpdate == focusRoot && document.getElementById("drawing") )
       return;
-    _jsRootUpdate = _focusURL;
+    _jsRootUpdate = focusRoot
+    _jsRootUserAction = false
     _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
     let jsRootURL = _jsonURL.replace('formatted', 'jsroot').replace('jsonfairy', 'jsrootfairy')
     if (_focusURL.includes('overlay?'))
