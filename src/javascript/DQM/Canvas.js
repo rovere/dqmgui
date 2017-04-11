@@ -478,6 +478,7 @@ GUI.Plugin.DQMCanvas = new function()
 
   var _jsRootButton     = null;
   var _jsRootMode       = null;
+  var _oldfocusURL      = null;
 
   this.switchJsonMode = function() {
         _jsonMode = _jsonDataButton.pressed;
@@ -1282,12 +1283,14 @@ GUI.Plugin.DQMCanvas = new function()
 
   this.updateJsRoot = function()
   {
-    if( !document.getElementById("drawing") || (_focus != _zoomWin.title) )
+    let performUpdate = _oldfocusURL != _focusURL.replace(/;v=\d+/, '')
+    if( !document.getElementById("drawing") || performUpdate )
       _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
+    _oldfocusURL = _focusURL.replace(/;v=\d+/, '')
     let jsRootURL = _jsonURL.replace('formatted', 'jsroot').replace('jsonfairy', 'jsrootfairy')
-    if (_focusURL.includes('overlay?'))
+    if (_focusURL.includes('overlay?') && performUpdate)
       _self.updateJsRootOverlays()
-    else
+    else if(!_focusURL.includes('overlay?'))
       JSROOT.NewHttpRequest(jsRootURL, 'object', obj => {
          obj.fLineColor = 1;
          JSROOT.redraw("drawing", obj);
