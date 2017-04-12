@@ -1270,14 +1270,17 @@ GUI.Plugin.DQMCanvas = new function()
     });
 
     Promise.all(promises).then(objects => {
+      let stack = JSROOT.Create("THStack");
       objects.forEach((ob, index) => {
         ob.fLineColor = colors[index]
         if (index > 0 ){          
-          ob.fName = 'Ref ' + index;  
-          JSROOT.draw("drawing", ob, 'hist');
+          ob.fName = 'Ref ' + index;
+          ob.fOption = 'hist'
+          stack.fHists.Add(ob);
         }else
-        JSROOT.draw("drawing", ob);
+        stack.fHists.Add(ob);
       })
+      JSROOT.redraw("drawing", stack, "nostack");
     })
   }
 
@@ -1288,7 +1291,7 @@ GUI.Plugin.DQMCanvas = new function()
       _zoomWin.update('<div id="drawing" style="width:100%; height:100%;"></div> ');
     _oldfocusURL = _focusURL.replace(/;v=\d+/, '')
     let jsRootURL = _jsonURL.replace('formatted', 'jsroot').replace('jsonfairy', 'jsrootfairy')
-    if (_focusURL.includes('overlay?') && performUpdate)
+    if (_focusURL.includes('overlay?'))
       _self.updateJsRootOverlays()
     else if(!_focusURL.includes('overlay?'))
       JSROOT.NewHttpRequest(jsRootURL, 'object', obj => {
