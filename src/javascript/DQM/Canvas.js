@@ -13,6 +13,7 @@ var _SIZES            =
 var _SIZESARRAY       = _map(_SIZES, function(x) { return [x.title, x.label]; });
 var _SIZEMAP          = {};
 _map(_SIZES, function(x) { _SIZEMAP[x.label] = x; });
+JSROOT.gStyle.MathJax = 1;
 // Resize an image to fit the canvas.
 function setsize(canvas, img, size, row, rows, col, cols)
 {
