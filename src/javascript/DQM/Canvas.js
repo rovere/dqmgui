@@ -1278,8 +1278,12 @@ GUI.Plugin.DQMCanvas = new function()
           ob.fName = 'Ref ' + index;
           ob.fOption = 'hist'
           stack.fHists.Add(ob);
-        }else
-        stack.fHists.Add(ob);
+        }
+        else
+        {
+          stack.fHists.Add(ob);
+          stack.fTitle = ob.fTitle;
+        }
       })
       JSROOT.redraw("drawing", stack, "nostack");
     })
