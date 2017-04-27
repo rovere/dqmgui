@@ -28,3 +28,4 @@ __pycache__/
 *.h
 *.x
 *.so
+.idea/
