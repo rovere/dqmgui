@@ -257,7 +257,16 @@ class DQMFileAccess(DQMUpload):
     # Indicate success.
     self._status(self.STATUS_OK, "File saved", "Wrote %d bytes" % nsaved)
     _loginfo("saved file %s size %d checksum %s" % (fname, size, checksum))
-    return "Thanks.\n"
+    message = ("Thanks.\n"
+               "The server received your file. However this does not mean "
+               "that the file was indexed successfully.\n"
+               "A different server process will now check the filename to "
+               "determine in which folder to archive it.\n"
+               "After that, another process will attempt to index it. This "
+               "might take some minutes.\n"
+               "In case of doubt, please check the server logs of the receive-"
+               "daemon and import-daemon.")
+    return message
 
   # ------------------------------------------------------------------
   # Retrieve files from the server.  Pretends to be somewhat like the
