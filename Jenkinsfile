@@ -55,20 +55,19 @@ node('dqmgui-ci-worker') {
             python test/index/regression.py test_index/
         '''
     }
-    stage('GUI Test') {
-        try {
-            // GUI tests use visDQMUpload script so we setup DQM env variables before running
-            sh '''
-                source /data/srv/current/apps/dqmgui/128/etc/profile.d/env.sh
-                nosetests --where=test/gui/ --with-xunit
-            '''
-        } finally {
-            // Application logs printed. Helpful in case of failures
-           sh '''
-           for i in /data/srv/logs/dqmgui/dev/*; do echo $i:; cat $i; done
-           '''
-           step([$class: 'JUnitResultArchiver', testResults: 'nosetests.xml'])
-        }
-
-    }
+//    stage('GUI Test') {
+//        try {
+//            // GUI tests use visDQMUpload script so we setup DQM env variables before running
+//            sh '''
+//                source /data/srv/current/apps/dqmgui/128/etc/profile.d/env.sh
+//                nosetests --where=test/gui/ --with-xunit
+//            '''
+//        } finally {
+//            // Application logs printed. Helpful in case of failures
+//           sh '''
+//           for i in /data/srv/logs/dqmgui/dev/*; do echo $i:; cat $i; done
+//           '''
+//           step([$class: 'JUnitResultArchiver', testResults: 'nosetests.xml'])
+//        }
+//    }
 }
