@@ -18,8 +18,9 @@ from test.integration.base import BaseIntegrationTest
 class SeleniumTest(BaseIntegrationTest):
     """
     Run this as a standalone python script:
+    export PYTHONPATH=${PWD}:${PYTHONPATH}
     python test_selenium.py
-    python test_selenium.py --skip-upload --display-browser
+    python test_selenium.py --skip-upload --show-browser
 
     SLC6 that is used in Continuous integration has only firefox-45.8.0-2.el6_8.x86_64 available,
     so to run these tests older version of firefox and selenium are used, together with xvfb (virtual X frame buffer)
@@ -112,14 +113,15 @@ class SeleniumTest(BaseIntegrationTest):
             self.fail('JavaScript errors encountered. See test execution output for details.')
 
     def waitAndFindElementContains(self, text):
-        return self.waitAndFindElement(selector="//*[contains(text(), '%s')]" % text)
+        # Read here for further insight on the changes
+        return self.waitAndFindElement(selector="//*[text()[contains(., '%s')]]" % text)
 
     def waitAndFindElement(self, selector, by=By.XPATH, presence_function=EC.visibility_of_element_located):
         """
         If exepected element is not found, the test will fail.
         """
 
-        delay = 5  # seconds
+        delay = 15  # seconds
         try:
             element_present = presence_function((by, selector))
             WebDriverWait(self.driver, delay).until(element_present)
