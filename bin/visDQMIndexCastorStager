@@ -224,6 +224,28 @@ def executeCommandWithPerseverance(command):
               "last error.")
         raise
 
+# Check to see if it's time to renew the credentials, and do so if needed
+def checkRenewCredentials(lastCredentialRenewTime):
+  # We calculate how much time has passed since we last renewed
+  secondsSinceLastRenewal = (datetime.now() - lastCredentialRenewTime).seconds
+  # If it's more than 20h ago, we renew.
+  # Why 20h? This is arbitrary. Could be anything else. The thing is that the
+  # standard ticket currently is 25h (it seems).
+  if secondsSinceLastRenewal > (20*3600):
+    renewCredentials()
+    lastCredentialRenewTime = datetime.now()
+  else:
+    logme("No need to renew credentials.")
+  # Return the lastCredentialRenewTime. It only changed if we actually did
+  # renew them.
+  return lastCredentialRenewTime
+
+# Renew Kerberos credentials, counting that it's still possible
+def renewCredentials():
+  logme("We'll try to renew credentials now, via \"kinit -R\"")
+  executeCommand(["/usr/bin/kinit", "-R"])
+  logme("Finished attempt to renew credentials.")
+
 # Execute command and return stdout.
 # General note: If it fails, it fails and we should stop. No catching at this
 # level.
@@ -259,6 +281,11 @@ logme("Starting visDQMIndexCastorStager ...........")
 try:
   scheduleFirstFullBackup()
 
+  # We check when we last got new credentials.
+  # If this was more than 10 hours ago, we renew them.
+  # We assume that at the start of the program, we just got new credentials.
+  lastCredentialRenewTime = datetime.now()
+
   # Full backup: We do this when we find a "full backup" file in our dropbox
   #              that lies in the past.
   #              Something like "20150528_010000_full_backup"
@@ -268,6 +295,8 @@ try:
     full_backup_tag = os.path.basename(full_backup_file_name)
     if isTimeToDoFullBackup(full_backup_tag):
       for fileToBackup in getListOfAllFilesInIndex():
+        # Renew credentials if needed
+        lastCredentialRenewTime = checkRenewCredentials(lastCredentialRenewTime)
         # For each file in the index, put it in CASTOR
         logme("Sending %s to CASTOR now." %fileToBackup)
         castorBackupFile(fileToBackup, full_backup_tag)
@@ -284,6 +313,8 @@ try:
     logme("The rsync tag for this backup is %s.", rsync_tag)
     # Open the file
     for syncedfile in [f.rstrip() for f in list(file(rsync_list_file_name))]:
+      # Renew credentials if needed
+      lastCredentialRenewTime = checkRenewCredentials(lastCredentialRenewTime)
       # For each file in the file, put it in CASTOR
       logme("Sending %s to CASTOR now." % syncedfile)
       castorBackupFile(syncedfile, rsync_tag)
