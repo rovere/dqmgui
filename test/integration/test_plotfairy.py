@@ -16,6 +16,38 @@ class PlotFairyTest(base.BaseIntegrationTest):
     compare the file used in the test (e.g. IntegrationTestTH1.png) with DQMGUI's response.
     The URL is printed in stdout when you run this test, but it will look like the following:
     http://dqmgui-integration-1:8060/dqm/dev/jsonfairy/archive/1/IntegTest/era2017-04-06T133142550321/DQM/Pixel/IntegrationTest/IntegrationTestTH2?w=1042;h=512
+
+    If you already know that the image processing has changed, you must also
+    take care of updating the static png images against which the integration
+    tests are run, otherwise a failure will appear.
+
+    To update the images you need to:
+
+    * generate the test ROOT file with:
+
+    import rootgen
+
+    rootgen.create_file({
+      '/DQMData/Run 1/Pixel/Run summary/IntegrationTest': [
+      {'name': 'IntegrationTestTH1', 'gen': rootgen.TH1F},
+      {'name': 'IntegrationTestTH1_alt', 'gen': rootgen.TH1F_alt},
+      {'name': 'IntegrationTestTH2', 'gen': rootgen.TH2F}
+      ]},
+      dataset='PlotFairyTest'
+    )
+
+    This will create, in the very same folder, a ROOT file named DQM_V0001_R000001__PlotFairyTest__era2017-08-18T124528612428__DQM.root
+
+    * Upload the generated ROOT file to a test (up-to-date codewise) webserver
+      and wait for it to be indexed.
+
+    * Produce the following images:
+
+       * Pixel/IntegrationTest/IntegrationTestTH1?w=1042;h=512
+       * Pixel/IntegrationTest/IntegrationTestTH2?w=1042;h=512
+       * plotfairy/overlay?withref=yes;obj=archive/1/PlotFairyTest/era2017-08-18T124528612428/DQM/Pixel/IntegrationTest/IntegrationTestTH1;obj=archive/1/PlotFairyTest/era2017-08-18T124528612428/DQM/Pixel/IntegrationTest/IntegrationTestTH1;obj=archive/1/PlotFairyTest/era2017-08-18T124528612428/DQM/Pixel/IntegrationTest/IntegrationTestTH1_alt;w=1042;h=512
+
+    * Save the images with the appropriate name.
     """
 
     @classmethod
