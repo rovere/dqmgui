@@ -3650,10 +3650,10 @@ class VisDQMArchiveSource : public VisDQMSource
   VisDQMCache		cache_;
   VisDQMIndex		index_;
   SampleList		samples_;
-  StringAtomTree	vnames_; // (10000);
-  StringAtomTree	dsnames_; // (100000);
-  StringAtomTree	objnames_; // (2500000);
-  StringAtomTree	streamers_; // (100);
+  StringAtomTree	vnames_;    // CMSSWNAMES;
+  StringAtomTree	dsnames_;   // DATASETNAMES;
+  StringAtomTree	objnames_;  // OBJECTNAMES;
+  StringAtomTree	streamers_; // STREAMERS;
   FileMap		infoFiles_;
   FileMap		dataFiles_;
   VisDQMRenderLink	*link_;
@@ -3820,10 +3820,10 @@ public:
       watch_(path_),
       cache_(300*1024*1024),
       index_(path_, &cache_),
-      vnames_(10000),
-      dsnames_(100000),
-      objnames_(2500000),
-      streamers_(100),
+      vnames_(CMSSWNAMES),
+      dsnames_(DATASETNAMES),
+      objnames_(OBJECTNAMES),
+      streamers_(STREAMERS),
       link_(VisDQMRenderLink::instance())
     {
       rxonline_.study();

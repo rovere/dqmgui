@@ -1558,7 +1558,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 
       // Read in the file with appropriate format.
       std::vector<MonitorElementInfo> minfo;
-      StringAtomTree rootobjs(2500000);
+      StringAtomTree rootobjs(OBJECTNAMES);
       size_t    numObjs = 0;
       uint64_t 	numEvents = 0;
       uint64_t 	numLumiSections = 0;
@@ -1634,11 +1634,11 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 
       // Grab various strings tables from the master file.
       DEBUG(1, "reading string tables\n");
-      StringAtomTree vnames(10000);
-      StringAtomTree dsnames(100000);
-      StringAtomTree pathnames(1000000);
-      StringAtomTree objnames(2500000);
-      StringAtomTree streamers(100);
+      StringAtomTree vnames(CMSSWNAMES);
+      StringAtomTree dsnames(DATASETNAMES);
+      StringAtomTree pathnames(PATHNAMES);
+      StringAtomTree objnames(OBJECTNAMES);
+      StringAtomTree streamers(STREAMERS);
 
       readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
       readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -1894,11 +1894,11 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
 
     // Grab various strings tables from the master file.
     DEBUG(1, "reading string tables\n");
-    StringAtomTree vnames(10000);
-    StringAtomTree dsnames(100000);
-    StringAtomTree pathnames(1000000);
-    StringAtomTree objnames(2500000);
-    StringAtomTree streamers(100);
+    StringAtomTree vnames(CMSSWNAMES);
+    StringAtomTree dsnames(DATASETNAMES);
+    StringAtomTree pathnames(PATHNAMES);
+    StringAtomTree objnames(OBJECTNAMES);
+    StringAtomTree streamers(STREAMERS);
 
     readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
     readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -2237,11 +2237,11 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       // Grab various strings tables from the master files.
       // Build mapping tables from imported index to target.
       DEBUG(1, "reading string tables\n");
-      StringAtomTree vnames(10000),     othvnames(10000);
-      StringAtomTree dsnames(100000),    othdsnames(100000);
-      StringAtomTree pathnames(1000000), othpathnames(1000000);
-      StringAtomTree objnames(2500000), othobjnames(2500000);
-      StringAtomTree streamers(100),    othstreamers(100);
+      StringAtomTree vnames(CMSSWNAMES),     othvnames(CMSSWNAMES);
+      StringAtomTree dsnames(DATASETNAMES),  othdsnames(DATASETNAMES);
+      StringAtomTree pathnames(PATHNAMES),   othpathnames(PATHNAMES);
+      StringAtomTree objnames(OBJECTNAMES),  othobjnames(OBJECTNAMES);
+      StringAtomTree streamers(STREAMERS),   othstreamers(STREAMERS);
 
       readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
       readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -2484,12 +2484,12 @@ fixStreamerInfo(const Filename &indexdir, size_t streamerid)
     // Grab various strings tables from the master files.
     // Build mapping tables from imported index to target.
     DEBUG(1, "reading string tables\n");
-    StringAtomTree vnames(10000);
-    StringAtomTree dsnames(100000);
-    StringAtomTree pathnames(1000000);
-    StringAtomTree objnames(2500000);
-    StringAtomTree streamers(100);
-    StringAtomTree extended_streamers(100);
+    StringAtomTree vnames(CMSSWNAMES);
+    StringAtomTree dsnames(DATASETNAMES);
+    StringAtomTree pathnames(PATHNAMES);
+    StringAtomTree objnames(OBJECTNAMES);
+    StringAtomTree streamers(STREAMERS);
+    StringAtomTree extended_streamers(STREAMERS);
 
     readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
     readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -2593,11 +2593,11 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
-  StringAtomTree vnames(10000);
-  StringAtomTree dsnames(100000);
-  StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(2500000);
-  StringAtomTree streamers(100);
+  StringAtomTree vnames(CMSSWNAMES);
+  StringAtomTree dsnames(DATASETNAMES);
+  StringAtomTree pathnames(PATHNAMES);
+  StringAtomTree objnames(OBJECTNAMES);
+  StringAtomTree streamers(STREAMERS);
   DQMNet::QReports qreports;
 
   // Read the master catalogue. We need all the info anyway.
@@ -2897,9 +2897,9 @@ streamout(const Filename &indexdir, size_t sampleid)
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
-  StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(2500000);
-  StringAtomTree streamers(100);
+  StringAtomTree pathnames(PATHNAMES);
+  StringAtomTree objnames(OBJECTNAMES);
+  StringAtomTree streamers(STREAMERS);
   DQMNet::QReports qreports;
 
   // no way in dumping more than one sample at a time, for the moment.
@@ -3094,9 +3094,9 @@ streamoutProtocolBuffer(const Filename &indexdir, size_t sampleid)
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
-  StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(2500000);
-  StringAtomTree streamers(100);
+  StringAtomTree pathnames(PATHNAMES);
+  StringAtomTree objnames(OBJECTNAMES);
+  StringAtomTree streamers(STREAMERS);
   DQMNet::QReports qreports;
   dqmgui::StreamSample sample;
   std::string fname;

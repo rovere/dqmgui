@@ -7,6 +7,14 @@
 # include <pthread.h>
 # include <map>
 
+// Define the sizes to be used for the StringAtomTrees
+
+# define OBJECTNAMES 5000000
+# define PATHNAMES   1000000
+# define DATASETNAMES 100000
+# define CMSSWNAMES    10000
+# define STREAMERS       100
+
 class VisDQMCache;
 
 /** A multiple-readers, single-writer index of DQM data.  The DQM GUI
