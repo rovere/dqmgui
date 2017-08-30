@@ -1990,21 +1990,22 @@ public:
       assert(destimg.busy);
       assert(destimg.inuse);
       assert(destimg.pngbytes.empty());
-      assert(imgdata.size() == size_t(srcspec.width) * size_t(srcspec.height) * 3);
       pthread_mutex_unlock(&lock_);
       try
       {
         newdata.resize(destimg.width * destimg.height * 3, '\x00');
-	rgb8c_view_t srcview
-	  = interleaved_view(srcspec.width, srcspec.height,
-			     (rgb8c_pixel_t *) &imgdata[0],
-			     srcspec.width * 3);
-	rgb8_view_t destview
-	  = interleaved_view(destimg.width, destimg.height,
-			     (rgb8_pixel_t *) &newdata[0],
-			     destimg.width * 3);
-	rescale(srcview, destview, catmull_rom_filter()); // lanczos_filter()
-	sharpen(destview, destview, 1.4);
+        if (imgdata.size() == size_t(srcspec.width) * size_t(srcspec.height) * 3) {
+          rgb8c_view_t srcview
+              = interleaved_view(srcspec.width, srcspec.height,
+                                 (rgb8c_pixel_t *) &imgdata[0],
+                                 srcspec.width * 3);
+          rgb8_view_t destview
+              = interleaved_view(destimg.width, destimg.height,
+                                 (rgb8_pixel_t *) &newdata[0],
+                                 destimg.width * 3);
+          rescale(srcview, destview, catmull_rom_filter()); // lanczos_filter()
+          sharpen(destview, destview, 1.4);
+        }
       }
       catch (std::exception &e)
       {
