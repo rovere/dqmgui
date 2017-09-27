@@ -1640,8 +1640,10 @@ public:
       assert(srv.pending.empty());
       IOChannel *null = 0;
       const char *serverArgz[] = {
-	"visDQMRender", "--state-directory", srv.path.name(),
-	"--load", plugin_.c_str(), (debug_ ? "--debug" : 0), 0
+        "igprof", "-d", "-mp", "-t", "visDQMRender",
+        //        "perf", "record", "-o", "/data/perfVisDQMRender.data",
+        "visDQMRender", "--state-directory", srv.path.name(),
+        "--load", plugin_.c_str(), (debug_ ? "--debug" : 0), 0
       };
       srv.proc.reset(new SubProcess(serverArgz,
 				    SubProcess::First
