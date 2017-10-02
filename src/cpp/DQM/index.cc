@@ -2862,6 +2862,8 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	      << ", type:" << (ref ? typeid(*ref).name() : "(none)")
 	      << ", name:'" << (ref ? ref->GetName() : "")
 	      << "'] md5=" << md5.format() << "\n";
+        delete ref;
+        delete obj;
 	  }
 	  else
 	    break;
