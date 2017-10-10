@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 # General use case:
 # This script is intended to scan the folder that contains the dqm data (the
