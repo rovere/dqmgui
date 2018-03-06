@@ -9,7 +9,7 @@ LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(patsubst %,-L%,$(LIBRARY_DIRS))
 
 CXXFLAGS     = -D_GNU_SOURCE -D_DARWIN_C_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
 	       -D__STDC_FORMAT_MACROS -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \
-	       -pedantic -std=c++11 -Wno-unused-local-typedefs -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS))
+	       -pedantic -std=c++17 -Wno-unused-local-typedefs -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS))
 ROOTC_LIBS   = -lCore -lRIO -lNet -lHist -lMatrix -lThread -lTree -lMathCore
 ROOTG_LIBS   = $(ROOTC_LIBS) -lTreePlayer -lGpad -lGraf3d -lGraf \
                -lPhysics -lPostscript -lASImage -ljpeg -lpng
