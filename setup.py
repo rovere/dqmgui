@@ -107,9 +107,11 @@ class BuildCommand(Command):
     "\t\t   ensure a clean build of only the requested parts.\n"
   user_options = build.user_options
   user_options.append(('system=', 's', 'build the specified system'))
+  user_options.append(('builddocs', 'd', 'build documentation with sphinx'))
 
   def initialize_options(self):
     self.system = None
+    self.builddocs = False
 
   def finalize_options(self):
     # Check options.
@@ -138,7 +140,8 @@ class BuildCommand(Command):
     cmd.force = self.force
     cmd.ensure_finalized()
     cmd.run()
-    self.generate_docs()
+    if self.builddocs:
+      self.generate_docs()
     self.distribution.have_run[command] = 1
 
 class InstallCommand(install):
