@@ -7,7 +7,7 @@ from ROOT import gROOT
 
 
 class JsRootFairyTest(base.BaseIntegrationTest):
-    
+
     @classmethod
     def setUpClass(cls):
         super(JsRootFairyTest, cls).setUpClass()
@@ -55,7 +55,7 @@ class JsRootFairyTest(base.BaseIntegrationTest):
 
     def test_exactJSON(self):
         # The fixed expected json output is dependant on ROOT version.
-        fixed_json_path = os.path.dirname(os.path.realpath(__file__)) + '/jsrootfairy_FedChNErr_6.08.04.json'
+        fixed_json_path = os.path.dirname(os.path.realpath(__file__)) + '/jsrootfairy_FedChNErr_6.10.09.json'
         with open(fixed_json_path) as fixed_json_file:
             expected_json = json.load(fixed_json_file)
 
