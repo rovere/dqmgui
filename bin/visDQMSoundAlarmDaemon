@@ -236,9 +236,9 @@ def run_daemon():
             msgs.append("")
 
         if len(knownNewAlarms) > 1:
-            msgs.append("There are %d test DQM alarms." % len(knownNewAlarms))
+            msgs.append("There are %d DQM alarms." % len(knownNewAlarms))
         else:
-            msgs.append("There is %d test DQM alarm." % len(knownNewAlarms))
+            msgs.append("There is %d DQM alarm." % len(knownNewAlarms))
 
         msgs.append("\n\nAlarm names are:")
         for name in knownNewAlarms:
