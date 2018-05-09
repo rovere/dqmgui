@@ -87,7 +87,7 @@ def send_sound_msg(msg, spoken_msg):
   if data == "All ok\n":
     logme("INFO: Broadcasted message: %s ", msg)
     send_email_msg('We (DQM) just played a sound in the control room.\n'
-                   'The message we played was: "%s"' % msg)
+                   'The message we played was: "%s"\n\n--\n%s' % (spoken_msg, msg))
     return True
   else:
     error_msg = "ERROR: Unexpected answer from CMS-WOW: %s" % repr(data)
@@ -160,11 +160,13 @@ def run_test():
 # This method will start the actual daemon, checking the GUI every WAITTIME
 # seconds
 def run_daemon():
-  lastGlobalReminder = 0
+  lastMessage = 0
+  remindersSent = 0
+
   noRun = True
   alarms = {}
-  activeAlarmsList = []
-  activeURLErrors = 0
+
+  knownAlarms = set()
   while True:
     try:
       now = time.time()
@@ -183,7 +185,7 @@ def run_daemon():
       if noRun == False and len(state["contents"]) <= 1:
         noRun = True
         alarms = {}
-        lastGlobalReminder = 0
+        lastMessage = 0
 
       if noRun and len(state["contents"]) > 1:
         noRun = False
@@ -194,85 +196,68 @@ def run_daemon():
         continue
 
       # Find new alarm histos, and update alarm states
-      newAlarmsList = []
+      knownNewAlarms = set()
       for histo in state["contents"]:
         if histo.has_key('obj'):
           name = histo['obj']
         else:
           continue
 
-        alarms.setdefault(name,{'state':0, 'lastBroadcast':0,
-                                'numOfBroadcasts':0, 'broadcast':False})
-
         if histo['properties']['report']['alarm'] == 1:
-          # If it finds an error, we print the info in the logs for later
-          # reference
+          knownNewAlarms.add(name)
           logme("Info from the DQM GUI: %s" % str(histo))
-          # Continue by checking is this is a new alarm or not
-          if alarms[name]['numOfBroadcasts'] < REBROADCAST:
-            alarms[name]['state'] = 1
-            alarms[name]['broadcast'] = True
-            if alarms[name]['lastBroadcast'] == 0:
-              newAlarmsList.append(name)
-              alarms[name]['broadcast'] = False
 
-          else:
-            alarms[name]['broadcast'] = False
+      # should alarm be triggered
+      alarmsNew = knownNewAlarms.difference(knownAlarms)
+      sendMessage = False
+      isReminder = False
 
+      # alarmsRecovered = knownAlarms.difference(knownNewAlarms)
+      if (len(alarmsNew) > 0):
+        sendMessage, isReminder = True, False
+        lastMessage = now
+        remindersSent = 0
+      elif len(knownNewAlarms) and remindersSent < REBROADCAST:
+        # situation has not changed, but we still need to 'remind' the shifter
+        elapsed = now - lastMessage
+        delay = (remindersSent+1) * REMINDERINTERVAL
+
+        if elapsed >= delay:
+          remindersSent += 1
+          sendMessage, isReminder = True, True
+
+      if sendMessage:
+        logme("Info from the DQM GUI: %s" % str(histo))
+
+        msgs = []
+        if isReminder:
+            msgs.append("Reminder. ")
         else:
-          alarms[name]={'state':0, 'lastBroadcast':0,
-                         'numOfBroadcasts':0, 'broadcast':False}
-          if name in activeAlarmsList:
-            activeAlarmsList.remove(name)
+            msgs.append("")
 
-      now = time.time()
-
-      # Broadcast new alarms
-      if len(newAlarmsList):
-        if len(newAlarmsList) > 1:
-          msg = "There are %d new DQM alarms!"
-          spoken_msg = "There are %d new D Q M alarms. Check plots in the D Q M Error folder."
+        if len(knownNewAlarms) > 1:
+            msgs.append("There are %d DQM alarms." % len(knownNewAlarms))
         else:
-          msg = "There is %d new DQM alarm!"
-          spoken_msg = "There is %d new D Q M alarm. Check plots in the D Q M Error folder."
+            msgs.append("There is %d DQM alarm." % len(knownNewAlarms))
 
-        msg = msg % len(newAlarmsList)
-        spoken_msg = spoken_msg % len(newAlarmsList)
+        msgs.append("\n\nAlarm names are:")
+        for name in knownNewAlarms:
+          msgs.append("\n  %s" % name)
+          if name not in knownAlarms:
+            msgs.append(" (new)")
+
+        msgs.append("\n")
+        msg = "".join(msgs)
+
+        spoken_msgs = msgs[:2] + [" Check plots in the DQM Error folder."]
+        spoken_msg = "".join(spoken_msgs).replace("DQM", "D Q M")
+
         send_sound_msg(msg, spoken_msg)
-        for a in newAlarmsList:
-          alarms[a]['lastBroadcast'] = now
-          alarms[a]['numOfBroadcasts'] += 1
 
-      # Do compiled broadcast
-      alarmsToBroadcastList = []
-      for a in activeAlarmsList:
-        if alarms[a]['broadcast']:
-          alarmsToBroadcastList.append(a)
-          alarms[a]['numOfBroadcasts'] += 1
-
-      if now - lastGlobalReminder > REMINDERINTERVAL and len(alarmsToBroadcastList):
-        if len(alarmsToBroadcastList) > 1:
-          msg = "There are %d DQM alarms!"
-          spoken_msg = "There are %d D Q M alarms. Check plots in the D Q M Error folder."
-        else:
-          msg = "There is %d DQM alarm!"
-          spoken_msg = "There is %d D Q M alarm. Check plots in the D Q M Error folder."
-
-        msg = msg % len(activeAlarmsList)
-        spoken_msg = spoken_msg % len(activeAlarmsList)
-        send_sound_msg(msg, spoken_msg)
-        lastGlobalReminder = now
-
-      activeAlarmsList += newAlarmsList
-
-      # Sync all lastBroadcast times to have a consistent group
-      for a in activeAlarmsList:
-        if lastGlobalReminder > 0:
-          alarms[a]['lastBroadcast'] = lastGlobalReminder
+      knownAlarms = knownNewAlarms
 
       # Done some heartbeat logging:
-      logme("Daemon woke up. A run was going on. %d active alarm(s)."
-                                                      % len(activeAlarmsList))
+      logme("Daemon woke up. A run was going on. %d active alarm(s)." % len(knownAlarms))
 
     except KeyboardInterrupt, e:
       sys.exit(0)
