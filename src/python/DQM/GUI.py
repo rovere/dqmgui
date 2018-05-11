@@ -501,20 +501,31 @@ class DQMOverlaySource(Accelerator.DQMOverlaySource):
     self.server = server
 
   # Generate an overlaid image.  Finds all the servers sources
-  # and generates final list of (source, runnr, dataset, path)
+  # and generates final list of (source, runnr, dataset, path, label)
   # tuples to pass to C++ layer to process.
   def plot(self, *junk, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))
 
     objs = options.get("obj", [])
+    labels = options.get("reflabel", [])
     if isinstance(objs, str): objs = [objs]
+    if isinstance(labels, str): labels = [labels]
+    # Prepend a fake label for the first object which is not a reference, but
+    # the real one. Standard reference objects are never passed via the URL,
+    # but are extracted directly from the underlying database. If the user
+    # selected "Standard", therefore, no obj parameter will be added to the URL
+    # and the symmetry will be kept between obj and reflabel (modulo the insert
+    # below).
+    labels.insert(0, "Ignore")
+    assert(len(labels)==len(objs))
     final = []
-    for o in objs:
+    for i, o in enumerate(objs):
       (srcname, runnr, dsP, dsW, dsT, path) = o.split("/", 5)
       if srcname in sources and srcname != "unknown":
         final.append((sources[srcname], int(runnr),
-                      "/%s/%s/%s" % (dsP, dsW, dsT), path))
+                      "/%s/%s/%s" % (dsP, dsW, dsT), path, labels[i]))
+    print(final, options)
     return self._plot(final, options)
 
 # --------------------------------------------------------------------
