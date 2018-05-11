@@ -4795,10 +4795,11 @@ protected:
   static std::string
   sessionReferenceOne(const py::dict &ref)
     {
-      return StringFormat("{'type':'%1','run':%2,'dataset':%3, 'ktest':%4}")
+      return StringFormat("{'type':'%1','run':%2,'dataset':%3, 'label':%4, 'ktest':%5}")
 	.arg(py::extract<std::string>(ref.get("type"))) // refobj, other, none
 	.arg(stringToJSON(py::extract<std::string>(ref.get("run"))))
 	.arg(stringToJSON(py::extract<std::string>(ref.get("dataset"))))
+	.arg(stringToJSON(py::extract<std::string>(ref.get("label"))))
 	.arg(stringToJSON(py::extract<std::string>(ref.get("ktest"))));
     }
 
