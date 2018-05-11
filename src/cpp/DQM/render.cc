@@ -356,7 +356,12 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
 	&& ! parseDouble    (p, "ktest=",        6, i.ktest)
 	&& ! parseAxisType  (p, "ztype=",        6, i.zaxis.type)
 	&& ! parseOption    (p, "drawopts=",     9, i.drawOptions)
-	&& ! parseOption    (p, "norm=",         5, i.refnorm))
+	&& ! parseOption    (p, "norm=",         5, i.refnorm)
+        && ! parseOption    (p, "reflabel1=",   10, i.reflabel1)
+        && ! parseOption    (p, "reflabel2=",   10, i.reflabel2)
+        && ! parseOption    (p, "reflabel3=",   10, i.reflabel3)
+        && ! parseOption    (p, "reflabel4=",   10, i.reflabel4)
+        )
       return false;
 
     if (*p && *p != ';')
@@ -1373,7 +1378,31 @@ private:
         if (i.reference == DQM_REF_SAMESAMPLE)
           ss << name;
         else
-          ss << "Ref "<< order;
+          // The numbering logic here is misleading. Numbers do **not** refer
+          // directly to the text-field numbering used in the Javascript,
+          // rather they refer to the actual objects that have been asked and
+          // found in the index. If an object/sample has been asked but not
+          // found, it is skipped but the counter is not incremented. All the
+          // correct handling is done on the server side while searching for
+          // samples/objects and packing information. At this stage we are mere
+          // clients that rely on that information.
+          switch(order) {
+            case 1:
+              ss << i.reflabel1;
+              break;
+            case 2:
+              ss << i.reflabel2;
+              break;
+            case 3:
+              ss << i.reflabel3;
+              break;
+            case 4:
+              ss << i.reflabel4;
+              break;
+            default:
+              assert(0);
+              break;
+          }
         currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
       }
       ss << "Entries = " << ref->GetEntries();

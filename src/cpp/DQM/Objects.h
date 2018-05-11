@@ -62,6 +62,10 @@ struct VisDQMImgInfo
 {
   std::string		imgspec;
   std::string		drawOptions;
+  std::string           reflabel1;
+  std::string           reflabel2;
+  std::string           reflabel3;
+  std::string           reflabel4;
   VisDQMReference	reference;
   VisDQMStripTrend	trend;
   int			width;
