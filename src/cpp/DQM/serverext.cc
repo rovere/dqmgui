@@ -1509,7 +1509,7 @@ public:
 	 size_t numobj,
 	 IMGOPT *IMGOPTS)
     {
-      // Verify incoming arguments and build perliminary specification.
+      // Verify incoming arguments and build preliminary specification.
       std::string finalspec;
       std::string reqspec;
       int destwidth = 0;
@@ -1590,6 +1590,14 @@ public:
 	      reqspec.empty() ? "" : ";",
 	      width, height);
       reqspec += buf;
+
+      for (int counter = 1; counter < 5; ++counter) {
+        std::string key = "reflabel" + std::to_string(counter);
+        if (opts.find(key) != opts.end()) {
+          reqspec += ";" + key + "=" + opts.at(key);
+          finalspec += ";" + key + "=" + opts.at(key);
+        }
+      }
 
       Image protoimg;
       initimg(protoimg, path, reqspec, streamers, obj, numobj, width, height);
@@ -2525,6 +2533,7 @@ public:
                             py::extract<long>(item[1]),
                             py::extract<std::string>(item[2]));
 	std::string opath = py::extract<std::string>(item[3]);
+        std::string label = py::extract<std::string>(item[4]);
 
         {
           PyReleaseInterpreterLock nogil;
@@ -2543,6 +2552,7 @@ public:
 
 	streamers.push_back(streamer);
 	objects.push_back(obj);
+        options["reflabel" + std::to_string(objects.size()-1)] = label;
 	if (path.empty())
 	  path = opath;
       }
