@@ -271,6 +271,9 @@ function layout(type, container, item, obj, sz, ref, strip, focus,
               (parts.join("/") + dataset + "/" + ob.name);
             if (refdef.ktest)
               xargs += ';ktest='+refdef.ktest;
+
+            // Add reflabels, if any, otherwise default them to be the Run Number
+            xargs += ';reflabel=' + (refdef.label ? refdef.label : parts[1]);
           }
         }
       }
@@ -1274,7 +1277,7 @@ GUI.Plugin.DQMCanvas = new function()
       let stack = JSROOT.Create("THStack");
       objects.forEach((ob, index) => {
         ob.fLineColor = colors[index]
-        if (index > 0 ){          
+        if (index > 0 ){
           ob.fName = 'Ref ' + index;
           ob.fOption = 'hist'
           stack.fHists.Add(ob);
