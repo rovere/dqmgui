@@ -714,10 +714,10 @@ class DQMWorkspace:
                  'dqm.showstats':      "1",
                  'dqm.showerrbars':    "0",
                  'dqm.reference':      {'show': "customise", 'position': "overlay", 'norm': "True", 'param':
-                                          [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
-                                           {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
-                                           {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
-                                           {'type': "none",   'run': "", 'dataset': "", 'ktest': ""}]},
+                   [{'type': "refobj",  'run': "", 'dataset': "", 'label': "", 'ktest': ""},
+                     {'type': "none",   'run': "", 'dataset': "", 'label': "", 'ktest': ""},
+                     {'type': "none",   'run': "", 'dataset': "", 'label': "", 'ktest': ""},
+                     {'type': "none",   'run': "", 'dataset': "", 'label': "", 'ktest': ""}]},
                  'dqm.submenu':	       "data",
                  'dqm.size':           "M",
                  'dqm.root':           {},
@@ -913,17 +913,19 @@ class DQMWorkspace:
       if refobj != None:
         if not isinstance(refobj, str):
           raise HTTPError(500, "Incorrect referenceobj parameter")
-        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*):([0-9.]*)$", refobj)
+        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*):([-/A-Za-z0-9_]*):([0-9.]*)$", refobj)
         if refobj == "refobj" or refobj == "none":
           param['type'] = refobj
           param['run'] = ""
           param['dataset'] = ""
+          param['label']   = ""
           param['ktest']   = ""
         elif m:
           param['type']    = "other"
           param['run']     = m.group(1)
           param['dataset'] = m.group(2)
-          param['ktest']   = m.group(3)
+          param['label']   = m.group(3)
+          param['ktest']   = m.group(4)
 	else:
           raise HTTPError(500, "Incorrect referenceobj parameter")
 
