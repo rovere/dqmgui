@@ -276,12 +276,14 @@ GUI.Plugin.DQMHeaderRow = new function() {
 
     for (var i = 0; i < 4; ++i)
     {
-      var reftype = _$('subhead-ref-' + i + '-type');
-      var refrun  = _$('subhead-ref-' + i + '-run');
-      var refds   = _$('subhead-ref-' + i + '-ds');
+      var reftype  = _$('subhead-ref-' + i + '-type');
+      var refrun   = _$('subhead-ref-' + i + '-run');
+      var reflabel = _$('subhead-ref-' + i + '-label');
+      var refds    = _$('subhead-ref-' + i + '-ds');
       reftype.onchange = refupdate;
       refrun.onkeyup = reftype.paste = refupdate;
       refds.onkeyup = refds.paste = refupdate;
+      reflabel.onkeyup = reflabel.paste = refupdate;
     }
     var refkt   = _$('subhead-ref-0-ktest');
     refkt.onkeyup = refupdate;
@@ -498,6 +500,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       var reftype  = _$('subhead-ref-' + i + '-type');
       var refrun   = _$('subhead-ref-' + i + '-run');
       var refds    = _$('subhead-ref-' + i + '-ds');
+      var reflabel = _$('subhead-ref-' + i + '-label');
       var refktest = _$('subhead-ref-' + i + '-ktest');
 
       var ktest = "";
@@ -505,9 +508,9 @@ GUI.Plugin.DQMHeaderRow = new function() {
 	ktest += refktest.value ? refktest.value : "";
 
       if (obj == reftype && reftype.selectedIndex != 1)
-	refrun.value = refds.value = "";
+	refrun.value = refds.value = reflabel.value = "";
 
-      if ((refrun.value || refds.value) && reftype.selectedIndex != 1)
+      if ((refrun.value || refds.value || reflabel.value) && reftype.selectedIndex != 1)
 	reftype.selectedIndex = 1;
 
       if ((ktest != "") && reftype.selectedIndex != 1)
@@ -515,9 +518,10 @@ GUI.Plugin.DQMHeaderRow = new function() {
 
       if (reftype.selectedIndex == 0)
 	opt += sep + "r" + (i+1) + "=refobj";
-      else if (reftype.selectedIndex == 1 && (refrun.value || refds.value))
+      else if (reftype.selectedIndex == 1 && (refrun.value || refds.value || reflabel.value))
 	opt += sep + "r" + (i+1) + "=other:" + encodeURIComponent(refrun.value)
-	       + ":" + encodeURIComponent(refds.value) + ":" + encodeURIComponent(ktest);
+	       + ":" + encodeURIComponent(refds.value) + ":" + encodeURIComponent(reflabel.value)
+               + ":" + encodeURIComponent(ktest);
       else
 	opt += sep + "r" + (i+1) + "=none";
     }
@@ -755,6 +759,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       var reftype  = _$('subhead-ref-' + i + '-type');
       var refrun   = _$('subhead-ref-' + i + '-run');
       var refds    = _$('subhead-ref-' + i + '-ds');
+      var reflabel = _$('subhead-ref-' + i + '-label');
       var refktest = _$('subhead-ref-' + i + '-ktest');
 
       if (refparam.type == 'refobj')     index = 0;
@@ -769,6 +774,9 @@ GUI.Plugin.DQMHeaderRow = new function() {
 
       if (refds.value != refparam.dataset)
         refds.value = refparam.dataset;
+
+      if (reflabel.value != refparam.label)
+        reflabel.value = refparam.label;
 
       if (refktest)
 	if (refktest.value != refparam.ktest)
@@ -884,7 +892,7 @@ GUI.Plugin.DQMHeaderRow = new function() {
       else if (r.type == 'none')
 	return 'none';
       else if (r.type == 'other')
-	return r.type + ':' + r.run + ':' + r.dataset + ':' + r.ktest;
+	return r.type + ':' + r.run + ':' + r.dataset + ':' + r.label + ':' + r.ktest;
       else
 	return 'none';
     }
