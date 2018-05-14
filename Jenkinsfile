@@ -12,6 +12,10 @@ pipeline {
             // start server in development mode, wait for it to start and print logs
             sh '''
               source /data/srv/current/apps/dqmgui/128/etc/profile.d/env.sh
+              monDistPatch -s DQM
+              if [ $? != 0 ]; then
+                exit 1
+              fi
               /data/srv/current/config/dqmgui/manage -f dev start "I did read documentation"
               # check if render plugins are there
               ls /data/srv/state/dqmgui/dev/render/*ext
@@ -38,6 +42,10 @@ pipeline {
             // integration tests use visDQMUpload script so we setup DQM env variables before running
             sh '''
                 source /data/srv/current/apps/dqmgui/128/etc/profile.d/env.sh
+                monDistPatch -s DQM
+                if [ $? != 0 ]; then
+                  exit 1
+                fi
                 /data/srv/current/config/dqmgui/manage -f dev start "I did read documentation"
                 # check if render plugins are there
                 ls /data/srv/state/dqmgui/dev/render/*ext
@@ -64,6 +72,10 @@ pipeline {
             // start server in development mode, wait for it to start and print logs
             sh '''
                 source /data/srv/current/apps/dqmgui/128/etc/profile.d/env.sh
+                monDistPatch -s DQM
+                if [ $? != 0 ]; then
+                  exit 1
+                fi
                 /data/srv/current/config/dqmgui/manage -f dev start "I did read documentation"
                 ls /data/srv/state/dqmgui/dev/render/*ext
                 if [ $? != 0 ]; then
