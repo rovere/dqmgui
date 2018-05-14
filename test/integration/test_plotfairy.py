@@ -95,6 +95,22 @@ class PlotFairyTest(base.BaseIntegrationTest):
                           'Plotfairy must respond with the same file size always.')
         self.assertEquals(content, expected_content, 'Plotfairy should have same PNG file content.')
 
+    def test_overlay_TH1_reflabel(self):
+        (expected_content, file_stat) = self.read_file('overlay_reflabel.png')
+
+        obj1 = 'archive/%d%s/%s' % (self.run_number, self.dataset, 'Pixel/IntegrationTest/IntegrationTestTH1')
+        obj2 = 'archive/%d%s/%s' % (self.run_number, self.dataset, 'Pixel/IntegrationTest/IntegrationTestTH1_alt')
+        obj1_quoted = urllib.quote_plus(obj1)
+        obj2_quoted = urllib.quote_plus(obj2)
+        histogram_url = '%splotfairy/overlay?withref=yes;obj=%s;obj=%s;obj=%s;w=1042;h=512;reflabel=FirstSample;reflabel=SecondSample' \
+                        % (self.base_url, obj1_quoted, obj1_quoted, obj2_quoted)
+        (content, headers) = self.fetch_histogram_by_url(histogram_url)
+
+        self.assertEquals('image/png', headers['content-type'], 'Plotfairy should return PNG files.')
+        self.assertEquals(file_stat.st_size, int(headers['content-length']),
+                          'Plotfairy must respond with the same file size always.')
+        self.assertEquals(content, expected_content, 'Plotfairy should have same PNG file content.')
+
     def read_file(self, filename):
         script_dir = os.path.dirname(os.path.realpath(__file__))
         expected_output_path = script_dir + '/' + filename
