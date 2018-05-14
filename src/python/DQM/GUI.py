@@ -517,15 +517,22 @@ class DQMOverlaySource(Accelerator.DQMOverlaySource):
     # selected "Standard", therefore, no obj parameter will be added to the URL
     # and the symmetry will be kept between obj and reflabel (modulo the insert
     # below).
-    labels.insert(0, "Ignore")
-    assert(len(labels)==len(objs))
+    # Old URL pointing directly to plots via plotfairy will stop working, since
+    # they are missing the reflabel parameters. For this reason, in order to
+    # keep them functional, we artificially keep on adding reflabels until
+    # needed.
     final = []
     for i, o in enumerate(objs):
       (srcname, runnr, dsP, dsW, dsT, path) = o.split("/", 5)
       if srcname in sources and srcname != "unknown":
+        if i==0:
+          labels.insert(0, "Ignore")
+        elif i >= len(labels):
+          labels.append(runnr)
         final.append((sources[srcname], int(runnr),
                       "/%s/%s/%s" % (dsP, dsW, dsT), path, labels[i]))
     print(final, options)
+    assert(len(labels)==len(objs))
     return self._plot(final, options)
 
 # --------------------------------------------------------------------
