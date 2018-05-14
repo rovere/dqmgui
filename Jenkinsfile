@@ -51,7 +51,7 @@ pipeline {
                   exit 1
                 fi
                 for i in /data/srv/logs/dqmgui/dev/*; do echo $i:; cat $i; done
-                nosetests --where=test/integration/ --with-xunit
+                nosetests --verbosity=3 --where=test/integration/ --with-xunit
             '''
           }
         }
