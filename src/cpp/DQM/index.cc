@@ -3810,7 +3810,7 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
     }
   }
-  catch (Error &e)
+  catch (lat::Error &e)
   {
     std::cerr << app.name() << ": error: " << e.explain() << "\n";
     return EXIT_FAILURE;
