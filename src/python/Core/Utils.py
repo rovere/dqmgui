@@ -139,6 +139,20 @@ class ParameterManager(Tool):
   def load(self):
     req = request
 
+    # Due to a recent (observed on 2019-01-22) change in Google url shortening
+    # API, the returned full url is url encoded when it shoudn't be.
+    # This is a workaround for this issue.
+    # More info: https://its.cern.ch/jira/browse/PDMVRELVALS-5
+    params = {}
+    for k in req.params.keys():
+        if '=' in k:
+            parts = k.split('=', 1)
+            params[parts[0]] = parts[1]
+        else:
+            params[k] = req.params[k]
+
+    req.params = params
+
     ## Retrieve all parameters associated to the request and change
     ## unicode strings back to str, so that all the C++ code that uses
     ## them is happy.
