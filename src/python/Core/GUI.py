@@ -744,22 +744,25 @@ class Server:
   def urlshortener(self, *args, **kwargs):
     if (not 'url' in kwargs.keys()):
       return '{}'
-    if api_key:
-      url = '/urlshortener/v1/url?key=%s' % api_key
-      conn = httplib.HTTPSConnection("www.googleapis.com")
-      headers = {"Content-Type": "application/json"}
-      params = {"longUrl": base64.b64decode(kwargs['url'])}
-      conn.request("POST", url, json.dumps(params), headers)
-      response = conn.getresponse()
-      if (response.status != 200):
-        log("WARNING: unable to shorten URL: " + base64.b64decode(kwargs['url']),
-            severity=logging.WARNING)
-        # In any case do not expose users with the failure and give them
-        # back the full URL.
-        return '{"id": "%s"}' % base64.b64decode(kwargs["url"])
-    else:
-      return '{"id": "%s"}' % base64.b64decode(kwargs["url"])
-    return response.read()
+
+    longUrl = base64.b64decode(kwargs['url'])
+    shortUrl = longUrl
+
+    try:
+      connection = httplib.HTTPSConnection('tinyurl.com')
+      connection.request('GET', '/api-create.php?url=%s' % longUrl)
+      response = connection.getresponse()
+
+      if (response.status == 200):
+        shortUrl = response.read()
+      else:
+        log("WARNING: urlshortener returned status: %s for url: %s" % (response.status, longUrl), severity=logging.WARNING)
+      
+      connection.close()
+    except:
+      log("WARNING: unable to shorten URL: %s" % longUrl, severity=logging.WARNING)
+    
+    return '{"id": "%s"}' % shortUrl
 
   def sessionIndex(self, session, *args ,**kwargs):
     """Generate top level session index.  This produces the main GUI web
