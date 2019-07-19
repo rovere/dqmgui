@@ -749,7 +749,7 @@ class Server:
     shortUrl = longUrl
 
     try:
-      connection = httplib.HTTPSConnection('tinyurl.com')
+      connection = httplib.HTTPSConnection('tinyurl.com', timeout=3)
       connection.request('GET', '/api-create.php?url=%s' % longUrl)
       response = connection.getresponse()
 
