@@ -931,7 +931,7 @@ class DQMWorkspace:
       if refobj != None:
         if not isinstance(refobj, str):
           raise HTTPError(500, "Incorrect referenceobj parameter")
-        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*):([A-Za-z0-9 ]*):([0-9.]*)$", refobj)
+        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*)(:([A-Za-z0-9 ]*))?:([0-9.]*)$", refobj)
         if refobj == "refobj" or refobj == "none":
           param['type'] = refobj
           param['run'] = ""
@@ -942,8 +942,8 @@ class DQMWorkspace:
           param['type']    = "other"
           param['run']     = m.group(1)
           param['dataset'] = m.group(2)
-          param['label']   = m.group(3)
-          param['ktest']   = m.group(4)
+          param['label']   = m.group(4)
+          param['ktest']   = m.group(5)
 	else:
           raise HTTPError(500, "Incorrect referenceobj parameter")
 
