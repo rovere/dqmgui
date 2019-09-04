@@ -23,7 +23,6 @@ from jsmin import jsmin
 import cPickle as pickle
 import sys, os, os.path, re, tempfile, time, inspect, logging, traceback, hashlib
 import json, cjson, httplib, base64
-from GoogleAPI import api_key
 
 _SESSION_REDIRECT = ("<html><head><script>location.replace('%s')</script></head>"
                      + "<body><noscript>Please enable JavaScript to use this"
