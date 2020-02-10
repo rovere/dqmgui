@@ -2341,6 +2341,22 @@ public:
 	  }
 	}
 
+	// Match run numbers against run regexp if one was given.
+	if (options.count("run"))
+	{
+	  std::string rxerr;
+	  makerx(options["run"], rx, rxerr, Regexp::IgnoreCase);
+	  if (rx)
+	  {
+	    VisDQMSamples final;
+	    final.reserve(samples.size());
+	    for (size_t i = 0, e = samples.size(); i != e; ++i)
+	      if (rx->search(std::to_string(samples[i].runnr)) >= 0)
+		final.push_back(samples[i]);
+	    std::swap(final, samples);
+	  }
+	}
+
 	for (size_t i = 0, e = samples.size(); i != e; ++i)
 	  stamp = std::max(stamp, samples[i].time * 1e-9);
 
