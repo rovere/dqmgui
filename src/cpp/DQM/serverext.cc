@@ -2305,62 +2305,51 @@ public:
       std::string result;
       std::map<std::string, std::string> options;
       std::vector<VisDQMSource *> sources;
-      shared_ptr<Regexp> rx;
+      shared_ptr<Regexp> rxmatch;
+      shared_ptr<Regexp> rxrun;
+      std::string rxerr;
       copyopts(opts, options);
       sources.reserve(py::len(pysources) + 1);
 
       // Get all the sources which have a C++ part we can query.
       for (py::stl_input_iterator<py::object> i(pysources), e; i != e; ++i)
       {
-	py::extract<VisDQMSource *> src(*i);
-	if (src.check())
-	  sources.push_back(src());
+        py::extract<VisDQMSource *> src(*i);
+        if (src.check())
+          sources.push_back(src());
       }
 
       {
-	PyReleaseInterpreterLock nogil;
+        PyReleaseInterpreterLock nogil;
 
-	// Get all the samples from all the sources.
-	VisDQMSamples samples;
-	for (size_t i = 0, e = sources.size(); i != e; ++i)
-	  sources[i]->samples(samples);
+        // Get all the samples from all the sources.
+        VisDQMSamples samples;
+        for (size_t i = 0, e = sources.size(); i != e; ++i)
+          sources[i]->samples(samples);
 
-	// Match dataset names against dataset name regexp if one was given.
-	if (options.count("match"))
-	{
-	  std::string rxerr;
-	  makerx(options["match"], rx, rxerr, Regexp::IgnoreCase);
-	  if (rx)
-	  {
-	    VisDQMSamples final;
-	    final.reserve(samples.size());
-	    for (size_t i = 0, e = samples.size(); i != e; ++i)
-	      if (rx->search(samples[i].dataset) >= 0)
-		final.push_back(samples[i]);
-	    std::swap(final, samples);
-	  }
-	}
+        // Match dataset names against dataset name regexp if one was given.
+        if (options.count("match"))
+          makerx(options["match"], rxmatch, rxerr, Regexp::IgnoreCase);
 
-	// Match run numbers against run regexp if one was given.
-	if (options.count("run"))
-	{
-	  std::string rxerr;
-	  makerx(options["run"], rx, rxerr, Regexp::IgnoreCase);
-	  if (rx)
-	  {
-	    VisDQMSamples final;
-	    final.reserve(samples.size());
-	    for (size_t i = 0, e = samples.size(); i != e; ++i)
-	      if (rx->search(std::to_string(samples[i].runnr)) >= 0)
-		final.push_back(samples[i]);
-	    std::swap(final, samples);
-	  }
-	}
+        // Match run numbers against run regexp if one was given.
+        if (options.count("run"))
+          makerx(options["run"], rxrun, rxerr, Regexp::IgnoreCase);
 
-	for (size_t i = 0, e = samples.size(); i != e; ++i)
-	  stamp = std::max(stamp, samples[i].time * 1e-9);
+        if (rxmatch || rxrun)
+        {
+          VisDQMSamples final;
+          final.reserve(samples.size());
+          for (size_t i = 0, e = samples.size(); i != e; ++i)
+            if  ((!rxmatch || rxmatch->search(samples[i].dataset) >= 0)
+              && (!rxrun   || rxrun->search(std::to_string(samples[i].runnr)) >= 0))
+              final.push_back(samples[i]);
+          std::swap(final, samples);
+        }
 
-	result = StringFormat("{\"samples\": [%1]}").arg(samplesToJSON(samples));
+        for (size_t i = 0, e = samples.size(); i != e; ++i)
+          stamp = std::max(stamp, samples[i].time * 1e-9);
+
+        result = StringFormat("{\"samples\": [%1]}").arg(samplesToJSON(samples));
       }
 
       return py::make_tuple(stamp, result);
