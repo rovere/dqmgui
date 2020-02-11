@@ -3354,7 +3354,7 @@ public:
 	}
 	stamp = std::max(stamp, ni->version * 1e-9);
 	objectToJSON(ni->objname,
-                     *ni->dirname,
+		     *ni->dirname,
 		     ni->scalar.c_str(),
 		     ni->qdata.c_str(),
 		     o.rawdata,
@@ -4392,7 +4392,7 @@ public:
 	      = (s->qtestLength ? ((const char *) (s+1) + s->dataLength) : "");
 
 	    objectToJSON(name,
-                         dir,
+		         dir,
 			 data,
 			 qdata,
 			 rawdata,
