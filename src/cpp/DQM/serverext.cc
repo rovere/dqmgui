@@ -1017,7 +1017,7 @@ axisStatsToJSON(uint32_t nbins[3], double mean[3], double rms[3], double bounds[
 // Format objects to json, with full data if requested.
 static void
 objectToJSON(const std::string &name,
-             const std::string &dir,
+	     const std::string &dir,
 	     const char *value,
 	     const char *qdata,
 	     DQMNet::DataBlob &rawdata,
