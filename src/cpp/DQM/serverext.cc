@@ -1017,6 +1017,7 @@ axisStatsToJSON(uint32_t nbins[3], double mean[3], double rms[3], double bounds[
 // Format objects to json, with full data if requested.
 static void
 objectToJSON(const std::string &name,
+             const std::string &dir,
 	     const char *value,
 	     const char *qdata,
 	     DQMNet::DataBlob &rawdata,
@@ -1061,14 +1062,15 @@ objectToJSON(const std::string &name,
     qsep = ", ";
   }
 
-  result += StringFormat("{\"obj\": %1, \"properties\": {\"kind\": \"%2\","
-			 " \"type\": \"%3\", \"lumisect\": \"%4\", \"report\": { \"alarm\": %5,"
-			 " \"error\": %6, \"warn\": %7, \"other\": %8 },"
-			 " \"hasref\": %9, \"isEff\": %10, \"tagged\": %11 },\"tag\": %12,"
-			 " \"qresults\": [%13], \"nentries\": %14,"
-			 " \"stats\": { \"x\": %15, \"y\": %16, \"z\": %17 },"
-			 " \"%18\": \"%19\"}\n")
+  result += StringFormat("{\"obj\": %1, \"dir\": %2, \"properties\": {\"kind\": \"%3\","
+			 " \"type\": \"%4\", \"lumisect\": \"%5\", \"report\": { \"alarm\": %6,"
+			 " \"error\": %7, \"warn\": %8, \"other\": %9 },"
+			 " \"hasref\": %10, \"isEff\": %11, \"tagged\": %12 },\"tag\": %13,"
+			 " \"qresults\": [%14], \"nentries\": %15,"
+			 " \"stats\": { \"x\": %16, \"y\": %17, \"z\": %18 },"
+			 " \"%19\": \"%20\"}\n")
     .arg(stringToJSON(name))
+    .arg(stringToJSON(dir))
     .arg(type == DQMNet::DQM_PROP_TYPE_INVALID ? "INVALID"
 	 : type <= DQMNet::DQM_PROP_TYPE_SCALAR ? "SCALAR"
 	 : "ROOT")
@@ -3352,6 +3354,7 @@ public:
 	}
 	stamp = std::max(stamp, ni->version * 1e-9);
 	objectToJSON(ni->objname,
+                     *ni->dirname,
 		     ni->scalar.c_str(),
 		     ni->qdata.c_str(),
 		     o.rawdata,
@@ -4389,6 +4392,7 @@ public:
 	      = (s->qtestLength ? ((const char *) (s+1) + s->dataLength) : "");
 
 	    objectToJSON(name,
+                         dir,
 			 data,
 			 qdata,
 			 rawdata,
