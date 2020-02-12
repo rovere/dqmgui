@@ -5,7 +5,7 @@ import re
 import os
 import time
 import sys
-import cjson
+import json
 from traceback import print_exc
 from datetime import datetime
 from urllib import quote
@@ -72,6 +72,8 @@ MSGBODY = ('<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">'
 
 WAITTIME = 30
 
+ALARM_MANAGER_URL = 'http://localhost:8071/disabled'
+
 # --------------------------------------------------------------------
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
@@ -135,6 +137,8 @@ if not sr:
   sys.exit(1)
 
 BASEURL = "%s/%s/%s/" % (BASEURL, DATA_LOCATION, ERROR_FOLDER)
+# TODO: Remove this!!!!
+BASEURL = 'http://localhost:8030/data.json'
 
 # This method is just to test the sound infrastructure.
 # It will try to play a test message, send a test email and then exit.
@@ -179,7 +183,7 @@ def run_daemon():
       # counter.
       activeURLErrors = 0
 
-      state = cjson.decode(state)
+      state = json.loads(state)
 
       ## Detect No run state
       if noRun == False and len(state["contents"]) <= 1:
@@ -202,10 +206,24 @@ def run_daemon():
           name = histo['obj']
         else:
           continue
+       
+        # Get the disasbled alarms from the alarm manager:
+        disabledAlarms = []
+        try:
+	  datareq = urllib2.Request(ALARM_MANAGER_URL)
+          result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
+          disabledAlarms = json.loads(result.read())
+        except:
+          # If we're unable to get disabled alarms, assume that they are enabled
+          pass
 
+        histoFullPath = '%s/%s' % (histo['dir'], histo['obj'])
         if histo['properties']['report']['alarm'] == 1:
-          knownNewAlarms.add(name)
-          logme("Info from the DQM GUI: %s" % str(histo))
+          if histoFullPath in disabledAlarms:
+            logme("Histo caused an alarm but it was disabled in the alarm manager: %s" % histoFullPath)
+          else:
+            knownNewAlarms.add(name)
+            logme("Info from the DQM GUI: %s" % str(histo))
 
       # should alarm be triggered
       alarmsNew = knownNewAlarms.difference(knownAlarms)
