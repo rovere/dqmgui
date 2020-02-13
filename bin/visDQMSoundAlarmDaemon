@@ -11,7 +11,7 @@ from datetime import datetime
 from urllib import quote
 from fcntl import lockf, LOCK_EX, LOCK_UN
 from socket import socket, AF_INET, SOCK_STREAM, gethostname
-from subprocess import Popen,PIPE
+from subprocess import Popen, PIPE
 
 # IMPORTANT: If you want to play a test sound, just start the program with
 # all the usual parameters, but add "test" as last parameter.
@@ -39,6 +39,12 @@ from subprocess import Popen,PIPE
 # system, the global clock gets reset every time we pass from 0 alarms
 # to at least 1 alarm.
 
+# There is an extension to this tool called visDQMSoundAlarmManager.
+# It's a small web app which displays all plots located in ERROR_FOLDER
+# and provides an abillity to disable alarms for chosen plots. 
+# This tool queries the API of the visDQMSoundAlarmManager for the list 
+# of disabled plots befre sending the alarms.
+
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # --------------------------------------------------------------------
@@ -53,10 +59,16 @@ if len(sys.argv) >= 7:
                                 # accepted, separated by ','
 else:
   EMAIL_ADDRESSES = ''
-# To enable the special "test-mode" add a 7th argument "test"
-# Otherwise the daemon does its normal stuff (which is good)
+
+# URL to get a list of disabled alarms
+ALARM_MANAGER_URL = 'http://localhost:8031/disabled'
 if len(sys.argv) >= 8:
-  IS_TEST = (sys.argv[7] == "test")
+  ALARM_MANAGER_URL = sys.argv[7]
+
+# To enable the special "test-mode" add a 8th argument "test"
+# Otherwise the daemon does its normal stuff (which is good)
+if len(sys.argv) >= 9:
+  IS_TEST = (sys.argv[8] == "test")
 else:
   IS_TEST = False
 
@@ -71,8 +83,6 @@ MSGBODY = ('<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">'
            '%s Check plots in the DQM Error folder.</alarm></CommandSequence>')
 
 WAITTIME = 30
-
-ALARM_MANAGER_URL = 'http://localhost:8071/disabled'
 
 # --------------------------------------------------------------------
 def logme(msg, *args):
@@ -137,8 +147,6 @@ if not sr:
   sys.exit(1)
 
 BASEURL = "%s/%s/%s/" % (BASEURL, DATA_LOCATION, ERROR_FOLDER)
-# TODO: Remove this!!!!
-BASEURL = 'http://localhost:8030/data.json'
 
 # This method is just to test the sound infrastructure.
 # It will try to play a test message, send a test email and then exit.
@@ -203,7 +211,7 @@ def run_daemon():
       knownNewAlarms = set()
       for histo in state["contents"]:
         if histo.has_key('obj'):
-          name = histo['obj']
+          name = '%s/%s' % (histo['dir'], histo['obj'])
         else:
           continue
        
@@ -214,13 +222,12 @@ def run_daemon():
           result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
           disabledAlarms = json.loads(result.read())
         except:
-          # If we're unable to get disabled alarms, assume that they are enabled
+          # If we're unable to get disabled alarms, assume that all of them are enabled
           pass
 
-        histoFullPath = '%s/%s' % (histo['dir'], histo['obj'])
         if histo['properties']['report']['alarm'] == 1:
-          if histoFullPath in disabledAlarms:
-            logme("Histo caused an alarm but it was disabled in the alarm manager: %s" % histoFullPath)
+          if name in disabledAlarms:
+            logme("Histo caused an alarm but it was disabled in the alarm manager: %s" % name)
           else:
             knownNewAlarms.add(name)
             logme("Info from the DQM GUI: %s" % str(histo))
