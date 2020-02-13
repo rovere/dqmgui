@@ -41,9 +41,9 @@ from subprocess import Popen, PIPE
 
 # There is an extension to this tool called visDQMSoundAlarmManager.
 # It's a small web app which displays all plots located in ERROR_FOLDER
-# and provides an abillity to disable alarms for chosen plots. 
+# and provides an ability to disable alarms for chosen plots. 
 # This tool queries the API of the visDQMSoundAlarmManager for the list 
-# of disabled plots befre sending the alarms.
+# of disabled plots before sending the alarms.
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
