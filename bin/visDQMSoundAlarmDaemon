@@ -5,13 +5,13 @@ import re
 import os
 import time
 import sys
-import cjson
+import json
 from traceback import print_exc
 from datetime import datetime
 from urllib import quote
 from fcntl import lockf, LOCK_EX, LOCK_UN
 from socket import socket, AF_INET, SOCK_STREAM, gethostname
-from subprocess import Popen,PIPE
+from subprocess import Popen, PIPE
 
 # IMPORTANT: If you want to play a test sound, just start the program with
 # all the usual parameters, but add "test" as last parameter.
@@ -39,6 +39,12 @@ from subprocess import Popen,PIPE
 # system, the global clock gets reset every time we pass from 0 alarms
 # to at least 1 alarm.
 
+# There is an extension to this tool called visDQMSoundAlarmManager.
+# It's a small web app which displays all plots located in ERROR_FOLDER
+# and provides an ability to disable alarms for chosen plots. 
+# This tool queries the API of the visDQMSoundAlarmManager for the list 
+# of disabled plots before sending the alarms.
+
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # --------------------------------------------------------------------
@@ -53,10 +59,16 @@ if len(sys.argv) >= 7:
                                 # accepted, separated by ','
 else:
   EMAIL_ADDRESSES = ''
-# To enable the special "test-mode" add a 7th argument "test"
-# Otherwise the daemon does its normal stuff (which is good)
+
+# URL to get a list of disabled alarms
+ALARM_MANAGER_URL = 'http://localhost:8031/disabled'
 if len(sys.argv) >= 8:
-  IS_TEST = (sys.argv[7] == "test")
+  ALARM_MANAGER_URL = sys.argv[7]
+
+# To enable the special "test-mode" add a 8th argument "test"
+# Otherwise the daemon does its normal stuff (which is good)
+if len(sys.argv) >= 9:
+  IS_TEST = (sys.argv[8] == "test")
 else:
   IS_TEST = False
 
@@ -179,7 +191,7 @@ def run_daemon():
       # counter.
       activeURLErrors = 0
 
-      state = cjson.decode(state)
+      state = json.loads(state)
 
       ## Detect No run state
       if noRun == False and len(state["contents"]) <= 1:
@@ -199,13 +211,26 @@ def run_daemon():
       knownNewAlarms = set()
       for histo in state["contents"]:
         if histo.has_key('obj'):
-          name = histo['obj']
+          name = '%s/%s' % (histo['dir'], histo['obj'])
         else:
           continue
+       
+        # Get the disasbled alarms from the alarm manager:
+        disabledAlarms = []
+        try:
+	  datareq = urllib2.Request(ALARM_MANAGER_URL)
+          result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
+          disabledAlarms = json.loads(result.read())
+        except:
+          # If we're unable to get disabled alarms, assume that all of them are enabled
+          pass
 
         if histo['properties']['report']['alarm'] == 1:
-          knownNewAlarms.add(name)
-          logme("Info from the DQM GUI: %s" % str(histo))
+          if name in disabledAlarms:
+            logme("Histo caused an alarm but it was disabled in the alarm manager: %s" % name)
+          else:
+            knownNewAlarms.add(name)
+            logme("Info from the DQM GUI: %s" % str(histo))
 
       # should alarm be triggered
       alarmsNew = knownNewAlarms.difference(knownAlarms)
