@@ -1288,7 +1288,8 @@ public:
        std::string & /* result */,
        double & /* stamp */,
        const std::string & /* name */,
-       std::set<std::string> & /* dirs */)
+       std::set<std::string> & /* dirs */,
+       shared_ptr<Regexp> /* rxname */ )
     {}
 
   virtual void
@@ -2384,7 +2385,15 @@ public:
 
       {
 	PyReleaseInterpreterLock nogil;
-	src->json(sample, path, options.count("rootcontent") > 0, options.count("lumisect") > 0, result, stamp, "", dirs);
+
+  // Create regex for the ME name
+  shared_ptr<Regexp> rxname;
+  if (options.count("search") > 0) {
+    std::string rxerr;
+    makerx(options["search"], rxname, rxerr, Regexp::IgnoreCase);
+  }
+
+	src->json(sample, path, options.count("rootcontent") > 0, options.count("lumisect") > 0, result, stamp, "", dirs, rxname);
 
 	// Add layout content, in case a layout source had been
 	// registered to the main server.
@@ -2398,7 +2407,7 @@ public:
 			  &alarm,
 			  &layoutroot,
 			  &rxlayout);
-	  json(layoutResult, sample, src, options, stamp, path, result, dirs);
+	  json(layoutResult, sample, src, options, stamp, path, result, dirs, rxname);
 	}
 	result = StringFormat("{\"contents\": [%1]}").arg(result);
       }
@@ -2414,7 +2423,8 @@ public:
 	    double &stamp,
 	    const std::string &rootpath,
 	    std::string &result,
-	    std::set<std::string> &dirs)
+	    std::set<std::string> &dirs,
+      shared_ptr<Regexp> rxname)
     {
       VisDQMItems::const_iterator ci, ce;
       std::set<std::string>::iterator di, de;
@@ -2429,6 +2439,11 @@ public:
 	  name.clear();
 	  dir.clear();
 	  splitPath(dir, name, ci->second->name.string());
+
+    // Apply regex for the ME name to filter out directories
+    if (rxname && rxname->search(name))
+      continue;
+
 	  if (rootpath == dir)
 	    /* Keep object directly in rootpath directory */;
 	  else if (isSubdirectory(rootpath, dir))
@@ -2458,6 +2473,11 @@ public:
 		VisDQMLayoutItem &col = *row.columns[ncol];
 		const std::string path(col.path.string());
 		splitPath(dir, name, path);
+
+    // Apply regex for the ME name
+    if (rxname && rxname->search(name))
+      continue;
+
 		// The check on the name (i.e. ME name) and directory
 		// is mandatory here since we want to avoid the case
 		// in which part of the layout has been defined using
@@ -2465,7 +2485,7 @@ public:
 		// would have the side effect of including all
 		// directories, starting from the root one.
 		if (!name.empty() && !dir.empty())
-		  src->json(sample, dir, doroot, dolumi, result, stamp, name, dirs);
+		  src->json(sample, dir, doroot, dolumi, result, stamp, name, dirs, NULL);
 	      }
 	    }
 	  }
@@ -3275,7 +3295,8 @@ public:
        std::string &result,
        double &stamp,
        const std::string &mename,
-       std::set<std::string> &dirs)
+       std::set<std::string> &dirs,
+       shared_ptr<Regexp> rxname)
     {
       std::vector<DQMNet::Object> objs;
       PeerMap::iterator pi, pe;
@@ -3298,6 +3319,11 @@ public:
 	for (oi = pi->second.objs.begin(), oe = pi->second.objs.end(); oi != oe; ++oi)
 	{
 	  Object &o = const_cast<Object &>(*oi);
+
+    // Apply regex for the ME name
+    if (rxname && rxname->search(o.objname))
+      continue;
+
 	  if (rootpath == *o.dirname)
 	  {
 	    // Copy 'o' to result. We need to copy the directory name
@@ -3324,9 +3350,13 @@ public:
       // Format sub-directories, only in case we were not
       // explicitely asked for a single MonitorElement: in this
       // case omit directory listing.
-      if (mename.empty())
-	for (di = dirs.begin(), de = dirs.end(); di != de; ++di)
-	  result += StringFormat(", { \"subdir\": %1 }\n").arg(stringToJSON(*di));
+      if (mename.empty()) {
+        for (di = dirs.begin(), de = dirs.end(); di != de; ++di) {
+          // Omit the root path from list of dirs
+          if(*di != rootpath)
+            result += StringFormat(", { \"subdir\": %1 }\n").arg(stringToJSON(*di));
+        }
+      }
 
       // Format objects to json, with full data if requested.
       double nulllim[3][2] = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
@@ -3529,10 +3559,11 @@ public:
        std::string &result,
        double &stamp,
        const std::string &name,
-       std::set<std::string> &dirs)
+       std::set<std::string> &dirs,
+       shared_ptr<Regexp> rxname)
     {
       if (sample.type == SAMPLE_LIVE || sample.type == SAMPLE_ANY)
-	thread_->json(rootpath, fulldata, lumisect, result, stamp, name, dirs);
+	thread_->json(rootpath, fulldata, lumisect, result, stamp, name, dirs, rxname);
     }
 
   virtual void
@@ -4286,7 +4317,8 @@ public:
        std::string &result,
        double &stamp,
        const std::string &mename,
-       std::set<std::string> &dirs)
+       std::set<std::string> &dirs,
+       shared_ptr<Regexp> rxname)
     {
       // No point in even trying unless this is archived data.
       if (sample.type < SAMPLE_ONLINE_DATA)
@@ -4352,6 +4384,10 @@ public:
 	    name.clear();
 	    dir.clear();
 	    splitPath(dir, name, path);
+
+      // Apply regex for the ME name
+      if (rxname && rxname->search(name))
+        continue;
 
 	    if (rootpath == dir)
 	      /* Keep object directly in rootpath directory */;
