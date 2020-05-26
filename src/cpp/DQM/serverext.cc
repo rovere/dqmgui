@@ -884,7 +884,7 @@ static std::string axisStatsToJSON(uint32_t nbins[3], double mean[3],
 }
 
 // Format objects to json, with full data if requested.
-static void objectToJSON(const std::string &name, const std::string &dir,
+static void objectToJSON(const std::string &name, const std::string &path,
                          const char *value, const char *qdata,
                          DQMNet::DataBlob &rawdata, uint64_t lumisect,
                          uint32_t flags, uint32_t tag, double nentries,
@@ -921,7 +921,7 @@ static void objectToJSON(const std::string &name, const std::string &dir,
 
   result +=
       StringFormat(
-          "{\"obj\": %1, \"dir\": %2, \"properties\": {\"kind\": \"%3\","
+          "{\"obj\": %1, \"path\": %2, \"properties\": {\"kind\": \"%3\","
           " \"type\": \"%4\", \"lumisect\": \"%5\", \"report\": { \"alarm\": "
           "%6,"
           " \"error\": %7, \"warn\": %8, \"other\": %9 },"
@@ -930,7 +930,7 @@ static void objectToJSON(const std::string &name, const std::string &dir,
           " \"stats\": { \"x\": %16, \"y\": %17, \"z\": %18 },"
           " \"%19\": \"%20\"}\n")
           .arg(stringToJSON(name))
-          .arg(stringToJSON(dir))
+          .arg(stringToJSON(path))
           .arg(type == DQMNet::DQM_PROP_TYPE_INVALID
                    ? "INVALID"
                    : type <= DQMNet::DQM_PROP_TYPE_SCALAR ? "SCALAR" : "ROOT")
@@ -2909,16 +2909,16 @@ class VisDQMLiveThread : public DQMBasicNet {
     result.reserve(result.size() + objs.size() * 1000);
     for (ni = objs.begin(), ne = objs.end(); ni != ne; ++ni) {
       o.rawdata.clear();
+      path.clear();
+      path.reserve(ni->dirname->size() + ni->objname.size() + 1);
+      path += *ni->dirname;
+      if (!path.empty()) path += '/';
+      path += ni->objname;
       if (fulldata) {
-        path.clear();
-        path.reserve(ni->dirname->size() + ni->objname.size() + 1);
-        path += *ni->dirname;
-        if (!path.empty()) path += '/';
-        path += ni->objname;
         fetch(path, junk, o);
       }
       stamp = std::max(stamp, ni->version * 1e-9);
-      objectToJSON(ni->objname, *ni->dirname, ni->scalar.c_str(),
+      objectToJSON(ni->objname, path, ni->scalar.c_str(),
                    ni->qdata.c_str(), o.rawdata, 0, ni->flags, ni->tag, 0,
                    nullbins, nullstat, nullstat, nulllim, qreports, qstr,
                    result);
@@ -3753,7 +3753,7 @@ class VisDQMArchiveSource : public VisDQMSource {
           const char *qdata =
               (s->qtestLength ? ((const char *)(s + 1) + s->dataLength) : "");
 
-          objectToJSON(name, dir, data, qdata, rawdata,
+          objectToJSON(name, path, data, qdata, rawdata,
                        keyparts[1] == 0 ? 0 : keyparts[2], s->properties,
                        s->tag, s->nentries, s->nbins, s->mean, s->rms,
                        s->bounds, qreports, qstr, result);
