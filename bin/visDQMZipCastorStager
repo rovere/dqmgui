@@ -125,13 +125,8 @@ def get_castor_file_write_time(file_full_path):
   # So we run this command on the directory and filter out the file.
   result = int(time.time()) # time since the epoch
   try:
-    dir, file = file_full_path.rsplit("/",1)
-    (rc, so, se) = runme("xrdfs castorcms ls -l %s", dir)
-    assert rc == 0
-    for line in so.split("\n"):
-      if line.endswith(file):
-        time_str = " ".join(line.split(" ")[1:3])
-        result = int(time.mktime(time.strptime(time_str, "%Y-%m-%d %H:%M:%S")))
+      mtime = os.stat(file_full_path).st_mtime
+      result = int(mtime)
   except:
     logme("Couldn't get castor write time for file %s. Using current time "
           "instead.\n%s" % (file_full_path, sys.exc_info()))
@@ -193,16 +188,13 @@ try:
     file_full_castor_path = "%s/%s" % (CASTORREPO, info['zpath'])
     file_full_local_path = "%s/%s" % (ZIPREPO, info['zpath'])
 
-    (rc, so, se) = runme("nsls %s", file_full_castor_path, retcodes=(0, 1))
     # Previously we used rfdir, where normal returncode for missing file was 2
     # Now using the more modern nsls, where returncode for missing file is 1
-    if rc != 0:
-      # If the file is not there in Castor (which is normal),
-      # we don't do anything and continue with the next file in the list
+    if not os.path.isfile(file_full_castor_path):
       continue
 
     # Otherwise if the file already exists, we continu with some extra checks:
-    castor_size = get_castor_file_size(file_full_castor_path)
+    castor_size = get_local_file_size(file_full_castor_path)
     local_size = get_local_file_size(file_full_local_path)
     # Option1: The sizes are different: Mark it "exists"
     if castor_size != local_size:
@@ -248,7 +240,7 @@ try:
     lname = "%s/%s" % (ZIPREPO, info['zpath'])
 
     # Create directory tree. Ignore directory exist error.
-    (rc, so, se) = runme("nsmkdir -p %s", cdir, retcodes=(0, 1))
+    (rc, so, se) = runme("mkdir -p %s", cdir, retcodes=(0, 1))
     if rc not in (0, 1):
       continue
 
@@ -256,17 +248,7 @@ try:
       # Since the close of the default class of Castor in 2014, we have to write
       # to class "archive". For this we use the command xrdcp instead of rfcp.
       # We also explicitely set the server address (required by xrdcp).
-      cp_path_prefix = "root://castorcms.cern.ch/"
-      (rc, so, se) = runme("xrdcp %s %s%s -ODsvcClass=archive", lname,
-                                                         cp_path_prefix, cname)
-      assert rc == 0
-
-      (rc, so, se) = runme("stager_qry -S archive -M %s", cname)
-      assert rc == 0
-      if "CANBEMIGR" not in so and "STAGED" not in so:
-        logme("ERROR: Unexpected stager state: %s", so)
-        assert False
-
+      rc = os.system("cp -r "+lname+" "+cname)
       # Store time of the operation into the zinfo file. To have a
       # consistent time sample use the mtime of the file in CASTOR.
       # Process is an internal value for the script and there is no
@@ -301,7 +283,7 @@ try:
       # In the past we also did a stager_rm here, but after a talk with the
       # Castor people, they explained that this really makes no sense at
       # all, so we removed it. nsrm should be sufficient.
-      (rc1, so1, se1) = runme("nsrm %s", cname)
+      (rc1, so1, se1) = runme("rm %s", cname)
       info['process'] = False
       if info["tries"] >= MAXTRIES:
         os.rename(f,"%s.bad" % f)
