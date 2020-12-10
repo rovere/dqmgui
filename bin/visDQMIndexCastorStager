@@ -103,43 +103,34 @@ def localFileExists(fullLocalFilePath):
 
 # Will create a folder - No problem if it already exists
 def castorCreateFolder(fullCastorFolderPath):
-  executeCommandWithPerseverance(["nsmkdir", "-p", fullCastorFolderPath])
+  executeCommandWithPerseverance(["mkdir", "-p", fullCastorFolderPath])
 
 # Copies a file to CASTOR, using checkSum to check correct transfer.
 def castorJustSendFile(fullLocalFilePath, fullCastorFolderPath):
   source = fullLocalFilePath
-  target = "root://castorcms.cern.ch/" + fullCastorFolderPath
+  target = fullCastorFolderPath
   svcClass = "-ODsvcClass=archive"
   # We force-overwrite the file if it's already present
-  executeCommandWithPerseverance(["xrdcp", "-f", source, target, svcClass])
+  executeCommandWithPerseverance(["cp", "-f", source, target])
   logme("Successfully transferred file %s to %s." % (source, target))
 
 # Compare the checksum between local file and Castor file.
 # We assume here that the checksum on Castor side is ADLER32.
 # If not, there's not much we can do.
 def castorCheckChecksum(fullLocalFilePath, fullCastorFilePath):
-  castorResult = executeCommandWithPerseverance(["nsls", "--checksum",
+  castorResult = executeCommandWithPerseverance(["ls", "-l",
                                                  fullCastorFilePath])
-  castorParts = castorResult.split()
-  # Check if the checksum on CASTOR is ADler
-  if castorParts[0] == "AD":
-    castorChecksum = castorParts[1].lstrip("0")
-    localResult = executeCommand(["xrdadler32", fullLocalFilePath])
-    # Important remark about the checksums:
-    # It seems that on the CASTOR side, leading zeros are stripped of.
-    # So in order to compare, we do the same on the local side.
-    localChecksum = localResult.split()[0].lstrip("0")
-    if not castorChecksum == localChecksum:
-      raise Exception("Castor upload failed! Checksums did not match! \n"
+  localResult = executeCommandWithPerseverance(["ls", "-l",
+                                                 fullLocalFilePath])
+  localChecksum = localResult.split()[4].lstrip("0")
+  castorChecksum = castorResult.split()[4].lstrip("0")
+  if not castorChecksum == localChecksum:
+    raise Exception("Castor upload failed! Checksums did not match! \n"
                       "Local checksum: %s - CASTOR checksum: %s."
                        % (localChecksum, castorChecksum))
-    else:
-      logme("Checksums match: Local checksum: %s - CASTOR checksum: %s."
-                              % (localChecksum, castorChecksum))
   else:
-      logme("WARNING: Checksum was not checked. Checksum on the CASTOR side "
-            "did not start with \"AD\".")
-
+    logme("Checksums match: Local checksum: %s - CASTOR checksum: %s."
+                              % (localChecksum, castorChecksum))
 # If there is no *_full_backup filename in our dropbox. This means that no
 # backup is currently scheduled and we schedule the next full backup: NOW!
 # This only applies when the "--fullbackup" parameter is set.
@@ -264,9 +255,9 @@ def executeCommand(command):
 def alertBySendingEmail(errorText):
   process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
   process.stdin.write("To: %s\n" % args.EMAIL)
-  process.stdin.write("Subject: Problem sending DQM GUI index backup to CASTOR\n")
+  process.stdin.write("Subject: Problem sending DQM GUI index backup to EOS\n")
   process.stdin.write("\n") # blank line separating headers from body
-  process.stdin.write("Problem sending DQM GUI index backup to CASTOR\n")
+  process.stdin.write("Problem sending DQM GUI index backup to EOS\n")
   process.stdin.write("Hostname: %s\n" % gethostname())
   process.stdin.write("Index: %s\n" % args.INDEX)
   process.stdin.write("%s\n" % errorText)

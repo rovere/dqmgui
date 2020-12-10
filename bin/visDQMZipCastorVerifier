@@ -59,7 +59,7 @@ def runme(cmd, *args, **keys):
 def sendmail(body="Hello from visDQMZipCastorVerifier"):
   scall = Popen("%s -t" % SENDMAIL, shell=True, stdin=PIPE)
   scall.stdin.write("To: %s\n" % EMAIL)
-  scall.stdin.write("Subject: Problem verifying file transfer to tape in CASTOR\n")
+  scall.stdin.write("Subject: Problem verifying file transfer to EOS\n")
   scall.stdin.write("\n") # blank line separating headers from body
   scall.stdin.write("%s\n" % body)
   scall.stdin.close()
@@ -188,19 +188,10 @@ try:
     cdir = "%s/%s" % (CASTORREPO, info['zpath'].rsplit("/",1)[0])
     lname = "%s/%s" % (ZIPREPO, info['zpath'])
     try:
-      (rc, so, se) = runme("nsls -T %s", cname)
+      (rc, so, se) = runme("ls -l %s", cname)
       if not rc == 0:
-        assert False, "WARNING: %s: nsls -T failed with following error:[%d,'%s']" % \
+        assert False, "WARNING: %s: ls -l failed with following error:[%d,'%s']" % \
               (cname,rc,se)
-
-      if so == "":
-        (rc, so, se) = runme("stager_qry -M %s", cname)
-        if "CANBEMIGR" not in so and "STAGED" not in so:
-          assert False, "WARNING: %s: unexpected stager state: %s" % (cname, so)
-        elif "CANBEMIGR" in so and info["vtries"] > MAXTRIES:
-          assert False, "WARNING: %s: still in CANBEMIGR state" % cname
-
-        continue
 
       # Store time of the operation. Remove the 'Process' key
       # because it is an internal value for the agent and there is
