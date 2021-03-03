@@ -210,7 +210,7 @@ def run_daemon():
       # Find new alarm histos, and update alarm states
       knownNewAlarms = set()
       for histo in state["contents"]:
-	if histo.has_key('obj') and histo.has_key('path'):
+        if histo.has_key('obj') and histo.has_key('path'):
           name = '%s/%s' % (histo['path'], histo['obj'])
         else:
           continue
