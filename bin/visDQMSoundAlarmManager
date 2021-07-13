@@ -45,7 +45,7 @@ class CustomRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
             for index, item in enumerate(state['contents']):
                 if 'obj' in item:
-                    me = '%s/%s' % (item['dir'], item['obj'])
+                    me = item['path']
                     content += '<tr>'
                     content += '    <td>%s</td>' % me
                     content += '    <td>%s</td>' % ', '.join(str(x['name']) for x in item['qresults'])
